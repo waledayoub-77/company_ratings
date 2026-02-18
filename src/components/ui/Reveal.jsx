@@ -1,12 +1,5 @@
 import { motion, useInView } from 'framer-motion'
-import { useRef, type ReactNode } from 'react'
-
-interface RevealProps {
-  children: ReactNode
-  delay?: number
-  direction?: 'up' | 'down' | 'left' | 'right'
-  className?: string
-}
+import { useRef } from 'react'
 
 const directionMap = {
   up: { y: 40, x: 0 },
@@ -20,7 +13,7 @@ export default function Reveal({
   delay = 0,
   direction = 'up',
   className = '',
-}: RevealProps) {
+}) {
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: '-60px' })
   const offset = directionMap[direction]

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Star, ArrowLeft, Eye, EyeOff, CheckCircle2, AlertCircle } from 'lucide-react'
-import StarRating from '../components/ui/StarRating.tsx'
+import StarRating from '../components/ui/StarRating.jsx'
 
 export default function WriteReviewPage() {
   const { id } = useParams()
@@ -15,7 +15,7 @@ export default function WriteReviewPage() {
   const charCount = review.length
   const isValid = rating > 0 && charCount >= 50 && charCount <= 2000
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e) => {
     e.preventDefault()
     if (!isValid) return
     setLoading(true)

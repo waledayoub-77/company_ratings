@@ -11,8 +11,8 @@ import {
   ArrowUpDown,
   X,
 } from 'lucide-react'
-import PageHeader from '../components/ui/PageHeader.tsx'
-import Reveal from '../components/ui/Reveal.tsx'
+import PageHeader from '../components/ui/PageHeader.jsx'
+import Reveal from '../components/ui/Reveal.jsx'
 
 /* ─── Mock data ─── */
 const industries = ['All Industries', 'Technology', 'Finance', 'Healthcare', 'Education', 'Retail', 'Media', 'Manufacturing']
@@ -126,8 +126,8 @@ export default function CompaniesPage() {
           <div className="flex items-center gap-2 mb-6 flex-wrap">
             <span className="text-xs text-navy-400">Active filters:</span>
             {activeFilters.map(f => (
-              <span key={f as string} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-navy-100 text-xs font-medium text-navy-700">
-                {f as string}
+              <span key={f} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-navy-100 text-xs font-medium text-navy-700">
+                {f}
                 <X size={12} className="cursor-pointer hover:text-navy-900" onClick={() => {
                   if (f === industry) setIndustry('All Industries')
                   if (f === location) setLocation('All Locations')
@@ -230,7 +230,7 @@ export default function CompaniesPage() {
 }
 
 /* ─── Helper components ─── */
-function AnimatedPanel({ show, children }: { show: boolean; children: React.ReactNode }) {
+function AnimatedPanel({ show, children }) {
   return (
     <motion.div
       initial={false}
@@ -243,7 +243,7 @@ function AnimatedPanel({ show, children }: { show: boolean; children: React.Reac
   )
 }
 
-function SelectFilter({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (v: string) => void }) {
+function SelectFilter({ label, value, options, onChange }) {
   return (
     <div className="space-y-1.5">
       <label className="block text-[13px] font-medium text-navy-700">{label}</label>

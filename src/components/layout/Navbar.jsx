@@ -198,7 +198,7 @@ export default function Navbar() {
   )
 }
 
-function DropdownLink({ icon: Icon, label, href }: { icon: any; label: string; href: string }) {
+function DropdownLink({ icon: Icon, label, href }) {
   return (
     <Link
       to={href}

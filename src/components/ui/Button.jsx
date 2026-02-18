@@ -1,21 +1,6 @@
-import { type ReactNode, type ButtonHTMLAttributes } from 'react'
 import { Link } from 'react-router-dom'
 
-type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger'
-type Size = 'sm' | 'md' | 'lg'
-
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: Variant
-  size?: Size
-  href?: string
-  children: ReactNode
-  icon?: ReactNode
-  iconRight?: ReactNode
-  loading?: boolean
-  fullWidth?: boolean
-}
-
-const variantStyles: Record<Variant, string> = {
+const variantStyles = {
   primary:
     'bg-navy-900 text-white hover:bg-navy-800 active:bg-navy-950 shadow-sm shadow-navy-900/20',
   secondary:
@@ -28,7 +13,7 @@ const variantStyles: Record<Variant, string> = {
     'bg-red-600 text-white hover:bg-red-700 active:bg-red-800 shadow-sm shadow-red-600/20',
 }
 
-const sizeStyles: Record<Size, string> = {
+const sizeStyles = {
   sm: 'h-9 px-3.5 text-[13px] rounded-lg gap-1.5',
   md: 'h-11 px-5 text-sm rounded-xl gap-2',
   lg: 'h-[52px] px-7 text-[15px] rounded-xl gap-2.5',
@@ -46,7 +31,7 @@ export default function Button({
   className = '',
   disabled,
   ...props
-}: ButtonProps & { className?: string }) {
+}) {
   const classes = `
     inline-flex items-center justify-center font-medium 
     transition-all duration-200 select-none

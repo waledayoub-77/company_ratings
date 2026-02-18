@@ -1,12 +1,6 @@
-import { type InputHTMLAttributes, forwardRef } from 'react'
+import { forwardRef } from 'react'
 
-interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
-  label?: string
-  error?: string
-  icon?: React.ReactNode
-}
-
-const Input = forwardRef<HTMLInputElement, InputProps>(
+const Input = forwardRef(
   ({ label, error, icon, className = '', ...props }, ref) => {
     return (
       <div className="space-y-1.5">

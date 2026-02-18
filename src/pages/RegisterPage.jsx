@@ -3,14 +3,12 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Mail, Lock, User, Briefcase, ArrowRight, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
 
-type Role = 'employee' | 'company_admin'
-
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
-  const [role, setRole] = useState<Role>('employee')
+  const [role, setRole] = useState('employee')
   const [loading, setLoading] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e) => {
     e.preventDefault()
     setLoading(true)
     setTimeout(() => setLoading(false), 1500)
@@ -100,8 +98,8 @@ export default function RegisterPage() {
           {/* Role selector */}
           <div className="mt-8 grid grid-cols-2 gap-3">
             {([
-              { value: 'employee' as Role, icon: User, label: 'Employee', desc: 'Review & give feedback' },
-              { value: 'company_admin' as Role, icon: Briefcase, label: 'Company Admin', desc: 'Manage your company' },
+              { value: 'employee', icon: User, label: 'Employee', desc: 'Review & give feedback' },
+              { value: 'company_admin', icon: Briefcase, label: 'Company Admin', desc: 'Manage your company' },
             ]).map((r) => (
               <button
                 key={r.value}

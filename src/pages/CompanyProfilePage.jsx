@@ -15,10 +15,10 @@ import {
   ChevronDown,
   ExternalLink,
 } from 'lucide-react'
-import PageHeader from '../components/ui/PageHeader.tsx'
-import StarRating from '../components/ui/StarRating.tsx'
-import Badge from '../components/ui/Badge.tsx'
-import Reveal from '../components/ui/Reveal.tsx'
+import PageHeader from '../components/ui/PageHeader.jsx'
+import StarRating from '../components/ui/StarRating.jsx'
+import Badge from '../components/ui/Badge.jsx'
+import Reveal from '../components/ui/Reveal.jsx'
 
 /* ─── Mock data ─── */
 const company = {
@@ -97,7 +97,7 @@ const reviews = [
 export default function CompanyProfilePage() {
   const { id } = useParams()
   const [sortReviews, setSortReviews] = useState('Recent')
-  const [reportingId, setReportingId] = useState<number | null>(null)
+  const [reportingId, setReportingId] = useState(null)
 
   return (
     <div className="min-h-screen bg-ice-50">

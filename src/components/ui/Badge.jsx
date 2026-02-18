@@ -1,11 +1,3 @@
-import { type ReactNode } from 'react'
-
-interface BadgeProps {
-  children: ReactNode
-  variant?: 'default' | 'success' | 'warning' | 'danger' | 'info'
-  size?: 'sm' | 'md'
-}
-
 const variantStyles = {
   default: 'bg-navy-100 text-navy-700',
   success: 'bg-emerald-50 text-emerald-700',
@@ -14,7 +6,7 @@ const variantStyles = {
   info: 'bg-ice-500/30 text-navy-700',
 }
 
-export default function Badge({ children, variant = 'default', size = 'sm' }: BadgeProps) {
+export default function Badge({ children, variant = 'default', size = 'sm' }) {
   return (
     <span
       className={`

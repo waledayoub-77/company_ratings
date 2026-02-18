@@ -11,8 +11,8 @@ import {
   ArrowLeft,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import PageHeader from '../components/ui/PageHeader.tsx'
-import Reveal from '../components/ui/Reveal.tsx'
+import PageHeader from '../components/ui/PageHeader.jsx'
+import Reveal from '../components/ui/Reveal.jsx'
 
 /* ─── Mock data ─── */
 const coworkers = [
@@ -23,13 +23,13 @@ const coworkers = [
   { id: 5, name: 'Lisa Chen', position: 'QA Lead', dept: 'Engineering', initials: 'LC', lastFeedback: null },
 ]
 
-const categories = ['Professionalism', 'Communication', 'Teamwork', 'Reliability'] as const
+const categories = ['Professionalism', 'Communication', 'Teamwork', 'Reliability']
 
 export default function InternalFeedbackPage() {
-  const [step, setStep] = useState<'select' | 'rate' | 'success'>('select')
-  const [selectedPerson, setSelectedPerson] = useState<typeof coworkers[0] | null>(null)
+  const [step, setStep] = useState('select')
+  const [selectedPerson, setSelectedPerson] = useState(null)
   const [search, setSearch] = useState('')
-  const [ratings, setRatings] = useState<Record<string, number>>({})
+  const [ratings, setRatings] = useState({})
   const [comment, setComment] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -40,7 +40,7 @@ export default function InternalFeedbackPage() {
 
   const allRated = categories.every(cat => ratings[cat] > 0)
 
-  const handleSelectPerson = (person: typeof coworkers[0]) => {
+  const handleSelectPerson = (person) => {
     setSelectedPerson(person)
     setRatings({})
     setComment('')

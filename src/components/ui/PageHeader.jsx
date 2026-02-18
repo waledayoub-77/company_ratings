@@ -1,15 +1,6 @@
-import { type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 
-interface PageHeaderProps {
-  tag?: string
-  title: string
-  subtitle?: string
-  children?: ReactNode
-  align?: 'left' | 'center'
-}
-
-export default function PageHeader({ tag, title, subtitle, children, align = 'left' }: PageHeaderProps) {
+export default function PageHeader({ tag, title, subtitle, children, align = 'left' }) {
   return (
     <div className={`pt-28 pb-10 ${align === 'center' ? 'text-center' : ''}`}>
       <div className="max-w-7xl mx-auto px-6 lg:px-8">

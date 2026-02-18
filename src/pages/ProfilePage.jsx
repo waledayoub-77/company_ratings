@@ -17,11 +17,11 @@ import {
   CheckCircle2,
   ChevronRight,
 } from 'lucide-react'
-import PageHeader from '../components/ui/PageHeader.tsx'
-import Badge from '../components/ui/Badge.tsx'
-import Reveal from '../components/ui/Reveal.tsx'
-import Button from '../components/ui/Button.tsx'
-import Input from '../components/ui/Input.tsx'
+import PageHeader from '../components/ui/PageHeader.jsx'
+import Badge from '../components/ui/Badge.jsx'
+import Reveal from '../components/ui/Reveal.jsx'
+import Button from '../components/ui/Button.jsx'
+import Input from '../components/ui/Input.jsx'
 
 /* ─── Mock profile data ─── */
 const profile = {
@@ -32,7 +32,7 @@ const profile = {
   title: 'Senior Product Designer',
   bio: 'Passionate about creating meaningful user experiences. 8+ years in product design across fintech and SaaS companies.',
   joined: '2024-03-15',
-  avatar: null as null | string,
+  avatar: null,
 }
 
 const employmentHistory = [
@@ -65,14 +65,14 @@ const activityStats = {
 
 export default function ProfilePage() {
   const [editing, setEditing] = useState(false)
-  const [activeSection, setActiveSection] = useState<'profile' | 'employment' | 'activity' | 'settings'>('profile')
+  const [activeSection, setActiveSection] = useState('profile')
   const [form, setForm] = useState(profile)
 
   const sections = [
-    { id: 'profile' as const, label: 'Profile', icon: User },
-    { id: 'employment' as const, label: 'Employment', icon: Briefcase },
-    { id: 'activity' as const, label: 'Activity', icon: FileText },
-    { id: 'settings' as const, label: 'Settings', icon: Shield },
+    { id: 'profile', label: 'Profile', icon: User },
+    { id: 'employment', label: 'Employment', icon: Briefcase },
+    { id: 'activity', label: 'Activity', icon: FileText },
+    { id: 'settings', label: 'Settings', icon: Shield },
   ]
 
   return (
@@ -191,17 +191,7 @@ export default function ProfilePage() {
 }
 
 /* ─── Profile Section ─── */
-function ProfileSection({
-  form,
-  setForm,
-  editing,
-  setEditing,
-}: {
-  form: typeof profile
-  setForm: React.Dispatch<React.SetStateAction<typeof profile>>
-  editing: boolean
-  setEditing: (v: boolean) => void
-}) {
+function ProfileSection({ form, setForm, editing, setEditing }) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -288,7 +278,7 @@ function ProfileSection({
   )
 }
 
-function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
+function InfoRow({ icon: Icon, label, value }) {
   return (
     <div className="flex items-start gap-3">
       <div className="w-8 h-8 rounded-lg bg-navy-50 flex items-center justify-center shrink-0">

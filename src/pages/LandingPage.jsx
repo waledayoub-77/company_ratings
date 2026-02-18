@@ -13,8 +13,8 @@ import {
   ChevronRight,
   Quote,
 } from 'lucide-react'
-import Reveal from '../components/ui/Reveal.tsx'
-import Footer from '../components/layout/Footer.tsx'
+import Reveal from '../components/ui/Reveal.jsx'
+import Footer from '../components/layout/Footer.jsx'
 
 /* ─── Mock data ─── */
 const stats = [

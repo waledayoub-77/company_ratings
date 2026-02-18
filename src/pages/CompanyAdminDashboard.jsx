@@ -29,10 +29,10 @@ import {
   Area,
   AreaChart,
 } from 'recharts'
-import PageHeader from '../components/ui/PageHeader.tsx'
-import Badge from '../components/ui/Badge.tsx'
-import Reveal from '../components/ui/Reveal.tsx'
-import StarRating from '../components/ui/StarRating.tsx'
+import PageHeader from '../components/ui/PageHeader.jsx'
+import Badge from '../components/ui/Badge.jsx'
+import Reveal from '../components/ui/Reveal.jsx'
+import StarRating from '../components/ui/StarRating.jsx'
 
 /* ─── Mock data ─── */
 const monthlyReviews = [
@@ -69,14 +69,14 @@ const feedbackSummary = [
 ]
 
 export default function CompanyAdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'requests' | 'reviews' | 'feedback' | 'settings'>('overview')
+  const [activeTab, setActiveTab] = useState('overview')
 
   const tabs = [
-    { id: 'overview' as const, label: 'Analytics', icon: BarChart3 },
-    { id: 'requests' as const, label: 'Requests', icon: Users, badge: 3 },
-    { id: 'reviews' as const, label: 'Reviews', icon: FileText },
-    { id: 'feedback' as const, label: 'Team Feedback', icon: MessageSquare },
-    { id: 'settings' as const, label: 'Settings', icon: Settings },
+    { id: 'overview', label: 'Analytics', icon: BarChart3 },
+    { id: 'requests', label: 'Requests', icon: Users, badge: 3 },
+    { id: 'reviews', label: 'Reviews', icon: FileText },
+    { id: 'feedback', label: 'Team Feedback', icon: MessageSquare },
+    { id: 'settings', label: 'Settings', icon: Settings },
   ]
 
   return (
@@ -254,7 +254,7 @@ function AnalyticsTab() {
 function RequestsTab() {
   const [requests, setRequests] = useState(pendingRequests)
 
-  const handleAction = (id: number, action: 'approve' | 'reject') => {
+  const handleAction = (id, action) => {
     setRequests(prev => prev.filter(r => r.id !== id))
   }
 

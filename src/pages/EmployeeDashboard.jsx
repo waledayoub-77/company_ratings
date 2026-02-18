@@ -16,10 +16,10 @@ import {
   Plus,
   Award,
 } from 'lucide-react'
-import PageHeader from '../components/ui/PageHeader.tsx'
-import StarRating from '../components/ui/StarRating.tsx'
-import Badge from '../components/ui/Badge.tsx'
-import Reveal from '../components/ui/Reveal.tsx'
+import PageHeader from '../components/ui/PageHeader.jsx'
+import StarRating from '../components/ui/StarRating.jsx'
+import Badge from '../components/ui/Badge.jsx'
+import Reveal from '../components/ui/Reveal.jsx'
 
 /* ─── Mock data ─── */
 const user = {
@@ -47,19 +47,19 @@ const feedbackReceived = [
 ]
 
 const statusConfig = {
-  approved: { icon: CheckCircle2, color: 'text-emerald-500', badge: 'success' as const, label: 'Verified' },
-  pending: { icon: Loader2, color: 'text-amber-500', badge: 'warning' as const, label: 'Pending' },
-  rejected: { icon: XCircle, color: 'text-red-500', badge: 'danger' as const, label: 'Rejected' },
+  approved: { icon: CheckCircle2, color: 'text-emerald-500', badge: 'success', label: 'Verified' },
+  pending: { icon: Loader2, color: 'text-amber-500', badge: 'warning', label: 'Pending' },
+  rejected: { icon: XCircle, color: 'text-red-500', badge: 'danger', label: 'Rejected' },
 }
 
 export default function EmployeeDashboard() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'employment' | 'reviews' | 'feedback'>('overview')
+  const [activeTab, setActiveTab] = useState('overview')
 
   const tabs = [
-    { id: 'overview' as const, label: 'Overview' },
-    { id: 'employment' as const, label: 'Employment' },
-    { id: 'reviews' as const, label: 'My Reviews' },
-    { id: 'feedback' as const, label: 'Feedback' },
+    { id: 'overview', label: 'Overview' },
+    { id: 'employment', label: 'Employment' },
+    { id: 'reviews', label: 'My Reviews' },
+    { id: 'feedback', label: 'Feedback' },
   ]
 
   return (
@@ -268,7 +268,7 @@ function EmploymentTab() {
       {/* Employment cards */}
       <div className="space-y-4">
         {employments.map((emp, i) => {
-          const config = statusConfig[emp.status as keyof typeof statusConfig]
+          const config = statusConfig[emp.status]
           return (
             <Reveal key={emp.id} delay={i * 0.08}>
               <div className="bg-white rounded-2xl border border-navy-100/50 p-6 hover:border-navy-200 transition-all">

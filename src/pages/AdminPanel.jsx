@@ -18,9 +18,9 @@ import {
   Activity,
   Clock,
 } from 'lucide-react'
-import PageHeader from '../components/ui/PageHeader.tsx'
-import Badge from '../components/ui/Badge.tsx'
-import Reveal from '../components/ui/Reveal.tsx'
+import PageHeader from '../components/ui/PageHeader.jsx'
+import Badge from '../components/ui/Badge.jsx'
+import Reveal from '../components/ui/Reveal.jsx'
 
 /* ─── Mock data ─── */
 const platformStats = [
@@ -88,14 +88,14 @@ const usersList = [
 ]
 
 export default function AdminPanel() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'reports' | 'companies' | 'users' | 'audit'>('overview')
+  const [activeTab, setActiveTab] = useState('overview')
 
   const tabs = [
-    { id: 'overview' as const, label: 'Overview', icon: BarChart3 },
-    { id: 'reports' as const, label: 'Reports', icon: Flag, badge: reportedReviews.length },
-    { id: 'companies' as const, label: 'Companies', icon: Building2, badge: pendingCompanies.length },
-    { id: 'users' as const, label: 'Users', icon: Users },
-    { id: 'audit' as const, label: 'Audit Log', icon: Activity },
+    { id: 'overview', label: 'Overview', icon: BarChart3 },
+    { id: 'reports', label: 'Reports', icon: Flag, badge: reportedReviews.length },
+    { id: 'companies', label: 'Companies', icon: Building2, badge: pendingCompanies.length },
+    { id: 'users', label: 'Users', icon: Users },
+    { id: 'audit', label: 'Audit Log', icon: Activity },
   ]
 
   return (

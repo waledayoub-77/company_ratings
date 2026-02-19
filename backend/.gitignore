@@ -1,5 +1,26 @@
+# Dependencies
 node_modules/
+package-lock.json
+
+# Environment variables
 .env
-.DS_Store
+
+# Logs
+logs
 *.log
-.vscode/
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.swp
+*.swo
+
+# Build outputs
+dist/
+build/

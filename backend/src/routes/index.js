@@ -1,5 +1,28 @@
-// Main Routes
-// YOU will build routes here
+const express = require('express');
+const router = express.Router();
 
-// TODO: Create routes
+// Import route modules
+const authRoutes = require('./authRoutes');
+const companyRoutes = require('./companyRoutes');
+const reviewRoutes = require('./reviewRoutes');
+
+// Mount routes
+router.use('/auth', authRoutes);
+router.use('/companies', companyRoutes);
+router.use('/reviews', reviewRoutes);
+
+// API welcome route
+router.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Welcome to Company Rating System API',
+    version: '1.0.0',
+    endpoints: {
+      companies: '/api/companies',
+      reviews: '/api/reviews'
+    }
+  });
+});
+
+module.exports = router;
 

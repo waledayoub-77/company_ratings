@@ -1,28 +1,14 @@
 const { createClient } = require('@supabase/supabase-js');
-const config = require('./env');
+require('dotenv').config();
 
-// Create Supabase client
-const supabase = createClient(config.supabase.url, config.supabase.anonKey);
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY;
 
-// Test database connection
-const testConnection = async () => {
-  try {
-    const { data, error } = await supabase
-      .from('users')
-      .select('count')
-      .limit(1);
-    
-    if (error && error.code !== 'PGRST116') { // PGRST116 = table doesn't exist yet
-      console.error('❌ Supabase connection error:', error.message);
-      return false;
-    }
-    
-    console.log('✅ Supabase connected successfully');
-    return true;
-  } catch (error) {
-    console.error('❌ Supabase connection failed:', error.message);
-    return false;
-  }
-};
+if (!supabaseUrl || !supabaseKey) {
+  console.error('⚠️ Missing Supabase credentials. Check your .env file');
+  console.error('Required: SUPABASE_URL, SUPABASE_ANON_KEY');
+}
 
-module.exports = { supabase, testConnection };
+const supabase = createClient(supabaseUrl || '', supabaseKey || '');
+
+module.exports = { supabase };

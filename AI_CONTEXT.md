@@ -2,19 +2,20 @@
 
 > **FOR AI ASSISTANTS**: This file contains the current state of the project, completed tasks, and active work. Update this file whenever you make changes or complete tasks. This helps all team members' AI assistants stay synchronized.
 
-**Last Updated**: February 19, 2026 10:30 AM UTC  
+**Last Updated**: February 19, 2026 06:00 PM UTC  
 **Project**: Company Ratings Platform (Glassdoor-like)  
 **Team Size**: 4 developers  
-**Sprint**: Day 2 - Company & Review Features (10-day sprint)  
+**Sprint**: Day 2 - Auth Complete, Moving to Middleware Activation (10-day sprint)  
 **Tech Lead**: @baraa
 
 ---
 
-## 📊 PROJECT STATUS: INFRASTRUCTURE COMPLETE ✅
+## 📊 PROJECT STATUS: AUTH ENDPOINTS LIVE ✅
 
 **Server Status**: ✅ Running on `localhost:5000`  
 **Database Status**: ✅ Deployed and verified  
-**Team Status**: ✅ UNBLOCKED - All developers can start working
+**Auth Status**: ✅ Register + Login endpoints working and tested  
+**Team Status**: ✅ UNBLOCKED - All developers can continue working
 
 ---
 
@@ -60,6 +61,23 @@
   - [x] `backend/DATABASE_DEPLOYMENT.md` - Deployment guide
   - [x] `backend/QUICK_START.md` - Quick reference
 
+### Day 1 Afternoon: Auth Register & Login (Tech Lead @baraa) ✅
+- [x] Created `src/services/authService.js`
+  - `registerUser()` — checks email exists → bcrypt.hash (12 rounds) → insert users → insert employees/companies based on role → return user object
+  - `loginUser()` — find user → bcrypt.compare → check is_active → generate tokens → store refresh token in DB → return `{ user, accessToken, refreshToken }`
+  - Email verified check **temporarily disabled** — will re-enable in Day 2 after email verification flow is implemented
+- [x] Created `src/controllers/authController.js`
+  - `register` — calls `registerUser`, returns `201` with user + success message
+  - `login` — calls `loginUser`, returns `200` with `{ user, accessToken, refreshToken }`
+- [x] Created `src/routes/authRoutes.js`
+  - `POST /auth/register` — authLimiter + validateRegister + validate + register
+  - `POST /auth/login` — authLimiter + validateLogin + validate + login
+- [x] Updated `src/routes/index.js` — mounted auth routes at `/auth`
+- [x] Installed missing `express-validator` package (was missing from node_modules)
+- [x] Tested both endpoints with Postman — ✅ Working
+  - Register returns `201` with user object
+  - Login returns `200` with `{ user, accessToken, refreshToken }`
+
 ### Day 0 & Day 2: Companies & Reviews Module (Aya) ✅
 - [x] Created `src/services/companyService.js` - Full CRUD implementation
   - `getCompanies()` - List with filters, search, pagination
@@ -94,20 +112,25 @@
 ## 🚧 CURRENT TASKS
 
 ### IN PROGRESS
-- [ ] **Auth Service Implementation** (Tech Lead @baraa)
-  - Status: Starting now
-  - Files to create:
-    - `backend/src/services/authService.js`
-    - `backend/src/controllers/authController.js`
-    - `backend/src/routes/authRoutes.js`
-  - Tasks:
-    - Implement `registerUser()` function
-    - Implement `loginUser()` function
-    - Implement `refreshToken()` function
-    - Create register/login controllers
-    - Define auth routes (POST /auth/register, POST /auth/login, POST /auth/refresh)
-    - Update `routes/index.js` to mount auth routes
-    - Test endpoints with `test-api.ps1`
+- [ ] **Auth Day 2** (Tech Lead @baraa)
+  - Status: Register + Login done ✅, starting Day 2
+  - Files to update:
+    - `backend/src/services/authService.js` — add logout, refreshToken, verifyEmail, forgotPassword, resetPassword, getMe
+    - `backend/src/controllers/authController.js` — add corresponding controllers
+    - `backend/src/routes/authRoutes.js` — add new routes
+  - Files to activate:
+    - `backend/src/middlewares/authMiddleware.js` — remove stub, enable real JWT verification
+    - `backend/src/middlewares/roleMiddleware.js` — remove stub, enable real role checking
+  - Remaining tasks:
+    - [ ] Activate `requireAuth` middleware (real JWT verification)
+    - [ ] Activate `roleMiddleware` (real role checking)
+    - [ ] Implement `POST /auth/logout` — revoke refresh token
+    - [ ] Implement `POST /auth/refresh-token` — issue new access token
+    - [ ] Implement `GET /auth/verify-email/:token` — mark email_verified = true
+    - [ ] Implement `POST /auth/forgot-password` — generate reset token
+    - [ ] Implement `POST /auth/reset-password/:token` — reset password
+    - [ ] Implement `GET /auth/me` — return current user data
+    - [ ] Re-enable email_verified check in loginUser (after verify-email works)
 
 ### READY TO START
 - [ ] **Frontend Integration** (Frontend developers)
@@ -139,7 +162,7 @@
     - POST /reviews/:id/report (report review)
 
 ### BLOCKED (Dependencies)
-- [ ] **Activate Production Middleware** - BLOCKED until auth endpoints working
+- [ ] **Activate Production Middleware** - UNBLOCKED ✅ (auth endpoints done)
   - Uncomment production code in `authMiddleware.js`
   - Uncomment production code in `roleMiddleware.js`
   - Remove stub/mock code
@@ -229,9 +252,18 @@ backend/
     │   ├── rateLimiter.js        # ✅ Rate limiting
     │   └── validateMiddleware.js # ✅ Validation checker
     ├── routes/
-    │   └── index.js              # ✅ Route aggregator (routes commented)
-    ├── controllers/              # ❌ EMPTY - Ready for implementation
-    └── services/                 # ❌ EMPTY - Ready for implementation
+    │   ├── index.js              # ✅ Route aggregator (auth + company + review mounted)
+    │   ├── authRoutes.js         # ✅ POST /register, POST /login
+    │   ├── companyRoutes.js      # ✅ Aya's work
+    │   └── reviewRoutes.js       # ✅ Aya's work
+    ├── controllers/
+    │   ├── authController.js     # ✅ register, login
+    │   ├── companyController.js  # ✅ Aya's work
+    │   └── reviewController.js   # ✅ Aya's work
+    └── services/
+        ├── authService.js        # ✅ registerUser, loginUser (email verify check disabled until Day 2)
+        ├── companyService.js     # ✅ Aya's work
+        └── reviewService.js      # ✅ Aya's work
 ```
 
 ---
@@ -239,26 +271,25 @@ backend/
 ## 🎯 TEAM ASSIGNMENTS
 
 ### Tech Lead (@baraa)
-**Current Task**: Implement authentication system  
-**Files to Create**:
-- `backend/src/services/authService.js`
-- `backend/src/controllers/authController.js`
-- `backend/src/routes/authRoutes.js`
+**Current Task**: Auth Day 2 — activate middleware + remaining auth endpoints  
+**Completed**:
+- ✅ `backend/src/services/authService.js` — registerUser, loginUser
+- ✅ `backend/src/controllers/authController.js` — register, login
+- ✅ `backend/src/routes/authRoutes.js` — POST /register, POST /login
+- ✅ Tested with Postman — working
+
+**Next Steps**:
+1. Activate `authMiddleware.js` (remove stub, real JWT verification)
+2. Activate `roleMiddleware.js` (remove stub, real role checking)
+3. Add to authService: logout, refreshToken, verifyEmail, forgotPassword, resetPassword, getMe
+4. Add corresponding controllers and routes
+5. Re-enable email_verified check in loginUser after verify-email flow works
 
 **Available Tools**:
-- JWT utils: `utils/jwt.js` (generateAccessToken, verifyAccessToken, etc.)
+- JWT utils: `utils/jwt.js` (generateAccessToken, verifyAccessToken, generateRefreshToken, verifyRefreshToken)
 - Validators: `utils/validators.js` (validateRegister, validateLogin)
 - Database client: `config/database.js` (supabase)
 - Error handling: `middlewares/errorHandler.js` (AppError class)
-
-**Next Steps**:
-1. Create authService with registerUser() and loginUser()
-2. Hash passwords with bcrypt (12 rounds)
-3. Generate JWT tokens for successful login
-4. Store refresh tokens in database
-5. Create controllers to handle req/res
-6. Define routes and apply validators
-7. Test with `test-api.ps1`
 
 ### Frontend Developer 1
 **Current Task**: Can start frontend work  
@@ -302,6 +333,21 @@ backend/
 ---
 
 ## 🔄 RECENT CHANGES LOG
+
+### 2026-02-19 06:00 PM - Baraa Day 1 Afternoon Complete (Auth Register & Login)
+- Implemented `registerUser()` in authService — email check, bcrypt hash, insert user + profile row
+- Implemented `loginUser()` in authService — credential check, token generation, refresh token stored in DB
+- Created `authController.js` with `register` (201) and `login` (200) handlers
+- Created `authRoutes.js` — POST /register and POST /login with rate limiting + validation
+- Updated `routes/index.js` to mount auth routes at `/auth`
+- Installed missing `express-validator` package
+- Temporarily disabled email_verified check in loginUser (re-enable Day 2 when verify-email is built)
+- Tested both endpoints with Postman — ✅ working
+- Files created/modified:
+  - `backend/src/services/authService.js` (new)
+  - `backend/src/controllers/authController.js` (new)
+  - `backend/src/routes/authRoutes.js` (new)
+  - `backend/src/routes/index.js` (updated — auth routes mounted)
 
 ### 2026-02-19 10:30 AM - Aya Day 0 & Day 2 Complete (Companies & Reviews)
 - Created full company CRUD service with filters, search, pagination
@@ -367,16 +413,20 @@ cd backend
 
 ## 📋 NEXT SPRINT TASKS (Days 1-3)
 
-### Day 1: Core Auth (IN PROGRESS)
-- [ ] Register endpoint
-- [ ] Login endpoint  
+### Day 1: Core Auth
+- [x] Register endpoint ✅
+- [x] Login endpoint ✅
 - [ ] Refresh token endpoint
 - [ ] Activate production middleware
 
-### Day 2: Protected Routes
-- [ ] Email verification system
-- [ ] Password reset flow
-- [ ] Profile endpoints (GET/PUT /profile)
+### Day 2: Protected Routes (NEXT UP)
+- [ ] Activate authMiddleware (real JWT) — **highest priority, unblocks team**
+- [ ] Activate roleMiddleware (real role checking)
+- [ ] logout endpoint
+- [ ] refresh-token endpoint
+- [ ] Email verification flow (verify-email endpoint)
+- [ ] Password reset flow (forgot-password + reset-password)
+- [ ] getMe endpoint (GET /auth/me)
 
 ### Day 3: Company & Review Foundation
 - [ ] Company CRUD endpoints

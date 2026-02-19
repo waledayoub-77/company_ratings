@@ -2,10 +2,12 @@ const express = require('express');
 const router = express.Router();
 
 // Import route modules
+const authRoutes = require('./authRoutes');
 const companyRoutes = require('./companyRoutes');
 const reviewRoutes = require('./reviewRoutes');
 
 // Mount routes
+router.use('/auth', authRoutes);
 router.use('/companies', companyRoutes);
 router.use('/reviews', reviewRoutes);
 

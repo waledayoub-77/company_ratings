@@ -5,7 +5,7 @@
 **Last Updated**: February 19, 2026 06:00 PM UTC  
 **Project**: Company Ratings Platform (Glassdoor-like)  
 **Team Size**: 4 developers  
-**Sprint**: Day 2 - Auth Complete, Moving to Middleware Activation (10-day sprint)  
+**Sprint**: Days 1–2 - Auth ✅, Aya ✅, Raneem ⚠️ not started, Walid ⚠️ not started (10-day sprint)  
 **Tech Lead**: @baraa
 
 ---
@@ -133,33 +133,15 @@
     - [ ] Re-enable email_verified check in loginUser (after verify-email works)
 
 ### READY TO START
-- [ ] **Frontend Integration** (Frontend developers)
-  - Replace mock data with real API calls
-  - Connect to `localhost:5000`
-  - Implement auth context/state management
+- [ ] **Raneem** — Start Days 1–2 tasks immediately (employment + feedback module)
+  - Branch: `feature/employment-feedback`
+  - First task: Pull from dev to get Baraa's middleware stubs
+  - Critical export needed by Aya: `checkVerifiedEmployment()` helper
 
-- [ ] **Company Features** (Backend developer assigned)
-  - After auth complete, create:
-    - `services/companyService.js`
-    - `controllers/companyController.js`
-    - `routes/companyRoutes.js`
-  - Endpoints needed:
-    - GET /companies (list with filters)
-    - GET /companies/:id (single company profile)
-    - POST /companies (admin only)
-    - PUT /companies/:id (admin only)
-
-- [ ] **Review Features** (Backend developer assigned)
-  - After auth complete, create:
-    - `services/reviewService.js`
-    - `controllers/reviewController.js`
-    - `routes/reviewRoutes.js`
-  - Endpoints needed:
-    - POST /reviews (create review)
-    - GET /reviews/company/:id (company reviews)
-    - PUT /reviews/:id (edit within 48hrs)
-    - DELETE /reviews/:id (soft delete)
-    - POST /reviews/:id/report (report review)
+- [ ] **Walid** — Start Days 1–2 tasks immediately (admin + reporting module)
+  - Branch: `feature/admin-reports`
+  - First task: Pull from dev to get Baraa's middleware stubs
+  - Independent module — fewest dependencies, can move fast
 
 ### BLOCKED (Dependencies)
 - [ ] **Activate Production Middleware** - UNBLOCKED ✅ (auth endpoints done)
@@ -270,41 +252,100 @@ backend/
 
 ## 🎯 TEAM ASSIGNMENTS
 
-### Tech Lead (@baraa)
-**Current Task**: Auth Day 2 — activate middleware + remaining auth endpoints  
-**Completed**:
-- ✅ `backend/src/services/authService.js` — registerUser, loginUser
-- ✅ `backend/src/controllers/authController.js` — register, login
-- ✅ `backend/src/routes/authRoutes.js` — POST /register, POST /login
-- ✅ Tested with Postman — working
+| Member | Role | Focus Area | Branch |
+|---|---|---|---|
+| **Baraa** | Tech Lead | Auth & User Management | `feature/auth-system` |
+| **Aya** | Developer | Companies & Reviews | `feature/companies-reviews` |
+| **Raneem** | Developer | Employment & Feedback | `feature/employment-feedback` |
+| **Walid** | Developer | Admin Panel & Reporting | `feature/admin-reports` |
 
-**Next Steps**:
-1. Activate `authMiddleware.js` (remove stub, real JWT verification)
-2. Activate `roleMiddleware.js` (remove stub, real role checking)
-3. Add to authService: logout, refreshToken, verifyEmail, forgotPassword, resetPassword, getMe
-4. Add corresponding controllers and routes
-5. Re-enable email_verified check in loginUser after verify-email flow works
+---
+
+### @baraa — Tech Lead (Auth & User Management)
+**Branch**: `feature/auth-system`  
+**Current Task**: Day 2 — activate real middleware + remaining auth endpoints
+
+**Days 1–2 Status**:
+- ✅ Create JWT utility (generate/verify tokens)
+- ✅ Create bcrypt password functions
+- ✅ Create requireAuth middleware (STUB)
+- ✅ Create requireRole middleware (STUB)
+- ✅ Push stubs — team has them
+- ✅ Build POST /auth/register
+- ✅ Build POST /auth/login (returns JWT tokens)
+- ❌ Implement REAL requireAuth (verify JWT)
+- ❌ Build POST /auth/refresh-token
+- ❌ Build email verification endpoints
+- ❌ Build password reset endpoints
+- ✅ Merge to develop
 
 **Available Tools**:
-- JWT utils: `utils/jwt.js` (generateAccessToken, verifyAccessToken, generateRefreshToken, verifyRefreshToken)
-- Validators: `utils/validators.js` (validateRegister, validateLogin)
-- Database client: `config/database.js` (supabase)
-- Error handling: `middlewares/errorHandler.js` (AppError class)
+- `utils/jwt.js` — generateAccessToken, verifyAccessToken, generateRefreshToken, verifyRefreshToken
+- `utils/validators.js` — validateRegister, validateLogin
+- `config/database.js` — supabase client
+- `middlewares/errorHandler.js` — AppError class
 
-### Frontend Developer 1
-**Current Task**: Can start frontend work  
-**Status**: Frontend complete with mock data, ready for API integration  
-**Blocked By**: None (can work with mock data until auth endpoints ready)
+---
 
-### Backend Developer 2
-**Current Task**: Ready to start company/review features  
-**Status**: Waiting for auth completion  
-**Can Start**: Planning services/controllers structure
+### @aya — Developer (Companies & Reviews)
+**Branch**: `feature/companies-reviews`  
+**Current Task**: Day 2 complete — waiting for real middleware from Baraa
 
-### Backend Developer 3
-**Current Task**: Ready to start employee/feedback features  
-**Status**: Waiting for auth completion  
-**Can Start**: Planning services/controllers structure
+**Days 1–2 Status**:
+- ✅ Import middleware stubs
+- ✅ Build GET /companies (list all)
+- ✅ Build GET /companies/:id (single)
+- ✅ Build POST /companies (create)
+- ✅ Build PATCH /companies/:id (update)
+- ✅ Build search/filter (industry, location, rating)
+- ✅ Build pagination (LIMIT, OFFSET)
+- ✅ Build POST /reviews (submit review)
+- ✅ Validate: min 50 chars, max 2000 chars
+- ✅ Validate: rating 1–5
+- ✅ Check: no duplicate review
+- ❌ Replace mock auth with real middleware (blocked — waiting for Baraa Day 2)
+- ✅ Merge to develop
+
+---
+
+### @raneem — Developer (Employment & Feedback)
+**Branch**: `feature/employment-feedback`  
+**Current Task**: Days 1–2 — NOT STARTED ⚠️
+
+**Days 1–2 Status**:
+- ❌ Import Baraa's middleware stubs
+- ❌ Build POST /employments/request
+- ❌ Build GET /employments (list mine)
+- ❌ Build PATCH /employments/:id/approve
+- ❌ Build PATCH /employments/:id/reject
+- ❌ Create checkVerifiedEmployment() helper — **AYA NEEDS THIS EXPORT**
+- ❌ Replace mock auth with real middleware
+- ❌ Build POST /feedback (peer feedback)
+- ❌ Validate: no self-feedback
+- ❌ Validate: same company only
+- ❌ Validate: one per quarter
+- ❌ Merge to develop
+
+---
+
+### @walid — Developer (Admin Panel & Reporting)
+**Branch**: `feature/admin-reports`  
+**Current Task**: Days 1–2 — NOT STARTED ⚠️
+
+**Days 1–2 Status**:
+- ❌ Import Baraa's middleware stubs
+- ❌ Build POST /reports (submit report)
+- ❌ Build rate limiting (5 reports/day)
+- ❌ Build GET /admin/reports (list all)
+- ❌ Build PATCH /admin/reports/:id/resolve
+- ❌ Create audit logging function
+- ❌ Replace mock auth with real middleware
+- ❌ Build GET /admin/users (list users)
+- ❌ Build PATCH /admin/users/:id/suspend
+- ❌ Build DELETE /admin/users/:id (soft)
+- ❌ Build GET /admin/companies
+- ❌ Build GET /admin/analytics
+- ❌ Merge to develop
 
 ---
 
@@ -333,6 +374,18 @@ backend/
 ---
 
 ## 🔄 RECENT CHANGES LOG
+
+### 2026-02-19 07:00 PM - AI_CONTEXT Major Update (Full Sprint Plan Added)
+- Added real team member names: Baraa, Aya, Raneem, Walid
+- Added branch names for each member
+- Added complete Days 1–2 task checklist for all 4 members with current status
+- Added Days 3–4 tasks for all members
+- Added Day 5 Integration Day plan
+- Added Days 6–7 Polish & Edge Cases for all members
+- Added Days 8–10 Final Stretch plan
+- Identified: Raneem and Walid have NOT started Days 1–2 tasks
+- Identified: Aya is blocked on replacing mock auth (waiting for Baraa's real middleware)
+- Files modified: `AI_CONTEXT.md`
 
 ### 2026-02-19 06:00 PM - Baraa Day 1 Afternoon Complete (Auth Register & Login)
 - Implemented `registerUser()` in authService — email check, bcrypt hash, insert user + profile row
@@ -411,27 +464,232 @@ cd backend
 
 ---
 
-## 📋 NEXT SPRINT TASKS (Days 1-3)
+## 📋 FULL SPRINT PLAN (Days 0–10)
 
-### Day 1: Core Auth
-- [x] Register endpoint ✅
-- [x] Login endpoint ✅
-- [ ] Refresh token endpoint
-- [ ] Activate production middleware
+### Day 0: Setup ✅ COMPLETE (All Together)
+- ✅ Lead setup, explain architecture (Baraa)
+- ✅ Install packages (express, supabase, jwt, bcrypt)
+- ✅ Create folder structure
+- ✅ Setup .env with credentials
+- ✅ Run SQL schema in Supabase
+- ✅ Create app.js and server.js
+- ✅ Test server starts successfully
+- Branches created: `feature/auth-system`, `feature/companies-reviews`, `feature/employment-feedback`, `feature/admin-reports`
 
-### Day 2: Protected Routes (NEXT UP)
-- [ ] Activate authMiddleware (real JWT) — **highest priority, unblocks team**
-- [ ] Activate roleMiddleware (real role checking)
-- [ ] logout endpoint
-- [ ] refresh-token endpoint
-- [ ] Email verification flow (verify-email endpoint)
-- [ ] Password reset flow (forgot-password + reset-password)
-- [ ] getMe endpoint (GET /auth/me)
+---
 
-### Day 3: Company & Review Foundation
-- [ ] Company CRUD endpoints
-- [ ] Review submission endpoint
-- [ ] Employment verification system
+### Days 1–2: Critical Foundation — Auth is PRIORITY
+> Team depends on Baraa's middleware stubs
+
+#### Baraa (Auth Foundation)
+- ✅ Create JWT utility (generate/verify tokens)
+- ✅ Create bcrypt password functions
+- ✅ Create requireAuth middleware (STUB)
+- ✅ Create requireRole middleware (STUB)
+- ✅ Push stubs immediately
+- ✅ Build POST /auth/register
+- ✅ Build POST /auth/login (return JWT tokens)
+- ❌ Implement REAL requireAuth (verify JWT) ← **NEXT**
+- ❌ Build POST /auth/refresh-token
+- ❌ Build email verification endpoints
+- ❌ Build password reset endpoints
+- ✅ Merge to develop
+
+#### Aya (Companies & Reviews)
+- ✅ Import middleware stubs
+- ✅ Build GET /companies (list all)
+- ✅ Build GET /companies/:id (single)
+- ✅ Build POST /companies (create)
+- ✅ Build PATCH /companies/:id (update)
+- ✅ Build search/filter (industry, location, rating)
+- ✅ Build pagination (LIMIT, OFFSET)
+- ✅ Build POST /reviews (submit review)
+- ✅ Validate: min 50 chars, max 2000 chars / rating 1–5 / no duplicates
+- ❌ Replace mock auth with real middleware (blocked — waiting Baraa)
+- ✅ Merge to develop
+
+#### Raneem (Employment & Feedback) ⚠️ NOT STARTED
+- ❌ Import middleware stubs
+- ❌ Build POST /employments/request
+- ❌ Build GET /employments (list mine)
+- ❌ Build PATCH /employments/:id/approve
+- ❌ Build PATCH /employments/:id/reject
+- ❌ Create `checkVerifiedEmployment()` helper — **Aya needs this export!**
+- ❌ Replace mock auth with real middleware
+- ❌ Build POST /feedback (peer feedback)
+- ❌ Validate: no self-feedback / same company / one per quarter
+- ❌ Merge to develop
+
+#### Walid (Admin & Reporting) ⚠️ NOT STARTED
+- ❌ Import middleware stubs
+- ❌ Build POST /reports (submit report)
+- ❌ Build rate limiting (5 reports/day)
+- ❌ Build GET /admin/reports (list all)
+- ❌ Build PATCH /admin/reports/:id/resolve
+- ❌ Create audit logging function
+- ❌ Replace mock auth with real middleware
+- ❌ Build GET /admin/users (list users)
+- ❌ Build PATCH /admin/users/:id/suspend
+- ❌ Build DELETE /admin/users/:id (soft)
+- ❌ Build GET /admin/companies
+- ❌ Build GET /admin/analytics
+- ❌ Merge to develop
+
+---
+
+### Days 3–4: Advanced Features
+> Email system · Analytics · Notifications · Moderation
+
+#### Baraa (Email & Security)
+- [ ] Setup Nodemailer (Gmail SMTP)
+- [ ] Create email templates (verification, reset, approvals)
+- [ ] Send welcome email on register
+- [ ] Help Raneem integrate approval emails
+- [ ] Build GET /auth/me (current user)
+- [ ] Add rate limiting to login (5 per 15 min)
+- [ ] Add input validation (email, password strength)
+- [ ] Add security headers (helmet.js)
+- [ ] Handle edge cases (expired/invalid tokens)
+- [ ] Review everyone's code for security
+- [ ] Merge to develop
+
+#### Aya (Review Features)
+- [ ] Build PATCH /reviews/:id (edit in 48h)
+- [ ] Build GET /reviews/my-reviews
+- [ ] Build GET /companies/:id/reviews (paginated)
+- [ ] Build anonymous review logic (hash author)
+- [ ] Test anonymous vs public reviews
+- [ ] Build GET /companies/:id/analytics
+- [ ] Calculate rating distribution (per star)
+- [ ] Calculate reviews over time (monthly)
+- [ ] Build review sorting (newest/highest/lowest)
+- [ ] Test with large dataset
+- [ ] Merge to develop
+
+#### Raneem (Profiles & Notifications)
+- [ ] Build GET /employees/:id (profile)
+- [ ] Build PATCH /employees/:id (update profile)
+- [ ] Build profile privacy (public/private)
+- [ ] Build PATCH /employments/:id/end
+- [ ] Work with Baraa on email notifications
+- [ ] Build GET /employments/pending (admin view)
+- [ ] Send email: employment request sent
+- [ ] Send email: employment approved/rejected
+- [ ] Build feedback quota check (one/quarter)
+- [ ] Merge to develop
+
+#### Walid (Advanced Admin)
+- [ ] Build review removal (soft delete + recalculate)
+- [ ] Build user suspension logic
+- [ ] Build company verification
+- [ ] Build employment override (admin force approve)
+- [ ] Test all moderation actions
+- [ ] Build audit log filtering
+- [ ] Build detailed platform analytics
+- [ ] Build recent activity feed
+- [ ] Build report statistics
+- [ ] Merge to develop
+
+---
+
+### Day 5: Integration Day 🔗
+> All together · Merge everything · Full end-to-end test
+
+**Morning (All Together)**:
+- [ ] Baraa: Lead the merge session
+- [ ] ALL: Merge all features to develop
+- [ ] ALL: Resolve merge conflicts together
+- [ ] Baraa: Review final merged code
+- [ ] ALL: Test server starts, no errors
+
+**Afternoon Split Testing**:
+- [ ] Baraa + Aya: Register → Login → Create Company → Search → Review submission flow
+- [ ] Raneem + Walid: Employment request → Approve → Review → Internal feedback → Report → Admin resolves
+
+---
+
+### Days 6–7: Polish & Edge Cases
+> Security hardening · Validation · Bug squashing
+
+#### Baraa (Security & Errors)
+- [ ] Add input validation everywhere
+- [ ] Add XSS protection (sanitize inputs)
+- [ ] Add SQL injection protection
+- [ ] Add request logging
+- [ ] Review codebase for security holes
+- [ ] Add comprehensive error handling
+- [ ] User-friendly error messages
+- [ ] Test malicious inputs
+- [ ] Add CORS configuration
+- [ ] Code review for team
+- [ ] Merge to develop
+
+#### Aya (Review System Polish)
+- [ ] Test: Cannot review without employment
+- [ ] Test: Cannot duplicate review
+- [ ] Test: Cannot edit after 48 hours
+- [ ] Test: Anonymous review hides identity
+- [ ] Fix all edge cases
+- [ ] Optimize search queries (add indexes)
+- [ ] Test pagination with 1000+ companies
+- [ ] Verify rating calculation accuracy
+- [ ] Test company update permissions
+- [ ] Merge to develop
+
+#### Raneem (Employment Polish)
+- [ ] Test: Cannot self-feedback
+- [ ] Test: Cannot feedback different company
+- [ ] Test: Quarterly limit works
+- [ ] Test: Former employee restrictions
+- [ ] Fix all edge cases
+- [ ] Test: All emails send correctly
+- [ ] Test: Feedback visibility rules
+- [ ] Test: Profile privacy works
+- [ ] Test: Multi-company employment history
+- [ ] Merge to develop
+
+#### Walid (Admin Polish)
+- [ ] Test: Only admin can access admin routes
+- [ ] Test: Report rate limiting works
+- [ ] Test: Review removal recalculates rating
+- [ ] Test: Suspension prevents login
+- [ ] Fix all edge cases
+- [ ] Test: Deleted user shows as 'Deleted User'
+- [ ] Test: Audit logs capture everything
+- [ ] Test: Analytics calculations correct
+- [ ] Test: Cannot delete system admin
+- [ ] Merge to develop
+
+---
+
+### Days 8–10: Final Stretch
+> Staging deploy · Performance · Production launch 🚀
+
+#### Day 8: Frontend Integration
+- [ ] Deploy backend to staging
+- [ ] Connect frontend to staging
+- [ ] Test frontend-backend integration
+- [ ] Baraa + Aya: Test company/review pages
+- [ ] Raneem + Walid: Test employment/admin
+- [ ] Fix critical integration bugs
+
+#### Day 9: Performance & Docs
+- [ ] Baraa: Load test auth endpoints
+- [ ] ALL: Code search (1000 companies)
+- [ ] Raneem: Test employment at scale
+- [ ] Walid: Combine all docs into one file
+- [ ] Add database indexes if needed
+- [ ] Write API documentation
+
+#### Day 10: Production Deploy 🎉
+- [ ] Baraa: Final security review
+- [ ] ALL: Code review together
+- [ ] Baraa: Lead production deployment
+- [ ] ALL: Deploy to production server
+- [ ] ALL: Update frontend to prod API
+- [ ] ALL: Monitor logs, test thoroughly
+- [ ] Baraa: Final smoke tests
+- [ ] 🎉 Celebrate — Backend is LIVE!
 
 ---
 

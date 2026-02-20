@@ -10,6 +10,10 @@ const reviewRoutes = require('./reviewRoutes');
 router.use('/auth', authRoutes);
 router.use('/companies', companyRoutes);
 router.use('/reviews', reviewRoutes);
+const employmentRoutes = require("./employmentRoutes");
+router.use("/employments", employmentRoutes);
+const feedbackRoutes = require("./feedbackRoutes");
+router.use("/feedback", feedbackRoutes);
 
 // API welcome route
 router.get('/', (req, res) => {

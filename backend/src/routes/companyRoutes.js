@@ -1,5 +1,8 @@
-// Company Routes - AYA's file
-// YOU will define API endpoints here
+const express = require("express");
+const router = express.Router();
 
-// TODO: Create your routes
+router.get("/", (req, res) => {
+  res.json({ ok: true, message: "companies route working" });
+});
 
+module.exports = router;

@@ -1,0 +1,430 @@
+{
+  "info": {
+    "name": "Company Ratings API - Aya's Module",
+    "_postman_id": "aya-company-reviews",
+    "description": "Complete test collection for Companies & Reviews endpoints (Days 0-4)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000/api",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "company_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "review_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "📋 COMPANIES",
+      "item": [
+        {
+          "name": "List All Companies",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/companies",
+              "host": ["{{base_url}}"],
+              "path": ["companies"]
+            }
+          }
+        },
+        {
+          "name": "List Companies with Filters",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/companies?industry=Technology&minRating=4&limit=5&sortBy=overall_rating&sortOrder=desc",
+              "host": ["{{base_url}}"],
+              "path": ["companies"],
+              "query": [
+                { "key": "industry", "value": "Technology" },
+                { "key": "minRating", "value": "4" },
+                { "key": "limit", "value": "5" },
+                { "key": "sortBy", "value": "overall_rating" },
+                { "key": "sortOrder", "value": "desc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search Companies",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/companies?search=Tech",
+              "host": ["{{base_url}}"],
+              "path": ["companies"],
+              "query": [
+                { "key": "search", "value": "Tech" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Company by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/companies/{{company_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["companies", "{{company_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Company Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/companies/{{company_id}}/stats",
+              "host": ["{{base_url}}"],
+              "path": ["companies", "{{company_id}}", "stats"]
+            }
+          }
+        },
+        {
+          "name": "Get Company Analytics (Days 3-4)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/companies/{{company_id}}/analytics",
+              "host": ["{{base_url}}"],
+              "path": ["companies", "{{company_id}}", "analytics"]
+            }
+          }
+        },
+        {
+          "name": "Create Company (Protected)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"TechCorp Solutions\",\n  \"industry\": \"Technology\",\n  \"location\": \"San Francisco, CA\",\n  \"description\": \"Leading technology solutions provider\",\n  \"website\": \"https://techcorp.example.com\",\n  \"logo_url\": \"https://example.com/logo.png\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/companies",
+              "host": ["{{base_url}}"],
+              "path": ["companies"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const data = pm.response.json();",
+                  "  pm.environment.set('company_id', data.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Company (Protected)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated description for the company\",\n  \"location\": \"New York, NY\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/companies/{{company_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["companies", "{{company_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Company (Protected)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/companies/{{company_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["companies", "{{company_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "⭐ REVIEWS",
+      "item": [
+        {
+          "name": "Create Review (Protected)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"company_id\": \"{{company_id}}\",\n  \"overall_rating\": 5,\n  \"content\": \"Excellent company to work for! The team is incredibly supportive, and the work-life balance is outstanding. Management truly cares about employee growth and well-being. Highly recommended!\",\n  \"is_anonymous\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/reviews",
+              "host": ["{{base_url}}"],
+              "path": ["reviews"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const data = pm.response.json();",
+                  "  pm.environment.set('review_id', data.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Anonymous Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"company_id\": \"{{company_id}}\",\n  \"overall_rating\": 3,\n  \"content\": \"Mixed experience. Some great projects but management could be better. Compensation is competitive but career growth opportunities are limited.\",\n  \"is_anonymous\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/reviews",
+              "host": ["{{base_url}}"],
+              "path": ["reviews"]
+            }
+          }
+        },
+        {
+          "name": "Get My Reviews (Days 3-4)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reviews/my-reviews?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["reviews", "my-reviews"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Company Reviews - Newest First",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/companies/{{company_id}}/reviews?sortBy=created_at&sortOrder=desc",
+              "host": ["{{base_url}}"],
+              "path": ["companies", "{{company_id}}", "reviews"],
+              "query": [
+                { "key": "sortBy", "value": "created_at" },
+                { "key": "sortOrder", "value": "desc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Company Reviews - Highest Rated",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/companies/{{company_id}}/reviews?sortBy=overall_rating&sortOrder=desc",
+              "host": ["{{base_url}}"],
+              "path": ["companies", "{{company_id}}", "reviews"],
+              "query": [
+                { "key": "sortBy", "value": "overall_rating" },
+                { "key": "sortOrder", "value": "desc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Company Reviews - Lowest Rated",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/companies/{{company_id}}/reviews?sortBy=overall_rating&sortOrder=asc",
+              "host": ["{{base_url}}"],
+              "path": ["companies", "{{company_id}}", "reviews"],
+              "query": [
+                { "key": "sortBy", "value": "overall_rating" },
+                { "key": "sortOrder", "value": "asc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Review by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/reviews/{{review_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["reviews", "{{review_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Review (Days 3-4) - Within 48hrs",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"overall_rating\": 4,\n  \"content\": \"Updated review: After more thought, I'd rate this company a 4 out of 5. Great place overall with some minor areas for improvement in communication.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/reviews/{{review_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["reviews", "{{review_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Report Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"spam\",\n  \"description\": \"This review appears to be spam or fake content\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/reviews/{{review_id}}/report",
+              "host": ["{{base_url}}"],
+              "path": ["reviews", "{{review_id}}", "report"]
+            }
+          }
+        },
+        {
+          "name": "Delete Review (Protected)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reviews/{{review_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["reviews", "{{review_id}}"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

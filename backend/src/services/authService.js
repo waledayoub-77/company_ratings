@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const { supabase } = require('../config/database');
 const { AppError } = require('../middlewares/errorHandler');
-const { generateAccessToken, generateRefreshToken } = require('../utils/jwt');
+const { generateAccessToken, generateRefreshToken, verifyRefreshToken } = require('../utils/jwt');
 
 const registerUser = async ({ email, password, role, fullName, companyName }) => {
   const { data: existingUser } = await supabase
@@ -87,6 +87,89 @@ const loginUser = async ({ email, password }) => {
   };
 };
 
-module.exports = { registerUser, loginUser };
+const refreshToken = async (token) => {
+  // 1. Find token in DB
+  const { data: storedToken } = await supabase
+    .from('refresh_tokens')
+    .select('*')
+    .eq('token', token)
+    .maybeSingle();
+
+  if (!storedToken) {
+    throw new AppError('Invalid refresh token', 401, 'INVALID_TOKEN');
+  }
+
+  // 2. Check not revoked or expired
+  if (storedToken.is_revoked) {
+    throw new AppError('Refresh token has been revoked', 401, 'TOKEN_REVOKED');
+  }
+
+  if (new Date(storedToken.expires_at) < new Date()) {
+    throw new AppError('Refresh token has expired', 401, 'TOKEN_EXPIRED');
+  }
+
+  // 3. Verify JWT signature
+  const decoded = verifyRefreshToken(token);
+
+  // 4. Revoke the old token (rotation — each refresh token is one-time use)
+  await supabase
+    .from('refresh_tokens')
+    .update({ is_revoked: true })
+    .eq('id', storedToken.id);
+
+  // 5. Issue new tokens
+  const payload = { userId: decoded.userId, email: decoded.email, role: decoded.role };
+  const newAccessToken = generateAccessToken(payload);
+  const newRefreshToken = generateRefreshToken(payload);
+
+  await supabase.from('refresh_tokens').insert({
+    user_id: decoded.userId,
+    token: newRefreshToken,
+    expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+  });
+
+  return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+};
+
+const logout = async (token) => {
+  const { data: storedToken } = await supabase
+    .from('refresh_tokens')
+    .select('id')
+    .eq('token', token)
+    .maybeSingle();
+
+  if (!storedToken) {
+    throw new AppError('Invalid refresh token', 401, 'INVALID_TOKEN');
+  }
+
+  await supabase
+    .from('refresh_tokens')
+    .update({ is_revoked: true })
+    .eq('id', storedToken.id);
+};
+
+const getMe = async (userId) => {
+  const { data: user, error } = await supabase
+    .from('users')
+    .select('id, email, role, email_verified, is_active, created_at')
+    .eq('id', userId)
+    .eq('is_deleted', false)
+    .single();
+
+  if (error || !user) {
+    throw new AppError('User not found', 404, 'USER_NOT_FOUND');
+  }
+
+  return {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    emailVerified: user.email_verified,
+    isActive: user.is_active,
+    createdAt: user.created_at,
+  };
+};
+
+module.exports = { registerUser, loginUser, refreshToken, logout, getMe };
 
 //baraa

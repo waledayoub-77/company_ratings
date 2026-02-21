@@ -2,10 +2,10 @@
 
 > **FOR AI ASSISTANTS**: This file contains the current state of the project, completed tasks, and active work. Update this file whenever you make changes or complete tasks. This helps all team members' AI assistants stay synchronized.
 
-**Last Updated**: February 21, 2026 10:00 AM UTC  
+**Last Updated**: February 21, 2026 03:00 PM UTC  
 **Project**: Company Ratings Platform (Glassdoor-like)  
 **Team Size**: 4 developers  
-**Sprint**: Days 1–2 - Auth ✅, Aya ✅, Raneem ⚠️ not started, Walid ⚠️ not started (10-day sprint)  
+**Sprint**: Days 1–2 - Auth ✅, Aya ✅, Raneem ✅ complete, Walid ⚠️ not started (10-day sprint)  
 **Tech Lead**: @baraa
 
 ---
@@ -133,11 +133,6 @@
     - [ ] Re-enable email_verified check in loginUser (after verify-email works)
 
 ### READY TO START
-- [ ] **Raneem** — Start Days 1–2 tasks immediately (employment + feedback module)
-  - Branch: `feature/employment-feedback`
-  - First task: Pull from dev to get Baraa's middleware stubs
-  - Critical export needed by Aya: `checkVerifiedEmployment()` helper
-
 - [ ] **Walid** — Start Days 1–2 tasks immediately (admin + reporting module)
   - Branch: `feature/admin-reports`
   - First task: Pull from dev to get Baraa's middleware stubs
@@ -313,21 +308,22 @@ backend/
 
 ### @raneem — Developer (Employment & Feedback)
 **Branch**: `feature/employment-feedback`  
-**Current Task**: Days 1–2 — NOT STARTED ⚠️
+**Current Task**: Days 3–4 — employment + feedback complete ✅
 
 **Days 1–2 Status**:
-- ❌ Import Baraa's middleware stubs
-- ❌ Build POST /employments/request
-- ❌ Build GET /employments (list mine)
-- ❌ Build PATCH /employments/:id/approve
-- ❌ Build PATCH /employments/:id/reject
-- ❌ Create checkVerifiedEmployment() helper — **AYA NEEDS THIS EXPORT**
-- ❌ Replace mock auth with real middleware
-- ❌ Build POST /feedback (peer feedback)
-- ❌ Validate: no self-feedback
-- ❌ Validate: same company only
-- ❌ Validate: one per quarter
-- ❌ Merge to develop
+- ✅ Import Baraa's real middleware
+- ✅ Build POST /employments/request
+- ✅ Build GET /employments (list mine)
+- ✅ Build PATCH /employments/:id/approve
+- ✅ Build PATCH /employments/:id/reject
+- ✅ Create `checkVerifiedEmployment()` helper — delivered to Aya on dev
+- ✅ Use real requireAuth middleware
+- ✅ Build POST /feedback (peer feedback)
+- ✅ Validate: no self-feedback
+- ✅ Validate: same company only (both must have approved employment)
+- ✅ Validate: one per quarter
+- ✅ Merge to develop
+- ✅ Merged into baraa branch (Feb 21)
 
 ---
 
@@ -377,6 +373,19 @@ backend/
 ---
 
 ## 🔄 RECENT CHANGES LOG
+
+### 2026-02-21 03:00 PM - Raneem Days 1–2 Complete + Merged to baraa
+- All employment + feedback code reviewed and verified correct
+- `POST /employments/request` — validates company exists, prevents duplicates, inserts with `pending` status
+- `GET /employments` — lists employee's employments with company join
+- `PATCH /employments/:id/approve` — company_admin only, sets approved + verified_by + verified_at
+- `PATCH /employments/:id/reject` — company_admin only, sets rejected + rejection_note
+- `POST /feedback` — full validation: no self-feedback, same company (both approved), one per quarter
+- `checkVerifiedEmployment()` helper — returns boolean, ready for Aya's reviewService
+- Bugs fixed: duplicate `rejectEmployment` export in controller, unused `supabase` import in routes
+- Merged `origin/dev` → `baraa` branch (clean auto-merge, no conflicts)
+- Pushed to remote baraa
+- Files: employmentService.js, employmentController.js, employmentRoutes.js, feedbackService.js, feedbackController.js, feedbackRoutes.js, helpers/checkVerifiedEmployment.js
 
 ### 2026-02-21 10:00 AM - Baraa Days 1–2 Auth Complete
 - Implemented `refreshToken()` — verify in DB, revoke old token, issue new pair (rotation)
@@ -543,17 +552,20 @@ cd backend
 - ❌ Replace mock auth with real middleware (UNBLOCKED ✅ — Baraa's real middleware is ready, pull from dev)
 - ✅ Merge to develop
 
-#### Raneem (Employment & Feedback) ⚠️ NOT STARTED
-- ❌ Import middleware stubs
-- ❌ Build POST /employments/request
-- ❌ Build GET /employments (list mine)
-- ❌ Build PATCH /employments/:id/approve
-- ❌ Build PATCH /employments/:id/reject
-- ❌ Create `checkVerifiedEmployment()` helper — **Aya needs this export!**
-- ❌ Replace mock auth with real middleware
-- ❌ Build POST /feedback (peer feedback)
-- ❌ Validate: no self-feedback / same company / one per quarter
-- ❌ Merge to develop
+#### Raneem (Employment & Feedback) ✅ COMPLETE
+- ✅ Import real requireAuth middleware
+- ✅ Build POST /employments/request
+- ✅ Build GET /employments (list mine)
+- ✅ Build PATCH /employments/:id/approve
+- ✅ Build PATCH /employments/:id/reject
+- ✅ Create `checkVerifiedEmployment()` helper — on dev for Aya
+- ✅ Use real requireAuth middleware
+- ✅ Build POST /feedback (peer feedback)
+- ✅ Validate: no self-feedback / same company / one per quarter
+- ✅ Merge to develop
+- ✅ Merged into baraa (Feb 21)
+- ⚠️ Bug fixed: duplicate `rejectEmployment` export removed
+- ⚠️ Bug fixed: unused `supabase` import in employmentRoutes removed
 
 #### Walid (Admin & Reporting) ⚠️ NOT STARTED
 - ❌ Import middleware stubs

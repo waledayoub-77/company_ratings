@@ -1,6 +1,5 @@
 const express = require("express");
 const router = express.Router();
-const supabase = require("../config/database");
 
 const employmentController = require("../controllers/employmentController");
 const { requireAuth } = require("../middlewares/authMiddleware");

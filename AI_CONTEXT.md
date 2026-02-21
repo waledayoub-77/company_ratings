@@ -2,24 +2,58 @@
 
 > **FOR AI ASSISTANTS**: This file contains the current state of the project, completed tasks, and active work. Update this file whenever you make changes or complete tasks. This helps all team members' AI assistants stay synchronized.
 
-**Last Updated**: February 21, 2026 10:00 AM UTC  
+**Last Updated**: February 21, 2026 05:00 PM UTC  
 **Project**: Company Ratings Platform (Glassdoor-like)  
 **Team Size**: 4 developers  
-**Sprint**: Days 1–2 - Auth ✅, Aya ✅, Raneem ⚠️ not started, Walid ⚠️ not started (10-day sprint)  
+**Sprint**: Days 3–4 - Baraa ✅ email+security done, Aya/Raneem/Walid Days 3–4 pending (10-day sprint)  
 **Tech Lead**: @baraa
 
 ---
 
-## 📊 PROJECT STATUS: AUTH ENDPOINTS LIVE ✅
+## 📊 PROJECT STATUS: AUTH + EMAIL SYSTEM LIVE ✅
 
 **Server Status**: ✅ Running on `localhost:5000`  
 **Database Status**: ✅ Deployed and verified  
-**Auth Status**: ✅ Register + Login + Real Middleware all working and tested  
-**Team Status**: ✅ UNBLOCKED - All developers can continue working
+**Auth Status**: ✅ Full auth system working — register, login, verify-email, forgot/reset-password, refresh, logout, getMe  
+**Email Status**: ✅ Resend SDK configured — verification + reset emails sending  
+**Team Status**: ✅ Baraa Days 3–4 complete, Raneem Days 1–2 complete, Aya Days 1–2 complete, Walid ⚠️ NOT STARTED
 
 ---
 
 ## ✅ COMPLETED TASKS
+
+### Days 3–4: Email Verification & Password Reset (Baraa) ✅
+- [x] Replaced Nodemailer with Resend SDK
+  - [x] `config/email.js` — rewritten, wraps Resend API, single `sendEmail()` function
+  - [x] `RESEND_API_KEY` added to `.env`
+- [x] Created `services/emailService.js`
+  - [x] `sendWelcomeEmail({ to, name })` — welcome message on register
+  - [x] `sendVerifyEmail({ to, name, token })` — link to `FRONTEND_URL/verify-email/:token`
+  - [x] `sendResetPasswordEmail({ to, name, token })` — link to `FRONTEND_URL/reset-password/:token`
+  - [x] `sendEmploymentApprovedEmail({ to, name, companyName })` — for Raneem to call
+  - [x] `sendEmploymentRejectedEmail({ to, name, companyName, reason })` — for Raneem to call
+- [x] Created DB tables in Supabase:
+  - [x] `email_verification_tokens` — token, user_id, expires_at (24h), used_at
+  - [x] `password_reset_tokens` — token, user_id, expires_at (1h), used_at
+- [x] Added `verifyEmail(token)` to authService
+  - validates token exists, not used, not expired
+  - sets `email_verified = true` on user
+  - stamps `used_at` (one-time use)
+- [x] Added `forgotPassword(email)` to authService
+  - always returns 200 (security — don't reveal if email exists)
+  - invalidates any previous unused tokens
+  - generates new token, stores in DB, sends reset email
+- [x] Added `resetPassword(token, newPassword)` to authService
+  - validates token, bcrypt hashes new password
+  - revokes ALL refresh tokens (forces re-login on all devices)
+- [x] Re-enabled `email_verified` check in `loginUser` (was commented out since Day 1)
+- [x] Register now automatically sends welcome + verification email
+- [x] New routes added to `authRoutes.js`:
+  - `GET /auth/verify-email/:token` (public)
+  - `POST /auth/forgot-password` (public, authLimiter)
+  - `POST /auth/reset-password/:token` (public)
+- [x] Full flow tested end-to-end with Postman ✅
+- [x] Merged to dev
 
 ### Day 0: Backend Infrastructure Setup
 - [x] Created `backend/package.json` with all dependencies (11 production, 1 dev)
@@ -133,11 +167,6 @@
     - [ ] Re-enable email_verified check in loginUser (after verify-email works)
 
 ### READY TO START
-- [ ] **Raneem** — Start Days 1–2 tasks immediately (employment + feedback module)
-  - Branch: `feature/employment-feedback`
-  - First task: Pull from dev to get Baraa's middleware stubs
-  - Critical export needed by Aya: `checkVerifiedEmployment()` helper
-
 - [ ] **Walid** — Start Days 1–2 tasks immediately (admin + reporting module)
   - Branch: `feature/admin-reports`
   - First task: Pull from dev to get Baraa's middleware stubs
@@ -234,18 +263,25 @@ backend/
     │   ├── rateLimiter.js        # ✅ Rate limiting
     │   └── validateMiddleware.js # ✅ Validation checker
     ├── routes/
-    │   ├── index.js              # ✅ Route aggregator (auth + company + review mounted)
-    │   ├── authRoutes.js         # ✅ POST /register, POST /login, POST /refresh-token, POST /logout, GET /me
+    │   ├── index.js              # ✅ Route aggregator (auth + company + review + employment + feedback mounted)
+    │   ├── authRoutes.js         # ✅ POST /register, POST /login, POST /refresh-token, POST /logout, GET /me, GET /verify-email/:token, POST /forgot-password, POST /reset-password/:token
     │   ├── companyRoutes.js      # ✅ Aya's work
-    │   └── reviewRoutes.js       # ✅ Aya's work
+    │   ├── reviewRoutes.js       # ✅ Aya's work
+    │   ├── employmentRoutes.js   # ✅ Raneem's work
+    │   └── feedbackRoutes.js     # ✅ Raneem's work
     ├── controllers/
-    │   ├── authController.js     # ✅ register, login, refresh, logout, getMe
+    │   ├── authController.js     # ✅ register, login, refresh, logout, getMe, verifyEmail, forgotPassword, resetPassword
     │   ├── companyController.js  # ✅ Aya's work
-    │   └── reviewController.js   # ✅ Aya's work
+    │   ├── reviewController.js   # ✅ Aya's work
+    │   ├── employmentController.js # ✅ Raneem's work
+    │   └── feedbackController.js # ✅ Raneem's work
     └── services/
-        ├── authService.js        # ✅ registerUser, loginUser, refreshToken, logout, getMe
+        ├── authService.js        # ✅ registerUser, loginUser, refreshToken, logout, getMe, verifyEmail, forgotPassword, resetPassword
+        ├── emailService.js       # ✅ sendWelcomeEmail, sendVerifyEmail, sendResetPasswordEmail, sendEmploymentApproved/RejectedEmail
         ├── companyService.js     # ✅ Aya's work
-        └── reviewService.js      # ✅ Aya's work
+        ├── reviewService.js      # ✅ Aya's work
+        ├── employmentService.js  # ✅ Raneem's work
+        └── feedbackService.js    # ✅ Raneem's work
 ```
 
 ---
@@ -262,14 +298,14 @@ backend/
 ---
 
 ### @baraa — Tech Lead (Auth & User Management)
-**Branch**: `feature/auth-system`  
-**Current Task**: Day 2 — activate real middleware + remaining auth endpoints
+**Branch**: `baraa`  
+**Current Task**: Days 3–4 complete ✅ — ready for Days 6–7 security hardening
 
 **Days 1–2 Status**:
 - ✅ Create JWT utility (generate/verify tokens)
 - ✅ Create bcrypt password functions
-- ✅ Create requireAuth middleware (STUB)
-- ✅ Create requireRole middleware (STUB)
+- ✅ Create requireAuth middleware (STUB → REAL)
+- ✅ Create requireRole middleware (STUB → REAL)
 - ✅ Push stubs — team has them
 - ✅ Build POST /auth/register
 - ✅ Build POST /auth/login (returns JWT tokens)
@@ -278,21 +314,39 @@ backend/
 - ✅ Build POST /auth/refresh-token — tested, working
 - ✅ Build POST /auth/logout — tested, working
 - ✅ Build GET /auth/me — tested, working
-- ❌ Build email verification endpoints ← **NEXT (Days 3–4)**
-- ❌ Build password reset endpoints ← **NEXT (Days 3–4)**
-- ✅ Merge to develop
+- ✅ Merge to dev
 
-**Available Tools**:
+**Days 3–4 Status**:
+- ✅ Replace Nodemailer with Resend SDK (`config/email.js`)
+- ✅ Create `services/emailService.js` — 5 send functions:
+  - `sendWelcomeEmail` — sent on register
+  - `sendVerifyEmail` — sent on register with 24h token
+  - `sendResetPasswordEmail` — sent on forgot-password with 1h token
+  - `sendEmploymentApprovedEmail` — ready for Raneem to call
+  - `sendEmploymentRejectedEmail` — ready for Raneem to call
+- ✅ Create DB tables in Supabase: `email_verification_tokens`, `password_reset_tokens`
+- ✅ Build GET /auth/verify-email/:token — marks email_verified=true, one-time use
+- ✅ Build POST /auth/forgot-password — generates token, sends email (always returns 200)
+- ✅ Build POST /auth/reset-password/:token — updates password, revokes all refresh tokens
+- ✅ Re-enabled email_verified check in loginUser
+- ✅ Full flow tested end-to-end with Postman ✅
+- ✅ Pushed to baraa, merging to dev now
+
+**Available Tools for team**:
 - `utils/jwt.js` — generateAccessToken, verifyAccessToken, generateRefreshToken, verifyRefreshToken
 - `utils/validators.js` — validateRegister, validateLogin
 - `config/database.js` — supabase client
+- `config/email.js` — sendEmail (low-level, use emailService instead)
+- `services/emailService.js` — sendWelcomeEmail, sendVerifyEmail, sendResetPasswordEmail, sendEmploymentApprovedEmail, sendEmploymentRejectedEmail
 - `middlewares/errorHandler.js` — AppError class
+- `middlewares/authMiddleware.js` — requireAuth
+- `middlewares/roleMiddleware.js` — requireRole, requireEmployee, requireCompanyAdmin, requireSystemAdmin
 
 ---
 
 ### @aya — Developer (Companies & Reviews)
 **Branch**: `feature/companies-reviews`  
-**Current Task**: Day 2 complete — waiting for real middleware from Baraa
+**Current Task**: Days 3–4 — UNBLOCKED, real middleware available on dev
 
 **Days 1–2 Status**:
 - ✅ Import middleware stubs
@@ -306,28 +360,29 @@ backend/
 - ✅ Validate: min 50 chars, max 2000 chars
 - ✅ Validate: rating 1–5
 - ✅ Check: no duplicate review
-- ❌ Replace mock auth with real middleware (blocked — waiting for Baraa Day 2)
+- ✅ Real middleware available — pull from dev to use requireAuth
 - ✅ Merge to develop
 
 ---
 
 ### @raneem — Developer (Employment & Feedback)
 **Branch**: `feature/employment-feedback`  
-**Current Task**: Days 1–2 — NOT STARTED ⚠️
+**Current Task**: Days 3–4 — employment + feedback complete ✅
 
 **Days 1–2 Status**:
-- ❌ Import Baraa's middleware stubs
-- ❌ Build POST /employments/request
-- ❌ Build GET /employments (list mine)
-- ❌ Build PATCH /employments/:id/approve
-- ❌ Build PATCH /employments/:id/reject
-- ❌ Create checkVerifiedEmployment() helper — **AYA NEEDS THIS EXPORT**
-- ❌ Replace mock auth with real middleware
-- ❌ Build POST /feedback (peer feedback)
-- ❌ Validate: no self-feedback
-- ❌ Validate: same company only
-- ❌ Validate: one per quarter
-- ❌ Merge to develop
+- ✅ Import Baraa's real middleware
+- ✅ Build POST /employments/request
+- ✅ Build GET /employments (list mine)
+- ✅ Build PATCH /employments/:id/approve
+- ✅ Build PATCH /employments/:id/reject
+- ✅ Create `checkVerifiedEmployment()` helper — delivered to Aya on dev
+- ✅ Use real requireAuth middleware
+- ✅ Build POST /feedback (peer feedback)
+- ✅ Validate: no self-feedback
+- ✅ Validate: same company only (both must have approved employment)
+- ✅ Validate: one per quarter
+- ✅ Merge to develop
+- ✅ Merged into baraa branch (Feb 21)
 
 ---
 
@@ -377,6 +432,31 @@ backend/
 ---
 
 ## 🔄 RECENT CHANGES LOG
+
+### 2026-02-21 05:00 PM - Baraa Days 3–4 Email & Security Complete
+- Replaced Nodemailer with Resend SDK (`config/email.js` rewritten)
+- Created `emailService.js` — 5 send functions: welcome, verify-email, reset-password, employment approved/rejected
+- Created 2 DB tables in Supabase: `email_verification_tokens` (24h expiry), `password_reset_tokens` (1h expiry)
+- `verifyEmail()` — validates token, marks email_verified=true, stamps used_at (one-time use)
+- `forgotPassword()` — invalidates existing tokens, generates new, sends reset email
+- `resetPassword()` — validates token, bcrypt hashes new password, revokes ALL refresh tokens (security)
+- Re-enabled email_verified check in loginUser (was TODO since Day 1)
+- Register now sends welcome + verification email automatically
+- New routes: GET /verify-email/:token, POST /forgot-password, POST /reset-password/:token
+- Files: authService.js, authController.js, authRoutes.js, config/email.js, services/emailService.js
+
+### 2026-02-21 03:00 PM - Raneem Days 1–2 Complete + Merged to baraa
+- All employment + feedback code reviewed and verified correct
+- `POST /employments/request` — validates company exists, prevents duplicates, inserts with `pending` status
+- `GET /employments` — lists employee's employments with company join
+- `PATCH /employments/:id/approve` — company_admin only, sets approved + verified_by + verified_at
+- `PATCH /employments/:id/reject` — company_admin only, sets rejected + rejection_note
+- `POST /feedback` — full validation: no self-feedback, same company (both approved), one per quarter
+- `checkVerifiedEmployment()` helper — returns boolean, ready for Aya's reviewService
+- Bugs fixed: duplicate `rejectEmployment` export in controller, unused `supabase` import in routes
+- Merged `origin/dev` → `baraa` branch (clean auto-merge, no conflicts)
+- Pushed to remote baraa
+- Files: employmentService.js, employmentController.js, employmentRoutes.js, feedbackService.js, feedbackController.js, feedbackRoutes.js, helpers/checkVerifiedEmployment.js
 
 ### 2026-02-21 10:00 AM - Baraa Days 1–2 Auth Complete
 - Implemented `refreshToken()` — verify in DB, revoke old token, issue new pair (rotation)
@@ -543,17 +623,20 @@ cd backend
 - ❌ Replace mock auth with real middleware (UNBLOCKED ✅ — Baraa's real middleware is ready, pull from dev)
 - ✅ Merge to develop
 
-#### Raneem (Employment & Feedback) ⚠️ NOT STARTED
-- ❌ Import middleware stubs
-- ❌ Build POST /employments/request
-- ❌ Build GET /employments (list mine)
-- ❌ Build PATCH /employments/:id/approve
-- ❌ Build PATCH /employments/:id/reject
-- ❌ Create `checkVerifiedEmployment()` helper — **Aya needs this export!**
-- ❌ Replace mock auth with real middleware
-- ❌ Build POST /feedback (peer feedback)
-- ❌ Validate: no self-feedback / same company / one per quarter
-- ❌ Merge to develop
+#### Raneem (Employment & Feedback) ✅ COMPLETE
+- ✅ Import real requireAuth middleware
+- ✅ Build POST /employments/request
+- ✅ Build GET /employments (list mine)
+- ✅ Build PATCH /employments/:id/approve
+- ✅ Build PATCH /employments/:id/reject
+- ✅ Create `checkVerifiedEmployment()` helper — on dev for Aya
+- ✅ Use real requireAuth middleware
+- ✅ Build POST /feedback (peer feedback)
+- ✅ Validate: no self-feedback / same company / one per quarter
+- ✅ Merge to develop
+- ✅ Merged into baraa (Feb 21)
+- ⚠️ Bug fixed: duplicate `rejectEmployment` export removed
+- ⚠️ Bug fixed: unused `supabase` import in employmentRoutes removed
 
 #### Walid (Admin & Reporting) ⚠️ NOT STARTED
 - ❌ Import middleware stubs
@@ -575,18 +658,16 @@ cd backend
 ### Days 3–4: Advanced Features
 > Email system · Analytics · Notifications · Moderation
 
-#### Baraa (Email & Security)
-- [ ] Setup Nodemailer (Gmail SMTP)
-- [ ] Create email templates (verification, reset, approvals)
-- [ ] Send welcome email on register
-- [ ] Help Raneem integrate approval emails
-- [ ] Build GET /auth/me (current user)
-- [ ] Add rate limiting to login (5 per 15 min)
-- [ ] Add input validation (email, password strength)
-- [ ] Add security headers (helmet.js)
-- [ ] Handle edge cases (expired/invalid tokens)
-- [ ] Review everyone's code for security
-- [ ] Merge to develop
+#### Baraa (Email & Security) ✅ COMPLETE
+- ✅ Setup Resend SDK (replaced Nodemailer)
+- ✅ Create emailService.js (5 send functions)
+- ✅ Create DB tables: email_verification_tokens, password_reset_tokens
+- ✅ Welcome email on register
+- ✅ Build GET /auth/verify-email/:token
+- ✅ Build POST /auth/forgot-password
+- ✅ Build POST /auth/reset-password/:token
+- ✅ Re-enabled email_verified check in loginUser
+- ✅ Merge to baraa
 
 #### Aya (Review Features)
 - [ ] Build PATCH /reviews/:id (edit in 48h)

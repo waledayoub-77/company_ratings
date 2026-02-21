@@ -68,8 +68,34 @@ const getMe = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, refresh, logout, getMe };
+const verifyEmail = async (req, res, next) => {
+  try {
+    await authService.verifyEmail(req.params.token);
+    res.json({ success: true, data: { message: 'Email verified successfully. You can now log in.' } });
+  } catch (error) {
+    next(error);
+  }
+};
 
-//baraa
+const forgotPassword = async (req, res, next) => {
+  try {
+    await authService.forgotPassword(req.body.email);
+    // Always return 200 — don't reveal if email exists
+    res.json({ success: true, data: { message: 'If that email exists, a reset link has been sent.' } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const resetPassword = async (req, res, next) => {
+  try {
+    await authService.resetPassword(req.params.token, req.body.password);
+    res.json({ success: true, data: { message: 'Password reset successfully. Please log in.' } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { register, login, refresh, logout, getMe, verifyEmail, forgotPassword, resetPassword };
 
 //baraa

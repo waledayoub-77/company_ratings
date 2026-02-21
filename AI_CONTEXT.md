@@ -453,9 +453,9 @@ backend/
 // Also: year < 2020  (was 2000)
 ```
 
-### 🟡 BUG-002 — Aya: reportReview missing reason validation
+### ✅ BUG-002 — Aya: reportReview missing reason validation
 **File**: `backend/src/services/reviewService.js` → `reportReview()`  
-**Status**: ❌ NOT FIXED  
+**Status**: ✅ FIXED — commit `e42f767`  
 **Owner**: Aya  
 **Problem**: DB has constraint `reason IN ('false_info', 'spam', 'harassment', 'other')`. The service inserts `reason` directly without validating the value. An invalid reason string causes a raw Supabase constraint error instead of a clean 400 response.  
 **Fix**: Add before the insert:
@@ -466,9 +466,9 @@ if (!validReasons.includes(reason)) {
 }
 ```
 
-### 🟡 BUG-003 — Aya: duplicate checkVerifiedEmployment (not using Raneem's helper)
+### ✅ BUG-003 — Aya: duplicate checkVerifiedEmployment (not using Raneem's helper)
 **File**: `backend/src/services/reviewService.js`  
-**Status**: ⚠️ LOW PRIORITY  
+**Status**: ✅ FIXED — commit `e42f767`  
 **Owner**: Aya  
 **Problem**: Aya has her own inline copy of `checkVerifiedEmployment()` instead of using `helpers/checkVerifiedEmployment.js` that Raneem built for her. Two copies of the same logic — if one is updated the other won't be.  
 **Fix**: Replace inline function with `const checkVerifiedEmployment = require('../helpers/checkVerifiedEmployment');`
@@ -501,12 +501,18 @@ if (!validReasons.includes(reason)) {
 
 ## 🔄 RECENT CHANGES LOG
 
+### 2026-02-21 10:30 PM - Aya: Fixed BUG-002 + BUG-003
+- Commit `e42f767 fix(Aya): validate report reason + use shared checkVerifiedEmployment helper`
+- `reviewService.js`: Added `VALID_REPORT_REASONS` constant + validation guard in `reportReview()` ✅
+- `reviewService.js`: Replaced inline `checkVerifiedEmployment` with `require('../helpers/checkVerifiedEmployment')` ✅
+- BUG-001 (Raneem/Critical) still open — Raneem must fix before Day 5
+
 ### 2026-02-21 09:00 PM - Baraa: Full Code Review (Aya + Raneem)
 - Reviewed all pushed code against DB schema
 - Found 3 issues (2 bugs, 1 low-priority duplicate)
 - **BUG-001 (Raneem/Critical)**: feedbackController validates ratings 1-10, DB constraint is 1-5 → will crash on values 6-10
-- **BUG-002 (Aya/Medium)**: reportReview missing reason validation before DB insert → raw constraint error on invalid reason
-- **BUG-003 (Aya/Low)**: reviewService has duplicate inline checkVerifiedEmployment instead of using Raneem's helper
+- **BUG-002 (Aya/Medium)**: ✅ FIXED in `e42f767` — added `VALID_REPORT_REASONS` array + validation before insert
+- **BUG-003 (Aya/Low)**: ✅ FIXED in `e42f767` — replaced inline function with `require('../helpers/checkVerifiedEmployment')`
 - All bugs documented in KNOWN BUGS section above
 - Everything else verified correct: table names, column names, employment_id in review insert, auth middleware, route protection, anonymous review via view
 - Aya confirmed: AI_CONTEXT updated correctly after her push ✅

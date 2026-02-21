@@ -248,36 +248,6 @@ export default function LandingPage() {
                     </span>
                   </div>
                 </motion.div>
-
-                {/* Floating feedback card */}
-                <motion.div
-                  className="absolute -left-8 -bottom-8 bg-white rounded-2xl p-5 shadow-lg shadow-navy-900/5 border border-navy-100/40 w-64"
-                  animate={{ y: [0, 8, 0] }}
-                  transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-                >
-                  <div className="flex items-center gap-2 mb-3">
-                    <MessageSquare size={14} className="text-navy-500" />
-                    <span className="text-xs font-semibold text-navy-700">Internal Feedback</span>
-                  </div>
-                  <div className="space-y-2">
-                    {['Professionalism', 'Communication', 'Teamwork'].map((cat, i) => (
-                      <div key={cat} className="flex items-center justify-between">
-                        <span className="text-xs text-navy-500">{cat}</span>
-                        <div className="flex gap-0.5">
-                          {[1,2,3,4,5].map(s => (
-                            <div
-                              key={s}
-                              className={`w-4 h-1.5 rounded-full ${
-                                s <= 4 + (i === 1 ? 1 : 0) ? 'bg-navy-500' : 'bg-navy-100'
-                              }`}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-
                 {/* Stats mini card */}
                 <motion.div
                   className="absolute -right-4 top-1/2 -translate-y-1/2 bg-navy-900 rounded-xl p-4 text-white shadow-xl w-32"
@@ -293,16 +263,7 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Bottom scroll indicator */}
-        <motion.div 
-          className="absolute bottom-8 left-1/2 -translate-x-1/2"
-          animate={{ y: [0, 6, 0] }}
-          transition={{ duration: 2.5, repeat: Infinity }}
-        >
-          <div className="w-5 h-8 rounded-full border-2 border-navy-300 flex items-start justify-center p-1">
-            <div className="w-1 h-1.5 rounded-full bg-navy-400" />
-          </div>
-        </motion.div>
+
       </section>
 
       {/* ═══════════════════════════════════════════

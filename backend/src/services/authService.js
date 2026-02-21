@@ -88,7 +88,6 @@ const loginUser = async ({ email, password }) => {
 };
 
 const refreshToken = async (token) => {
-  // 1. Find token in DB
   const { data: storedToken } = await supabase
     .from('refresh_tokens')
     .select('*')
@@ -99,7 +98,7 @@ const refreshToken = async (token) => {
     throw new AppError('Invalid refresh token', 401, 'INVALID_TOKEN');
   }
 
-  // 2. Check not revoked or expired
+ 
   if (storedToken.is_revoked) {
     throw new AppError('Refresh token has been revoked', 401, 'TOKEN_REVOKED');
   }
@@ -108,16 +107,14 @@ const refreshToken = async (token) => {
     throw new AppError('Refresh token has expired', 401, 'TOKEN_EXPIRED');
   }
 
-  // 3. Verify JWT signature
-  const decoded = verifyRefreshToken(token);
 
-  // 4. Revoke the old token (rotation — each refresh token is one-time use)
+  const decoded = verifyRefreshToken(token);
   await supabase
     .from('refresh_tokens')
     .update({ is_revoked: true })
     .eq('id', storedToken.id);
 
-  // 5. Issue new tokens
+  
   const payload = { userId: decoded.userId, email: decoded.email, role: decoded.role };
   const newAccessToken = generateAccessToken(payload);
   const newRefreshToken = generateRefreshToken(payload);

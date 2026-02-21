@@ -2,10 +2,10 @@
 
 > **FOR AI ASSISTANTS**: This file contains the current state of the project, completed tasks, and active work. Update this file whenever you make changes or complete tasks. This helps all team members' AI assistants stay synchronized.
 
-**Last Updated**: February 21, 2026 05:00 PM UTC  
+**Last Updated**: February 21, 2026 08:00 PM UTC  
 **Project**: Company Ratings Platform (Glassdoor-like)  
 **Team Size**: 4 developers  
-**Sprint**: Days 3–4 - Baraa ✅ email+security done, Aya/Raneem/Walid Days 3–4 pending (10-day sprint)  
+**Sprint**: Days 3–4 - Baraa ✅ complete, Aya ✅ complete, Raneem ✅ complete, Walid ⚠️ NOT STARTED (10-day sprint)  
 **Tech Lead**: @baraa
 
 ---
@@ -16,7 +16,8 @@
 **Database Status**: ✅ Deployed and verified  
 **Auth Status**: ✅ Full auth system working — register, login, verify-email, forgot/reset-password, refresh, logout, getMe  
 **Email Status**: ✅ Resend SDK configured — verification + reset emails sending  
-**Team Status**: ✅ Baraa Days 3–4 complete, Raneem Days 1–2 complete, Aya Days 1–2 complete, Walid ⚠️ NOT STARTED
+**Company & Review Status**: ✅ Full CRUD + analytics working
+**Team Status**: ✅ Baraa Days 0-4 complete, Aya Days 0-4 complete, Raneem Days 0-4 complete, Walid ⚠️ NOT STARTED
 
 ---
 
@@ -112,34 +113,47 @@
   - Register returns `201` with user object
   - Login returns `200` with `{ user, accessToken, refreshToken }`
 
-### Day 0 & Day 2: Companies & Reviews Module (Aya) ✅
+### Days 0-4: Companies & Reviews Module (Aya) ✅ COMPLETE
+- [x] **Days 0-2**: Full CRUD for companies and reviews
+- [x] **Days 3-4**: Advanced review features and analytics
 - [x] Created `src/services/companyService.js` - Full CRUD implementation
-  - `getCompanies()` - List with filters, search, pagination
+  - `getCompanies()` - List with filters (industry, location, minRating), search, pagination, sorting
   - `getCompanyById()` - Single company retrieval
-  - `createCompany()` - Create new company
-  - `updateCompany()` - Update company details
-  - `deleteCompany()` - Soft delete
-  - `getCompanyStats()` - Company statistics
+  - `createCompany()` - Create new company (company_admin only)
+  - `updateCompany()` - Update company details (creator or admin)
+  - `deleteCompany()` - Soft delete (sets deleted_at)
+  - `getCompanyStats()` - Company statistics (uses DB function)
+  - `getCompanyAnalytics()` - **Days 3-4**: Rating distribution & reviews over time (monthly breakdown)
 - [x] Created `src/services/reviewService.js` - Full review implementation
-  - `createReview()` - Submit review (with employment verification)
-  - `updateReview()` - Edit within 48hr window
-  - `deleteReview()` - Soft delete
-  - `getCompanyReviews()` - Reviews for a company
-  - `getMyReviews()` - User's own reviews
-  - `getReviewById()` - Single review
-  - `checkVerifiedEmployment()` - Verify employment before review
-  - `checkDuplicateReview()` - Prevent duplicate reviews
-  - `recalculateCompanyRating()` - Update company average
+  - `createReview()` - Submit review with employment verification & duplicate prevention
+  - `updateReview()` - **Days 3-4**: Edit within 48hr window (checks can_edit_until)
+  - `deleteReview()` - Soft delete + recalculate company rating
+  - `getCompanyReviews()` - **Days 3-4**: Paginated reviews with sorting (newest/highest/lowest)
+  - `getMyReviews()` - **Days 3-4**: Current user's reviews with company info
+  - `getReviewById()` - Single review retrieval
   - `reportReview()` - Report inappropriate review
-- [x] Created `src/controllers/companyController.js` - HTTP handlers
-- [x] Created `src/controllers/reviewController.js` - HTTP handlers
+  - `checkVerifiedEmployment()` - Helper: Check approved employment
+  - `checkDuplicateReview()` - Helper: Prevent duplicate reviews
+  - `recalculateCompanyRating()` - Helper: Update company average after review changes
+- [x] Created `src/controllers/companyController.js` - HTTP handlers (7 endpoints)
+- [x] Created `src/controllers/reviewController.js` - HTTP handlers (7 endpoints)
 - [x] Created `src/routes/companyRoutes.js` - API endpoints
+  - Public: GET /companies, GET /companies/:id, GET /companies/:id/analytics, GET /companies/:id/stats, GET /companies/:companyId/reviews
+  - Protected: POST /companies (company_admin), PATCH /companies/:id, DELETE /companies/:id
 - [x] Created `src/routes/reviewRoutes.js` - API endpoints
+  - POST /reviews (employee only), GET /reviews/my-reviews, GET /reviews/:id, PATCH /reviews/:id, DELETE /reviews/:id, POST /reviews/:id/report
 - [x] Updated `src/routes/index.js` - Mounted company and review routes
-- [x] Fixed package.json (CommonJS mode, server.js entry)
-- [x] Fixed database.js (CommonJS exports)
-- [x] Fixed app.js (CommonJS, added helmet)
-- [x] Server tested and working ✅
+- [x] Fixed database schema compatibility (deleted_at instead of is_deleted)
+- [x] Fixed database column names (user_id instead of created_by, industry instead of industry_id)
+- [x] Anonymous reviews - Uses public_company_reviews view for safe access
+- [x] **Days 3-4 Features Implemented**:
+  - ✅ Review editing within 48 hours
+  - ✅ My reviews page (GET /reviews/my-reviews)
+  - ✅ Company reviews with sorting (newest, highest rating, lowest rating)
+  - ✅ Anonymous review logic (hashes generated by DB trigger)
+  - ✅ Company analytics (rating distribution 1-5 stars, monthly review trends)
+- [x] All endpoints tested and working ✅
+- [x] Installed resend package for email compatibility
 
 ---
 
@@ -346,22 +360,34 @@ backend/
 
 ### @aya — Developer (Companies & Reviews)
 **Branch**: `feature/companies-reviews`  
-**Current Task**: Days 3–4 — UNBLOCKED, real middleware available on dev
+**Current Task**: Days 0-4 ✅ COMPLETE — Ready for Days 6-7 polish
 
-**Days 1–2 Status**:
+**Days 0-2 Status**: ✅ COMPLETE
 - ✅ Import middleware stubs
-- ✅ Build GET /companies (list all)
+- ✅ Build GET /companies (list all with filters)
 - ✅ Build GET /companies/:id (single)
 - ✅ Build POST /companies (create)
 - ✅ Build PATCH /companies/:id (update)
 - ✅ Build search/filter (industry, location, rating)
 - ✅ Build pagination (LIMIT, OFFSET)
 - ✅ Build POST /reviews (submit review)
-- ✅ Validate: min 50 chars, max 2000 chars
+- ✅ Validate: content length 50-2000 chars (DB constraint)
 - ✅ Validate: rating 1–5
+- ✅ Check: verified employment required
 - ✅ Check: no duplicate review
-- ✅ Real middleware available — pull from dev to use requireAuth
-- ✅ Merge to develop
+- ✅ Real middleware integrated
+
+**Days 3-4 Status**: ✅ COMPLETE
+- ✅ Build PATCH /reviews/:id (edit in 48h window)
+- ✅ Build GET /reviews/my-reviews (user's reviews)
+- ✅ Build GET /companies/:companyId/reviews (paginated with sorting)
+- ✅ Anonymous review logic (uses public_company_reviews view)
+- ✅ Tested anonymous vs public reviews
+- ✅ Build GET /companies/:id/analytics (rating distribution + monthly trends)
+- ✅ Calculate rating distribution (1-5 stars)
+- ✅ Calculate reviews over time (monthly breakdown)
+- ✅ Review sorting (newest/highest/lowest)
+- ✅ All endpoints tested ✅
 
 ---
 
@@ -432,6 +458,23 @@ backend/
 ---
 
 ## 🔄 RECENT CHANGES LOG
+
+### 2026-02-21 08:00 PM - Aya Days 0-4 Complete ✅
+- Implemented full company & review system (Days 0-2 + Days 3-4)
+- Created companyService.js (7 functions): CRUD + stats + analytics
+- Created reviewService.js (10 functions): CRUD + helpers + analytics
+- Created controllers: companyController (7 endpoints), reviewController (7 endpoints)
+- Created routes: companyRoutes (8 routes), reviewRoutes (6 routes)
+- Fixed database schema compatibility: deleted_at (not is_deleted), user_id (not created_by)
+- Installed resend package for email compatibility
+- All Days 3-4 features implemented:
+  - Review editing within 48hr window
+  - My reviews page with company join
+  - Company reviews with sorting (newest, highest, lowest)
+  - Anonymous review safe handling via public_company_reviews view
+  - Company analytics: rating distribution (1-5 stars) + monthly trends
+- All endpoints tested and working ✅
+- Files: companyService.js, reviewService.js, companyController.js, reviewController.js, companyRoutes.js, reviewRoutes.js
 
 ### 2026-02-21 05:00 PM - Baraa Days 3–4 Email & Security Complete
 - Replaced Nodemailer with Resend SDK (`config/email.js` rewritten)

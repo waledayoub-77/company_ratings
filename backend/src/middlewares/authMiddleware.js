@@ -30,4 +30,27 @@ const requireAuth = async (req, res, next) => {
   }
 };
 
-module.exports = { requireAuth };
+const optionalAuth = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      req.user = null;
+      return next();
+    }
+
+    const token = authHeader.substring(7);
+    const decoded = verifyAccessToken(token);
+
+    req.user = decoded; // { userId, email, role }
+    return next();
+  } catch (err) {
+    // if token invalid, just treat as guest (don’t block GET profile)
+    req.user = null;
+    return next();
+  }
+};
+
+module.exports = { requireAuth, optionalAuth };
+
+

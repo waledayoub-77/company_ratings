@@ -72,6 +72,18 @@ function employmentRejectedTemplate(name, companyName, reason) {
   `;
 }
 
+function employmentRequestTemplate(adminName, employeeName, companyName) {
+  return `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px;">
+      <h2 style="color:#4f46e5;">New Employment Request 📋</h2>
+      <p>Hi <strong>${adminName}</strong>,</p>
+      <p><strong>${employeeName}</strong> has submitted an employment verification request for <strong>${companyName}</strong>.</p>
+      <p>Please review and approve or reject the request from your admin dashboard.</p>
+      <p style="color:#888;font-size:13px;">— The RateHub Team</p>
+    </div>
+  `;
+}
+
 // ─── SEND FUNCTIONS ───────────────────────────────────────────────────────────
 
 async function sendWelcomeEmail({ to, name }) {
@@ -118,10 +130,19 @@ async function sendEmploymentRejectedEmail({ to, name, companyName, reason }) {
   });
 }
 
+async function sendEmploymentRequestEmail({ to, adminName, employeeName, companyName }) {
+  return sendEmail({
+    to,
+    subject: `New employment request for ${companyName} — RateHub`,
+    html: employmentRequestTemplate(adminName, employeeName, companyName),
+  });
+}
+
 module.exports = {
   sendWelcomeEmail,
   sendVerifyEmail,
   sendResetPasswordEmail,
   sendEmploymentApprovedEmail,
   sendEmploymentRejectedEmail,
+  sendEmploymentRequestEmail,
 };

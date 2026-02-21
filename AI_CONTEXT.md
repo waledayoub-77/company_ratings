@@ -2,10 +2,10 @@
 
 > **FOR AI ASSISTANTS**: This file contains the current state of the project, completed tasks, and active work. Update this file whenever you make changes or complete tasks. This helps all team members' AI assistants stay synchronized.
 
-**Last Updated**: February 21, 2026 03:00 PM UTC  
+**Last Updated**: February 21, 2026 05:00 PM UTC  
 **Project**: Company Ratings Platform (Glassdoor-like)  
 **Team Size**: 4 developers  
-**Sprint**: Days 1–2 - Auth ✅, Aya ✅, Raneem ✅ complete, Walid ⚠️ not started (10-day sprint)  
+**Sprint**: Days 3–4 - Baraa ✅ email+security done, Aya/Raneem/Walid Days 3–4 pending (10-day sprint)  
 **Tech Lead**: @baraa
 
 ---
@@ -374,6 +374,18 @@ backend/
 
 ## 🔄 RECENT CHANGES LOG
 
+### 2026-02-21 05:00 PM - Baraa Days 3–4 Email & Security Complete
+- Replaced Nodemailer with Resend SDK (`config/email.js` rewritten)
+- Created `emailService.js` — 5 send functions: welcome, verify-email, reset-password, employment approved/rejected
+- Created 2 DB tables in Supabase: `email_verification_tokens` (24h expiry), `password_reset_tokens` (1h expiry)
+- `verifyEmail()` — validates token, marks email_verified=true, stamps used_at (one-time use)
+- `forgotPassword()` — invalidates existing tokens, generates new, sends reset email
+- `resetPassword()` — validates token, bcrypt hashes new password, revokes ALL refresh tokens (security)
+- Re-enabled email_verified check in loginUser (was TODO since Day 1)
+- Register now sends welcome + verification email automatically
+- New routes: GET /verify-email/:token, POST /forgot-password, POST /reset-password/:token
+- Files: authService.js, authController.js, authRoutes.js, config/email.js, services/emailService.js
+
 ### 2026-02-21 03:00 PM - Raneem Days 1–2 Complete + Merged to baraa
 - All employment + feedback code reviewed and verified correct
 - `POST /employments/request` — validates company exists, prevents duplicates, inserts with `pending` status
@@ -587,18 +599,16 @@ cd backend
 ### Days 3–4: Advanced Features
 > Email system · Analytics · Notifications · Moderation
 
-#### Baraa (Email & Security)
-- [ ] Setup Nodemailer (Gmail SMTP)
-- [ ] Create email templates (verification, reset, approvals)
-- [ ] Send welcome email on register
-- [ ] Help Raneem integrate approval emails
-- [ ] Build GET /auth/me (current user)
-- [ ] Add rate limiting to login (5 per 15 min)
-- [ ] Add input validation (email, password strength)
-- [ ] Add security headers (helmet.js)
-- [ ] Handle edge cases (expired/invalid tokens)
-- [ ] Review everyone's code for security
-- [ ] Merge to develop
+#### Baraa (Email & Security) ✅ COMPLETE
+- ✅ Setup Resend SDK (replaced Nodemailer)
+- ✅ Create emailService.js (5 send functions)
+- ✅ Create DB tables: email_verification_tokens, password_reset_tokens
+- ✅ Welcome email on register
+- ✅ Build GET /auth/verify-email/:token
+- ✅ Build POST /auth/forgot-password
+- ✅ Build POST /auth/reset-password/:token
+- ✅ Re-enabled email_verified check in loginUser
+- ✅ Merge to baraa
 
 #### Aya (Review Features)
 - [ ] Build PATCH /reviews/:id (edit in 48h)

@@ -1,32 +1,18 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
 
-// Import route modules
-const authRoutes = require('./authRoutes');
-const companyRoutes = require('./companyRoutes');
-const reviewRoutes = require('./reviewRoutes');
-
-// Mount routes
-router.use('/auth', authRoutes);
-router.use('/companies', companyRoutes);
-router.use('/reviews', reviewRoutes);
+const authRoutes = require("./authRoutes");
+const companyRoutes = require("./companyRoutes");
 const employmentRoutes = require("./employmentRoutes");
-router.use("/employments", employmentRoutes);
 const feedbackRoutes = require("./feedbackRoutes");
-router.use("/feedback", feedbackRoutes);
+const reviewRoutes = require("./reviewRoutes");
+const employeeRoutes = require("./employeeRoutes"); // ✅ add this
 
-// API welcome route
-router.get('/', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Welcome to Company Rating System API',
-    version: '1.0.0',
-    endpoints: {
-      companies: '/api/companies',
-      reviews: '/api/reviews'
-    }
-  });
-});
+router.use("/auth", authRoutes);
+router.use("/companies", companyRoutes);
+router.use("/employments", employmentRoutes);
+router.use("/feedback", feedbackRoutes);
+router.use("/reviews", reviewRoutes);
+router.use("/employees", employeeRoutes); // ✅ add this
 
 module.exports = router;
-

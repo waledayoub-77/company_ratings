@@ -49,10 +49,10 @@ exports.createFeedback = async (req, res) => {
 
     // validate ratings (1..10 integers)
     if (
-      !isIntInRange(professionalism, 1, 10) ||
-      !isIntInRange(communication, 1, 10) ||
-      !isIntInRange(teamwork, 1, 10) ||
-      !isIntInRange(reliability, 1, 10)
+      !isIntInRange(professionalism, 1, 5) ||
+      !isIntInRange(communication, 1, 5) ||
+      !isIntInRange(teamwork, 1, 5) ||
+      !isIntInRange(reliability, 1, 5)
     ) {
       return res.status(400).json({
         success: false,
@@ -70,7 +70,7 @@ exports.createFeedback = async (req, res) => {
     }
 
     // ✅ validate quarter/year
-    if (!isIntInRange(quarter, 1, 4) || !isInt(year) || year < 2000 || year > 2100) {
+    if (!isIntInRange(quarter, 1, 4) || !isInt(year) || year < 2020 || year > 2100) {
       return res.status(400).json({
         success: false,
         error: {

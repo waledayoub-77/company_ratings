@@ -31,51 +31,37 @@ exports.createFeedback = async (req, res) => {
       });
     }
 
-<<<<<<< HEAD
+    // Validate ratings (must be integers 1–5)
+    const ratings = { professionalism, communication, teamwork, reliability };
+    for (const [field, val] of Object.entries(ratings)) {
+      if (!Number.isInteger(val) || val < 1 || val > 5) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            message: "Validation failed",
+            code: "VALIDATION_ERROR",
+            details: [{ field, message: `${field} must be an integer between 1 and 5` }]
+          }
+        });
+      }
+    }
+
+    // Validate quarter and year
+    if (!Number.isInteger(quarter) || quarter < 1 || quarter > 4) {
+      return res.status(400).json({
+        success: false,
+        error: { message: "quarter must be an integer between 1 and 4", code: "VALIDATION_ERROR" }
+      });
+    }
+    if (!Number.isInteger(year) || year < 2020 || year > 2100) {
+      return res.status(400).json({
+        success: false,
+        error: { message: "year must be a valid integer (2020–2100)", code: "VALIDATION_ERROR" }
+      });
+    }
+
     // Get reviewer employee id
     const reviewerRes = await feedbackService.getEmployeeIdByUserId(reviewerUserId);
-=======
-    // validate ratings (1..10 integers)
-    if (
-      !isIntInRange(professionalism, 1, 5) ||
-      !isIntInRange(communication, 1, 5) ||
-      !isIntInRange(teamwork, 1, 5) ||
-      !isIntInRange(reliability, 1, 5)
-    ) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          message: "Validation failed",
-          code: "VALIDATION_ERROR",
-          details: [
-            { field: "professionalism", message: "Must be integer 1..10" },
-            { field: "communication", message: "Must be integer 1..10" },
-            { field: "teamwork", message: "Must be integer 1..10" },
-            { field: "reliability", message: "Must be integer 1..10" }
-          ]
-        }
-      });
-    }
-
-    // ✅ validate quarter/year
-    if (!isIntInRange(quarter, 1, 4) || !isInt(year) || year < 2020 || year > 2100) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          message: "Validation failed",
-          code: "VALIDATION_ERROR",
-          details: [
-            { field: "quarter", message: "quarter must be an integer between 1 and 4" },
-            { field: "year", message: "year must be a valid integer (e.g., 2026)" }
-          ]
-        }
-      });
-    }
-
-    // get reviewer employee id from logged in user
-    const reviewerRes = await feedbackService.getEmployeeIdByUserId(userId);
-
->>>>>>> raneem
     if (reviewerRes.error) {
       return res.status(404).json({ success: false, error: { message: reviewerRes.error, code: "NOT_FOUND" } });
     }

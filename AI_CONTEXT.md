@@ -424,43 +424,83 @@ backend/
 - ✅ BUG-004 fixed: removed dead controller code from feedbackService.js (Baraa)
 - ✅ BUG-006 fixed: removed @sendgrid/mail from package.json (Baraa)
 
-> ⚠️ **RANEEM — start here**: `git pull origin dev` first, then work on the tasks below.
+> ✅ All tasks complete. Use the Postman guide below to test your work.
 
-**Step 1 — Fix BUG-001 (CRITICAL — do this first)**:
-- Open `backend/src/controllers/feedbackController.js`
-- Change all 4 rating validations from `isIntInRange(x, 1, 10)` → `isIntInRange(x, 1, 5)`
-- Change year min from `2000` → `2020`
-- This will crash on production if not fixed
+**🧪 Postman Testing Guide — Raneem Days 3–4**
 
-**Step 2 — Employee profile endpoints**:
-- Build `GET /employees/:id` — return user profile (name, joined_at, company if public)
-- Build `PATCH /employees/:id` — update own profile (name, bio, etc.) — `requireAuth` + only own profile
-- Build profile privacy toggle: add `is_public` field — if private, hide from non-owners
+> **Prerequisites**: Run `cd backend && npm run dev`. Have 2 accounts ready — one regular user (employee) and one `company_admin`. Get their tokens via `POST /api/auth/login`.
 
-**Step 3 — Employment lifecycle**:
-- Build `PATCH /employments/:id/end` — mark employment as ended (set `end_date = now`, status = `ended`)
-- Build `GET /employments/pending` — admin only (`requireRole('admin')`), returns all pending requests
-
-**Step 4 — Email notifications (use Baraa's emailService)**:
-```js
-const {
-  sendEmploymentRequestEmail,   // ← NEW: call this when user submits request
-  sendEmploymentApprovedEmail,  // ← call this in approveEmployment()
-  sendEmploymentRejectedEmail,  // ← call this in rejectEmployment()
-} = require('./emailService');
+**Test 1 — Employee profile (GET)**
 ```
-- In `requestEmployment()` → after DB insert → call `sendEmploymentRequestEmail({ to: adminEmail, adminName, employeeName, companyName })`
-- In `approveEmployment()` → after DB update → call `sendEmploymentApprovedEmail({ to: userEmail, name, companyName })`
-- In `rejectEmployment()` → after DB update → call `sendEmploymentRejectedEmail({ to: userEmail, name, companyName, reason })`
-- You need to fetch the admin email and user email from the DB before calling — query the `users` table by id
+GET http://localhost:5000/api/employees/:id
+# No token needed — public profile
+# If profileVisibility = "private" → should return 404 for non-owners
+```
 
-**Step 5 — Feedback quota check**:
-- Already validated one-per-quarter in Days 1–2? ✅ confirm it's working, add test
+**Test 2 — Update profile (PATCH)**
+```
+PATCH http://localhost:5000/api/employees/:id
+Authorization: Bearer <employeeToken>
+Body (JSON): { "fullName": "Raneem Test", "bio": "hello", "profileVisibility": "private" }
 
-**Step 6 — Merge**:
-- `git add . && git commit -m "feat(raneem): Days 3-4 profiles + notifications"`
-- `git push origin feature/employment-feedback`
-- Open PR into `dev`
+# Test wrong user's token → expect 403 Forbidden
+# Test invalid profileVisibility value → expect 400
+```
+
+**Test 3 — Submit employment request + email**
+```
+POST http://localhost:5000/api/employments/request
+Authorization: Bearer <employeeToken>
+Body (JSON): { "companyId": "<uuid>", "position": "Engineer", "startDate": "2024-01-01" }
+
+# Expect 201 — company admin should receive email notification
+# Submit again for same company → expect 400 "already exists"
+```
+
+**Test 4 — Admin views pending requests**
+```
+GET http://localhost:5000/api/employments/pending
+Authorization: Bearer <adminToken>
+
+# Expect list containing the request above
+# Try with employee token → expect 403
+```
+
+**Test 5 — Approve employment + email**
+```
+PATCH http://localhost:5000/api/employments/<id>/approve
+Authorization: Bearer <adminToken>
+
+# Expect 200 — employee should receive approval email
+```
+
+**Test 6 — End employment**
+```
+PATCH http://localhost:5000/api/employments/<id>/end
+Authorization: Bearer <employeeToken>
+Body (JSON): { "endDate": "2025-12-31" }
+
+# Expect 200 with is_current: false
+# Call again → expect 400 "Employment already ended"
+```
+
+**Test 7 — Reject employment (create a new request first)**
+```
+PATCH http://localhost:5000/api/employments/<id>/reject
+Authorization: Bearer <adminToken>
+Body (JSON): { "rejectionNote": "Could not verify employment" }
+
+# Expect 200 — employee should receive rejection email with reason
+```
+
+**Test 8 — Feedback rating validation (BUG-001 fix)**
+```
+POST http://localhost:5000/api/feedback
+Authorization: Bearer <employeeToken>
+Body (JSON): { "professionalism": 6, ... }
+
+# Expect 400 — must be 1–5 (previously this would crash with DB error)
+```
 
 ---
 

@@ -393,7 +393,7 @@ backend/
 
 ### @raneem — Developer (Employment & Feedback)
 **Branch**: `feature/employment-feedback`  
-**Current Task**: Days 3–4 — employment + feedback complete ✅
+**Current Task**: Days 3–4 — ❌ NOT STARTED — start now
 
 **Days 1–2 Status**:
 - ✅ Import Baraa's real middleware
@@ -409,6 +409,46 @@ backend/
 - ✅ Validate: one per quarter
 - ✅ Merge to develop
 - ✅ Merged into baraa branch (Feb 21)
+
+**Days 3–4 Status**: ❌ NOT STARTED
+
+> ⚠️ **RANEEM — start here**: `git pull origin dev` first, then work on the tasks below.
+
+**Step 1 — Fix BUG-001 (CRITICAL — do this first)**:
+- Open `backend/src/controllers/feedbackController.js`
+- Change all 4 rating validations from `isIntInRange(x, 1, 10)` → `isIntInRange(x, 1, 5)`
+- Change year min from `2000` → `2020`
+- This will crash on production if not fixed
+
+**Step 2 — Employee profile endpoints**:
+- Build `GET /employees/:id` — return user profile (name, joined_at, company if public)
+- Build `PATCH /employees/:id` — update own profile (name, bio, etc.) — `requireAuth` + only own profile
+- Build profile privacy toggle: add `is_public` field — if private, hide from non-owners
+
+**Step 3 — Employment lifecycle**:
+- Build `PATCH /employments/:id/end` — mark employment as ended (set `end_date = now`, status = `ended`)
+- Build `GET /employments/pending` — admin only (`requireRole('admin')`), returns all pending requests
+
+**Step 4 — Email notifications (use Baraa's emailService)**:
+```js
+const {
+  sendEmploymentRequestEmail,   // ← NEW: call this when user submits request
+  sendEmploymentApprovedEmail,  // ← call this in approveEmployment()
+  sendEmploymentRejectedEmail,  // ← call this in rejectEmployment()
+} = require('./emailService');
+```
+- In `requestEmployment()` → after DB insert → call `sendEmploymentRequestEmail({ to: adminEmail, adminName, employeeName, companyName })`
+- In `approveEmployment()` → after DB update → call `sendEmploymentApprovedEmail({ to: userEmail, name, companyName })`
+- In `rejectEmployment()` → after DB update → call `sendEmploymentRejectedEmail({ to: userEmail, name, companyName, reason })`
+- You need to fetch the admin email and user email from the DB before calling — query the `users` table by id
+
+**Step 5 — Feedback quota check**:
+- Already validated one-per-quarter in Days 1–2? ✅ confirm it's working, add test
+
+**Step 6 — Merge**:
+- `git add . && git commit -m "feat(raneem): Days 3-4 profiles + notifications"`
+- `git push origin feature/employment-feedback`
+- Open PR into `dev`
 
 ---
 

@@ -10,16 +10,50 @@
 
 ---
 
-## 📊 PROJECT STATUS: AUTH ENDPOINTS LIVE ✅
+## 📊 PROJECT STATUS: AUTH + EMAIL SYSTEM LIVE ✅
 
 **Server Status**: ✅ Running on `localhost:5000`  
 **Database Status**: ✅ Deployed and verified  
-**Auth Status**: ✅ Register + Login + Real Middleware all working and tested  
-**Team Status**: ✅ UNBLOCKED - All developers can continue working
+**Auth Status**: ✅ Full auth system working — register, login, verify-email, forgot/reset-password, refresh, logout, getMe  
+**Email Status**: ✅ Resend SDK configured — verification + reset emails sending  
+**Team Status**: ✅ Baraa Days 3–4 complete, Raneem Days 1–2 complete, Aya Days 1–2 complete, Walid ⚠️ NOT STARTED
 
 ---
 
 ## ✅ COMPLETED TASKS
+
+### Days 3–4: Email Verification & Password Reset (Baraa) ✅
+- [x] Replaced Nodemailer with Resend SDK
+  - [x] `config/email.js` — rewritten, wraps Resend API, single `sendEmail()` function
+  - [x] `RESEND_API_KEY` added to `.env`
+- [x] Created `services/emailService.js`
+  - [x] `sendWelcomeEmail({ to, name })` — welcome message on register
+  - [x] `sendVerifyEmail({ to, name, token })` — link to `FRONTEND_URL/verify-email/:token`
+  - [x] `sendResetPasswordEmail({ to, name, token })` — link to `FRONTEND_URL/reset-password/:token`
+  - [x] `sendEmploymentApprovedEmail({ to, name, companyName })` — for Raneem to call
+  - [x] `sendEmploymentRejectedEmail({ to, name, companyName, reason })` — for Raneem to call
+- [x] Created DB tables in Supabase:
+  - [x] `email_verification_tokens` — token, user_id, expires_at (24h), used_at
+  - [x] `password_reset_tokens` — token, user_id, expires_at (1h), used_at
+- [x] Added `verifyEmail(token)` to authService
+  - validates token exists, not used, not expired
+  - sets `email_verified = true` on user
+  - stamps `used_at` (one-time use)
+- [x] Added `forgotPassword(email)` to authService
+  - always returns 200 (security — don't reveal if email exists)
+  - invalidates any previous unused tokens
+  - generates new token, stores in DB, sends reset email
+- [x] Added `resetPassword(token, newPassword)` to authService
+  - validates token, bcrypt hashes new password
+  - revokes ALL refresh tokens (forces re-login on all devices)
+- [x] Re-enabled `email_verified` check in `loginUser` (was commented out since Day 1)
+- [x] Register now automatically sends welcome + verification email
+- [x] New routes added to `authRoutes.js`:
+  - `GET /auth/verify-email/:token` (public)
+  - `POST /auth/forgot-password` (public, authLimiter)
+  - `POST /auth/reset-password/:token` (public)
+- [x] Full flow tested end-to-end with Postman ✅
+- [x] Merged to dev
 
 ### Day 0: Backend Infrastructure Setup
 - [x] Created `backend/package.json` with all dependencies (11 production, 1 dev)
@@ -229,18 +263,25 @@ backend/
     │   ├── rateLimiter.js        # ✅ Rate limiting
     │   └── validateMiddleware.js # ✅ Validation checker
     ├── routes/
-    │   ├── index.js              # ✅ Route aggregator (auth + company + review mounted)
-    │   ├── authRoutes.js         # ✅ POST /register, POST /login, POST /refresh-token, POST /logout, GET /me
+    │   ├── index.js              # ✅ Route aggregator (auth + company + review + employment + feedback mounted)
+    │   ├── authRoutes.js         # ✅ POST /register, POST /login, POST /refresh-token, POST /logout, GET /me, GET /verify-email/:token, POST /forgot-password, POST /reset-password/:token
     │   ├── companyRoutes.js      # ✅ Aya's work
-    │   └── reviewRoutes.js       # ✅ Aya's work
+    │   ├── reviewRoutes.js       # ✅ Aya's work
+    │   ├── employmentRoutes.js   # ✅ Raneem's work
+    │   └── feedbackRoutes.js     # ✅ Raneem's work
     ├── controllers/
-    │   ├── authController.js     # ✅ register, login, refresh, logout, getMe
+    │   ├── authController.js     # ✅ register, login, refresh, logout, getMe, verifyEmail, forgotPassword, resetPassword
     │   ├── companyController.js  # ✅ Aya's work
-    │   └── reviewController.js   # ✅ Aya's work
+    │   ├── reviewController.js   # ✅ Aya's work
+    │   ├── employmentController.js # ✅ Raneem's work
+    │   └── feedbackController.js # ✅ Raneem's work
     └── services/
-        ├── authService.js        # ✅ registerUser, loginUser, refreshToken, logout, getMe
+        ├── authService.js        # ✅ registerUser, loginUser, refreshToken, logout, getMe, verifyEmail, forgotPassword, resetPassword
+        ├── emailService.js       # ✅ sendWelcomeEmail, sendVerifyEmail, sendResetPasswordEmail, sendEmploymentApproved/RejectedEmail
         ├── companyService.js     # ✅ Aya's work
-        └── reviewService.js      # ✅ Aya's work
+        ├── reviewService.js      # ✅ Aya's work
+        ├── employmentService.js  # ✅ Raneem's work
+        └── feedbackService.js    # ✅ Raneem's work
 ```
 
 ---
@@ -257,14 +298,14 @@ backend/
 ---
 
 ### @baraa — Tech Lead (Auth & User Management)
-**Branch**: `feature/auth-system`  
-**Current Task**: Day 2 — activate real middleware + remaining auth endpoints
+**Branch**: `baraa`  
+**Current Task**: Days 3–4 complete ✅ — ready for Days 6–7 security hardening
 
 **Days 1–2 Status**:
 - ✅ Create JWT utility (generate/verify tokens)
 - ✅ Create bcrypt password functions
-- ✅ Create requireAuth middleware (STUB)
-- ✅ Create requireRole middleware (STUB)
+- ✅ Create requireAuth middleware (STUB → REAL)
+- ✅ Create requireRole middleware (STUB → REAL)
 - ✅ Push stubs — team has them
 - ✅ Build POST /auth/register
 - ✅ Build POST /auth/login (returns JWT tokens)
@@ -273,21 +314,39 @@ backend/
 - ✅ Build POST /auth/refresh-token — tested, working
 - ✅ Build POST /auth/logout — tested, working
 - ✅ Build GET /auth/me — tested, working
-- ❌ Build email verification endpoints ← **NEXT (Days 3–4)**
-- ❌ Build password reset endpoints ← **NEXT (Days 3–4)**
-- ✅ Merge to develop
+- ✅ Merge to dev
 
-**Available Tools**:
+**Days 3–4 Status**:
+- ✅ Replace Nodemailer with Resend SDK (`config/email.js`)
+- ✅ Create `services/emailService.js` — 5 send functions:
+  - `sendWelcomeEmail` — sent on register
+  - `sendVerifyEmail` — sent on register with 24h token
+  - `sendResetPasswordEmail` — sent on forgot-password with 1h token
+  - `sendEmploymentApprovedEmail` — ready for Raneem to call
+  - `sendEmploymentRejectedEmail` — ready for Raneem to call
+- ✅ Create DB tables in Supabase: `email_verification_tokens`, `password_reset_tokens`
+- ✅ Build GET /auth/verify-email/:token — marks email_verified=true, one-time use
+- ✅ Build POST /auth/forgot-password — generates token, sends email (always returns 200)
+- ✅ Build POST /auth/reset-password/:token — updates password, revokes all refresh tokens
+- ✅ Re-enabled email_verified check in loginUser
+- ✅ Full flow tested end-to-end with Postman ✅
+- ✅ Pushed to baraa, merging to dev now
+
+**Available Tools for team**:
 - `utils/jwt.js` — generateAccessToken, verifyAccessToken, generateRefreshToken, verifyRefreshToken
 - `utils/validators.js` — validateRegister, validateLogin
 - `config/database.js` — supabase client
+- `config/email.js` — sendEmail (low-level, use emailService instead)
+- `services/emailService.js` — sendWelcomeEmail, sendVerifyEmail, sendResetPasswordEmail, sendEmploymentApprovedEmail, sendEmploymentRejectedEmail
 - `middlewares/errorHandler.js` — AppError class
+- `middlewares/authMiddleware.js` — requireAuth
+- `middlewares/roleMiddleware.js` — requireRole, requireEmployee, requireCompanyAdmin, requireSystemAdmin
 
 ---
 
 ### @aya — Developer (Companies & Reviews)
 **Branch**: `feature/companies-reviews`  
-**Current Task**: Day 2 complete — waiting for real middleware from Baraa
+**Current Task**: Days 3–4 — UNBLOCKED, real middleware available on dev
 
 **Days 1–2 Status**:
 - ✅ Import middleware stubs
@@ -301,7 +360,7 @@ backend/
 - ✅ Validate: min 50 chars, max 2000 chars
 - ✅ Validate: rating 1–5
 - ✅ Check: no duplicate review
-- ❌ Replace mock auth with real middleware (blocked — waiting for Baraa Day 2)
+- ✅ Real middleware available — pull from dev to use requireAuth
 - ✅ Merge to develop
 
 ---

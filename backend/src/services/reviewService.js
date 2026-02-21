@@ -2,22 +2,10 @@
 const supabase = require('../config/database');
 const { AppError } = require('../middlewares/errorHandler');
 const crypto = require('crypto');
+const checkVerifiedEmployment = require('../helpers/checkVerifiedEmployment');
 
-/**
- * Check if user has verified employment at company
- */
-const checkVerifiedEmployment = async (employeeId, companyId) => {
-  const {data} = await supabase
-    .from('employments')
-    .select('id')
-    .eq('employee_id', employeeId)
-    .eq('company_id', companyId)
-    .eq('verification_status', 'approved')
-    .is('deleted_at', null)
-    .single();
-
-  return !!data;
-};
+// Valid reasons for reporting a review (must match database enum)
+const VALID_REPORT_REASONS = ['false_info', 'spam', 'harassment', 'other'];
 
 /**
  * Check if user already reviewed this company
@@ -374,6 +362,14 @@ const getReviewById = async (reviewId) => {
 const reportReview = async (reviewId, reportData, userId) => {
   const { reason, description } = reportData;
 
+  // Validate reason before saving to database
+  if (!reason || !VALID_REPORT_REASONS.includes(reason)) {
+    throw new AppError(
+      `Invalid report reason. Must be one of: ${VALID_REPORT_REASONS.join(', ')}`,
+      400
+    );
+  }
+
   // Verify review exists
   await getReviewById(reviewId);
 
@@ -405,7 +401,6 @@ module.exports = {
   getMyReviews,
   getReviewById,
   reportReview,
-  checkVerifiedEmployment,
   checkDuplicateReview,
   recalculateCompanyRating
 };

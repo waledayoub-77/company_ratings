@@ -24,3 +24,7 @@ Thumbs.db
 # Build outputs
 dist/
 build/
+
+# Personal study files (local only)
+AYA_STUDY_GUIDE.md
+Aya_Postman_Collection.json

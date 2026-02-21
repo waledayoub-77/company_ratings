@@ -1,5 +1,8 @@
-// Review Routes - AYA's file
-// YOU will define API endpoints here
+const express = require("express");
+const router = express.Router();
 
-// TODO: Create your routes
+router.get("/", (req, res) => {
+  res.json({ message: "Reviews route working" });
+});
 
+module.exports = router;

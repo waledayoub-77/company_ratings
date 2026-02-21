@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
-const { supabase } = require('../config/database');
 const { AppError } = require('../middlewares/errorHandler');
 const { generateAccessToken, generateRefreshToken, verifyRefreshToken } = require('../utils/jwt');
+const supabase = require("../config/database");
 
 const registerUser = async ({ email, password, role, fullName, companyName }) => {
   const { data: existingUser } = await supabase

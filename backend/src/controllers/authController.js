@@ -27,6 +27,49 @@ const login = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login };
+const refresh = async (req, res, next) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Refresh token is required', code: 'MISSING_TOKEN' },
+      });
+    }
+    const tokens = await authService.refreshToken(refreshToken);
+    res.json({ success: true, data: tokens });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const logout = async (req, res, next) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Refresh token is required', code: 'MISSING_TOKEN' },
+      });
+    }
+    await authService.logout(refreshToken);
+    res.json({ success: true, data: { message: 'Logged out successfully' } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getMe = async (req, res, next) => {
+  try {
+    const user = await authService.getMe(req.user.userId);
+    res.json({ success: true, data: { user } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { register, login, refresh, logout, getMe };
+
+//baraa
 
 //baraa

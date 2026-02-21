@@ -433,14 +433,56 @@ backend/
 
 ---
 
+---
+
+## ⚠️ KNOWN BUGS (Must Fix Before Day 5)
+
+### 🔴 BUG-001 — Raneem: Feedback rating validation 1-10 vs DB constraint 1-5
+**File**: `backend/src/controllers/feedbackController.js`  
+**Status**: ❌ NOT FIXED  
+**Owner**: Raneem  
+**Problem**: Controller validates professionalism, communication, teamwork, reliability as integers `1–10`. But the DB schema has hard CHECK constraints: `CHECK (professionalism >= 1 AND professionalism <= 5)`. Any value 6–10 passes controller validation but gets **rejected by Supabase with a constraint error** (no helpful error message to user).  
+**Also**: year min is `2000` in controller but `2020` in schema — minor mismatch.  
+**Fix**:
+```js
+// In feedbackController.js — change all 4:
+!isIntInRange(professionalism, 1, 5)  // was 1, 10
+!isIntInRange(communication, 1, 5)    // was 1, 10
+!isIntInRange(teamwork, 1, 5)         // was 1, 10
+!isIntInRange(reliability, 1, 5)      // was 1, 10
+// Also: year < 2020  (was 2000)
+```
+
+### 🟡 BUG-002 — Aya: reportReview missing reason validation
+**File**: `backend/src/services/reviewService.js` → `reportReview()`  
+**Status**: ❌ NOT FIXED  
+**Owner**: Aya  
+**Problem**: DB has constraint `reason IN ('false_info', 'spam', 'harassment', 'other')`. The service inserts `reason` directly without validating the value. An invalid reason string causes a raw Supabase constraint error instead of a clean 400 response.  
+**Fix**: Add before the insert:
+```js
+const validReasons = ['false_info', 'spam', 'harassment', 'other'];
+if (!validReasons.includes(reason)) {
+  throw new AppError('Invalid reason. Must be one of: false_info, spam, harassment, other', 400);
+}
+```
+
+### 🟡 BUG-003 — Aya: duplicate checkVerifiedEmployment (not using Raneem's helper)
+**File**: `backend/src/services/reviewService.js`  
+**Status**: ⚠️ LOW PRIORITY  
+**Owner**: Aya  
+**Problem**: Aya has her own inline copy of `checkVerifiedEmployment()` instead of using `helpers/checkVerifiedEmployment.js` that Raneem built for her. Two copies of the same logic — if one is updated the other won't be.  
+**Fix**: Replace inline function with `const checkVerifiedEmployment = require('../helpers/checkVerifiedEmployment');`
+
+---
+
 ## 📝 IMPORTANT NOTES
 
 ### For All Team Members
 1. **DO NOT commit `.env` file** - It contains secrets
 2. **Server must run from backend folder**: `cd backend && npm run dev`
 3. **Database test**: Run `cd backend && node test-database.js` to verify connection
-4. **Middleware is in STUB MODE**: Auth checks are disabled until production auth is implemented
-5. **All requests currently allowed**: Team can develop features without auth blocking them
+4. **Middleware is REAL** (not stub): Auth is active — all protected routes require `Authorization: Bearer <token>`
+5. **Email**: Resend SDK configured — set `RESEND_API_KEY` in `.env` to send real emails
 
 ### For Backend Developers
 - Use `utils/validators.js` for all endpoint validation
@@ -458,6 +500,16 @@ backend/
 ---
 
 ## 🔄 RECENT CHANGES LOG
+
+### 2026-02-21 09:00 PM - Baraa: Full Code Review (Aya + Raneem)
+- Reviewed all pushed code against DB schema
+- Found 3 issues (2 bugs, 1 low-priority duplicate)
+- **BUG-001 (Raneem/Critical)**: feedbackController validates ratings 1-10, DB constraint is 1-5 → will crash on values 6-10
+- **BUG-002 (Aya/Medium)**: reportReview missing reason validation before DB insert → raw constraint error on invalid reason
+- **BUG-003 (Aya/Low)**: reviewService has duplicate inline checkVerifiedEmployment instead of using Raneem's helper
+- All bugs documented in KNOWN BUGS section above
+- Everything else verified correct: table names, column names, employment_id in review insert, auth middleware, route protection, anonymous review via view
+- Aya confirmed: AI_CONTEXT updated correctly after her push ✅
 
 ### 2026-02-21 08:00 PM - Aya Days 0-4 Complete ✅
 - Implemented full company & review system (Days 0-2 + Days 3-4)

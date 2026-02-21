@@ -1,24 +1,8 @@
 const feedbackService = require("../services/feedbackService");
-const supabase = require("../config/database");
-
-function isInt(n) {
-  return Number.isInteger(n);
-}
-
-function isIntInRange(n, min, max) {
-  return isInt(n) && n >= min && n <= max;
-}
 
 exports.createFeedback = async (req, res) => {
-
   try {
-    const userId = req.user?.userId;
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        error: { message: "Unauthorized", code: "UNAUTHORIZED" }
-      });
-    }
+    const reviewerUserId = req.user?.userId; // set by requireAuth
 
     const {
       ratedEmployeeId,
@@ -32,7 +16,7 @@ exports.createFeedback = async (req, res) => {
       year
     } = req.body;
 
-    //  required
+    // Basic validation
     if (!ratedEmployeeId || !companyId) {
       return res.status(400).json({
         success: false,
@@ -40,116 +24,57 @@ exports.createFeedback = async (req, res) => {
           message: "Validation failed",
           code: "VALIDATION_ERROR",
           details: [
-            { field: "ratedEmployeeId", message: "ratedEmployeeId is required" },
-            { field: "companyId", message: "companyId is required" }
-          ]
-        }
+            !ratedEmployeeId ? { field: "ratedEmployeeId", message: "ratedEmployeeId is required" } : null,
+            !companyId ? { field: "companyId", message: "companyId is required" } : null,
+          ].filter(Boolean),
+        },
       });
     }
 
-    // validate ratings (1..10 integers)
-    if (
-      !isIntInRange(professionalism, 1, 10) ||
-      !isIntInRange(communication, 1, 10) ||
-      !isIntInRange(teamwork, 1, 10) ||
-      !isIntInRange(reliability, 1, 10)
-    ) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          message: "Validation failed",
-          code: "VALIDATION_ERROR",
-          details: [
-            { field: "professionalism", message: "Must be integer 1..10" },
-            { field: "communication", message: "Must be integer 1..10" },
-            { field: "teamwork", message: "Must be integer 1..10" },
-            { field: "reliability", message: "Must be integer 1..10" }
-          ]
-        }
-      });
-    }
-
-    // ✅ validate quarter/year
-    if (!isIntInRange(quarter, 1, 4) || !isInt(year) || year < 2000 || year > 2100) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          message: "Validation failed",
-          code: "VALIDATION_ERROR",
-          details: [
-            { field: "quarter", message: "quarter must be an integer between 1 and 4" },
-            { field: "year", message: "year must be a valid integer (e.g., 2026)" }
-          ]
-        }
-      });
-    }
-
-    // get reviewer employee id from logged in user
-    const reviewerRes = await feedbackService.getEmployeeIdByUserId(userId);
-
+    // Get reviewer employee id
+    const reviewerRes = await feedbackService.getEmployeeIdByUserId(reviewerUserId);
     if (reviewerRes.error) {
-      return res.status(400).json({
-        success: false,
-        error: { message: reviewerRes.error, code: "BAD_REQUEST" }
-      });
+      return res.status(404).json({ success: false, error: { message: reviewerRes.error, code: "NOT_FOUND" } });
     }
-
     const reviewerEmployeeId = reviewerRes.data;
 
-    // ✅ no self-feedback
+    // No self-feedback
     if (reviewerEmployeeId === ratedEmployeeId) {
       return res.status(400).json({
         success: false,
-        error: {
-          message: "Validation failed",
-          code: "VALIDATION_ERROR",
-          details: [{ field: "ratedEmployeeId", message: "You cannot give feedback to yourself" }]
-        }
+        error: { message: "You cannot give feedback to yourself", code: "SELF_FEEDBACK" },
       });
     }
 
-    // ✅ same company only (both must be approved in the same company)
+    // Same company + approved employment for both
     const sameCompanyRes = await feedbackService.bothApprovedInCompany({
       reviewerEmployeeId,
       ratedEmployeeId,
-      companyId
+      companyId,
     });
-
     if (sameCompanyRes.error) {
-      return res.status(400).json({
-        success: false,
-        error: { message: sameCompanyRes.error, code: "BAD_REQUEST" }
-      });
+      return res.status(403).json({ success: false, error: { message: sameCompanyRes.error, code: "FORBIDDEN" } });
     }
 
-    // ✅ one per quarter
+    // One per quarter
     const existsRes = await feedbackService.feedbackAlreadyExists({
       reviewerEmployeeId,
       ratedEmployeeId,
       companyId,
       quarter,
-      year
+      year,
     });
-
     if (existsRes.error) {
+      return res.status(500).json({ success: false, error: { message: existsRes.error, code: "SERVER_ERROR" } });
+    }
+    if (existsRes.data) {
       return res.status(400).json({
         success: false,
-        error: { message: existsRes.error, code: "BAD_REQUEST" }
+        error: { message: "Feedback already submitted for this quarter", code: "FEEDBACK_EXISTS" },
       });
     }
 
-    if (existsRes.data === true) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          message: "Validation failed",
-          code: "VALIDATION_ERROR",
-          details: [{ field: "quarter", message: "Feedback already submitted for this quarter" }]
-        }
-      });
-    }
-
-    // ✅ create feedback
+    // Create feedback
     const createRes = await feedbackService.createFeedback({
       reviewerEmployeeId,
       ratedEmployeeId,
@@ -160,24 +85,16 @@ exports.createFeedback = async (req, res) => {
       reliability,
       writtenFeedback,
       quarter,
-      year
+      year,
     });
 
     if (createRes.error) {
-      return res.status(400).json({
-        success: false,
-        error: { message: createRes.error, code: "BAD_REQUEST" }
-      });
+      return res.status(400).json({ success: false, error: { message: createRes.error, code: "BAD_REQUEST" } });
     }
 
-    return res.status(201).json({
-      success: true,
-      data: createRes.data
-    });
-  } catch (e) {
-    return res.status(500).json({
-      success: false,
-      error: { message: "Server error", code: "SERVER_ERROR", detail: e?.message }
-    });
+    return res.status(201).json({ success: true, data: createRes.data });
+  } catch (err) {
+    console.error("createFeedback error:", err);
+    return res.status(500).json({ success: false, error: { message: "Server error", code: "SERVER_ERROR" } });
   }
 };

@@ -2,7 +2,7 @@
 
 > **FOR AI ASSISTANTS**: This file contains the current state of the project, completed tasks, and active work. Update this file whenever you make changes or complete tasks. This helps all team members' AI assistants stay synchronized.
 
-**Last Updated**: February 19, 2026 08:00 PM UTC  
+**Last Updated**: February 21, 2026 10:00 AM UTC  
 **Project**: Company Ratings Platform (Glassdoor-like)  
 **Team Size**: 4 developers  
 **Sprint**: Days 1–2 - Auth ✅, Aya ✅, Raneem ⚠️ not started, Walid ⚠️ not started (10-day sprint)  
@@ -235,15 +235,15 @@ backend/
     │   └── validateMiddleware.js # ✅ Validation checker
     ├── routes/
     │   ├── index.js              # ✅ Route aggregator (auth + company + review mounted)
-    │   ├── authRoutes.js         # ✅ POST /register, POST /login
+    │   ├── authRoutes.js         # ✅ POST /register, POST /login, POST /refresh-token, POST /logout, GET /me
     │   ├── companyRoutes.js      # ✅ Aya's work
     │   └── reviewRoutes.js       # ✅ Aya's work
     ├── controllers/
-    │   ├── authController.js     # ✅ register, login
+    │   ├── authController.js     # ✅ register, login, refresh, logout, getMe
     │   ├── companyController.js  # ✅ Aya's work
     │   └── reviewController.js   # ✅ Aya's work
     └── services/
-        ├── authService.js        # ✅ registerUser, loginUser (email verify check disabled until Day 2)
+        ├── authService.js        # ✅ registerUser, loginUser, refreshToken, logout, getMe
         ├── companyService.js     # ✅ Aya's work
         └── reviewService.js      # ✅ Aya's work
 ```
@@ -275,11 +275,11 @@ backend/
 - ✅ Build POST /auth/login (returns JWT tokens)
 - ✅ Implement REAL requireAuth (verify JWT) — tested, working
 - ✅ Implement REAL requireRole (role checking) — tested, working
-- ❌ Build POST /auth/refresh-token ← **NEXT**
-- ❌ Build POST /auth/logout
-- ❌ Build GET /auth/me
-- ❌ Build email verification endpoints
-- ❌ Build password reset endpoints
+- ✅ Build POST /auth/refresh-token — tested, working
+- ✅ Build POST /auth/logout — tested, working
+- ✅ Build GET /auth/me — tested, working
+- ❌ Build email verification endpoints ← **NEXT (Days 3–4)**
+- ❌ Build password reset endpoints ← **NEXT (Days 3–4)**
 - ✅ Merge to develop
 
 **Available Tools**:
@@ -377,6 +377,20 @@ backend/
 ---
 
 ## 🔄 RECENT CHANGES LOG
+
+### 2026-02-21 10:00 AM - Baraa Days 1–2 Auth Complete
+- Implemented `refreshToken()` — verify in DB, revoke old token, issue new pair (rotation)
+- Implemented `logout()` — revoke refresh token in DB
+- Implemented `getMe()` — return current user profile from DB
+- Added controllers: `refresh`, `logout`, `getMe`
+- Added routes: POST /auth/refresh-token, POST /auth/logout, GET /auth/me
+- Tested all with Postman — ✅ all working
+- Days 1–2 auth tasks are now 100% complete
+- Remaining auth work moved to Days 3–4: email verification + password reset
+- Files modified:
+  - `backend/src/services/authService.js`
+  - `backend/src/controllers/authController.js`
+  - `backend/src/routes/authRoutes.js`
 
 ### 2026-02-19 08:00 PM - Baraa Day 2 Middleware Complete
 - Activated real `requireAuth` middleware — real JWT verification replacing stub
@@ -509,7 +523,9 @@ cd backend
 - ✅ Build POST /auth/login (return JWT tokens)
 - ✅ Implement REAL requireAuth (verify JWT)
 - ✅ Implement REAL requireRole (role checking)
-- ❌ Build POST /auth/refresh-token ← **NEXT**
+- ✅ Build POST /auth/refresh-token
+- ✅ Build POST /auth/logout
+- ✅ Build GET /auth/me
 - ❌ Build email verification endpoints
 - ❌ Build password reset endpoints
 - ✅ Merge to develop

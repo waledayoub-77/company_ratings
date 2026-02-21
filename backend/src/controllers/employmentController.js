@@ -1,5 +1,10 @@
 const supabase = require("../config/database");
 const employmentService = require("../services/employmentService");
+const {
+  sendEmploymentRequestEmail,
+  sendEmploymentApprovedEmail,
+  sendEmploymentRejectedEmail
+} = require("../services/emailService");
 
 // POST /api/employments/request
 exports.requestEmployment = async (req, res) => {
@@ -32,6 +37,25 @@ exports.requestEmployment = async (req, res) => {
     });
 
     if (result.error) return res.status(400).json({ message: result.error });
+
+    // Send email notification to company admin (non-blocking)
+    try {
+      const [{ data: empProfile }, { data: companyData }] = await Promise.all([
+        supabase.from("employees").select("full_name").eq("id", employee.id).single(),
+        supabase.from("companies").select("name, user_id").eq("id", companyId).single()
+      ]);
+      if (companyData?.user_id) {
+        const { data: adminUser } = await supabase.from("users").select("email, full_name").eq("id", companyData.user_id).single();
+        if (adminUser) {
+          await sendEmploymentRequestEmail({
+            to: adminUser.email,
+            adminName: adminUser.full_name,
+            employeeName: empProfile?.full_name || "An employee",
+            companyName: companyData.name
+          });
+        }
+      }
+    } catch (_) {}
 
     return res.status(201).json({ data: result.data });
   } catch (e) {
@@ -139,7 +163,7 @@ exports.approveEmployment = async (req, res) => {
 
     const { data: company, error: cErr } = await supabase
       .from("companies")
-      .select("id")
+      .select("id, name")
       .eq("user_id", adminUserId)
       .is("deleted_at", null)
       .single();
@@ -154,6 +178,22 @@ exports.approveEmployment = async (req, res) => {
     });
 
     if (result.error) return res.status(400).json({ message: result.error });
+
+    // Send approval email to employee (non-blocking)
+    try {
+      const { data: empData } = await supabase.from("employees").select("full_name, user_id").eq("id", result.data.employee_id).single();
+      if (empData?.user_id) {
+        const { data: empUser } = await supabase.from("users").select("email").eq("id", empData.user_id).single();
+        if (empUser) {
+          await sendEmploymentApprovedEmail({
+            to: empUser.email,
+            name: empData.full_name,
+            companyName: company.name
+          });
+        }
+      }
+    } catch (_) {}
+
     return res.json({ data: result.data });
   } catch (e) {
     console.error("approveEmployment error:", e);
@@ -220,7 +260,7 @@ exports.rejectEmployment = async (req, res) => {
 
     const { data: company, error: cErr } = await supabase
       .from("companies")
-      .select("id")
+      .select("id, name")
       .eq("user_id", adminUserId)
       .is("deleted_at", null)
       .single();
@@ -236,6 +276,23 @@ exports.rejectEmployment = async (req, res) => {
     });
 
     if (result.error) return res.status(400).json({ message: result.error });
+
+    // Send rejection email to employee (non-blocking)
+    try {
+      const { data: empData } = await supabase.from("employees").select("full_name, user_id").eq("id", result.data.employee_id).single();
+      if (empData?.user_id) {
+        const { data: empUser } = await supabase.from("users").select("email").eq("id", empData.user_id).single();
+        if (empUser) {
+          await sendEmploymentRejectedEmail({
+            to: empUser.email,
+            name: empData.full_name,
+            companyName: company.name,
+            reason: rejectionNote || null
+          });
+        }
+      }
+    } catch (_) {}
+
     return res.json({ data: result.data });
   } catch (e) {
     console.error("rejectEmployment error:", e);

@@ -393,7 +393,7 @@ backend/
 
 ### @raneem — Developer (Employment & Feedback)
 **Branch**: `feature/employment-feedback`  
-**Current Task**: Days 3–4 — ❌ NOT STARTED — start now
+**Current Task**: Days 3–4 ✅ COMPLETE (bugs fixed by Baraa)
 
 **Days 1–2 Status**:
 - ✅ Import Baraa's real middleware
@@ -410,7 +410,19 @@ backend/
 - ✅ Merge to develop
 - ✅ Merged into baraa branch (Feb 21)
 
-**Days 3–4 Status**: ❌ NOT STARTED
+**Days 3–4 Status**: ✅ COMPLETE
+- ✅ BUG-001 fixed: ratings 1-5, year min 2020 (commit `93054f7`)
+- ✅ GET /employees/:id — profile with privacy (public/private/system_admin)
+- ✅ PATCH /employees/:id — update own profile, owner + system_admin only
+- ✅ optionalAuth middleware added for guest-readable endpoints
+- ✅ PATCH /employments/:id/end — end employment (sets is_current=false)
+- ✅ GET /employments/pending — company_admin view of pending requests
+- ✅ Email: sendEmploymentRequestEmail called in requestEmployment (Baraa fixed)
+- ✅ Email: sendEmploymentApprovedEmail called in approveEmployment (Baraa fixed)
+- ✅ Email: sendEmploymentRejectedEmail called in rejectEmployment (Baraa fixed)
+- ✅ Feedback quota (one/quarter) — confirmed in feedbackService
+- ✅ BUG-004 fixed: removed dead controller code from feedbackService.js (Baraa)
+- ✅ BUG-006 fixed: removed @sendgrid/mail from package.json (Baraa)
 
 > ⚠️ **RANEEM — start here**: `git pull origin dev` first, then work on the tasks below.
 
@@ -477,9 +489,9 @@ const {
 
 ## ⚠️ KNOWN BUGS (Must Fix Before Day 5)
 
-### 🔴 BUG-001 — Raneem: Feedback rating validation 1-10 vs DB constraint 1-5
+### ✅ BUG-001 — Raneem: Feedback rating validation 1-10 vs DB constraint 1-5
 **File**: `backend/src/controllers/feedbackController.js`  
-**Status**: ❌ NOT FIXED  
+**Status**: ✅ FIXED — commit `93054f7`  
 **Owner**: Raneem  
 **Problem**: Controller validates professionalism, communication, teamwork, reliability as integers `1–10`. But the DB schema has hard CHECK constraints: `CHECK (professionalism >= 1 AND professionalism <= 5)`. Any value 6–10 passes controller validation but gets **rejected by Supabase with a constraint error** (no helpful error message to user).  
 **Also**: year min is `2000` in controller but `2020` in schema — minor mismatch.  
@@ -513,6 +525,24 @@ if (!validReasons.includes(reason)) {
 **Problem**: Aya has her own inline copy of `checkVerifiedEmployment()` instead of using `helpers/checkVerifiedEmployment.js` that Raneem built for her. Two copies of the same logic — if one is updated the other won't be.  
 **Fix**: Replace inline function with `const checkVerifiedEmployment = require('../helpers/checkVerifiedEmployment');`
 
+### ✅ BUG-004 — Raneem: Controller code accidentally placed in feedbackService.js
+**File**: `backend/src/services/feedbackService.js`  
+**Status**: ✅ FIXED — Baraa (code review)  
+**Problem**: `exports.createFeedback = async (req, res) => {...}` — a full controller function with `req/res` was sitting at the top of the service file. It called `feedbackService.createFeedback()` on itself causing infinite recursion. Harmless only because `module.exports` at the bottom overrode it.
+**Fix**: Removed the dead controller block (lines 3–72). Real `createFeedback` service function at the bottom is correct.
+
+### ✅ BUG-005 — Raneem: Employment email notifications not called
+**File**: `backend/src/controllers/employmentController.js`  
+**Status**: ✅ FIXED — Baraa (code review)  
+**Problem**: `requestEmployment`, `approveEmployment`, `rejectEmployment` never called any email functions despite being a Days 3-4 requirement.
+**Fix**: Baraa added non-blocking email calls in all 3 functions using `sendEmploymentRequestEmail`, `sendEmploymentApprovedEmail`, `sendEmploymentRejectedEmail` from `emailService.js`.
+
+### ✅ BUG-006 — Raneem: Wrong email package added to package.json
+**File**: `backend/package.json`  
+**Status**: ✅ FIXED — Baraa (code review)  
+**Problem**: Raneem added `@sendgrid/mail` — we use Resend SDK, not SendGrid. Unused dependency.
+**Fix**: Removed `@sendgrid/mail` from `package.json`.
+
 ---
 
 ## 📝 IMPORTANT NOTES
@@ -540,6 +570,15 @@ if (!validReasons.includes(reason)) {
 ---
 
 ## 🔄 RECENT CHANGES LOG
+
+### 2026-02-21 11:30 PM - Baraa: Code review Raneem Days 3-4 + fixed BUG-004/005/006
+- Reviewed Raneem's commit `93054f7` merged into dev
+- **BUG-001** ✅ confirmed fixed by Raneem (ratings 1-5, year 2020)
+- **BUG-004** ✅ FIXED: removed dead `exports.createFeedback = async (req,res)` block from `feedbackService.js`
+- **BUG-005** ✅ FIXED: added `sendEmploymentRequestEmail`, `sendEmploymentApprovedEmail`, `sendEmploymentRejectedEmail` calls in `employmentController.js` (non-blocking try/catch)
+- **BUG-006** ✅ FIXED: removed `@sendgrid/mail` from `package.json` (we use Resend)
+- Raneem Days 3-4 now fully complete ✅
+- All 4 team members (Baraa, Aya, Raneem) Days 0-4 complete — only Walid remains ⚠️
 
 ### 2026-02-21 10:30 PM - Aya: Fixed BUG-002 + BUG-003
 - Commit `e42f767 fix(Aya): validate report reason + use shared checkVerifiedEmployment helper`

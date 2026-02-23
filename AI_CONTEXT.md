@@ -544,7 +544,14 @@ Body (JSON): { "professionalism": 6, ... }
 
 ---
 
-## ⚠️ KNOWN BUGS (Must Fix Before Day 5)
+## ⚠️ KNOWN BUGS
+
+### 🟡 BUG-007 — Walid: suspend/unsuspend email uses email as name
+**File**: `backend/src/services/adminService.js`  
+**Status**: ❌ MINOR — cosmetic only, non-blocking  
+**Owner**: Walid  
+**Problem**: `sendAccountSuspendedEmail({ to: user.email, name: user.email, reason })` — passes `user.email` as the `name` field. Email greeting shows "Hi john@example.com" instead of "Hi John".  
+**Fix**: Pass `name: user.full_name` instead.
 
 ### ✅ BUG-001 — Raneem: Feedback rating validation 1-10 vs DB constraint 1-5
 **File**: `backend/src/controllers/feedbackController.js`  
@@ -660,6 +667,17 @@ if (!validReasons.includes(reason)) {
 - Server tested — loads clean, health check OK
 - Files modified: adminService.js, adminController.js, adminRoutes.js, emailService.js, validators.js
 
+### 2026-02-23 - Baraa: Code review Walid Days 1-4 ✅
+- Reviewed commits `e7e188d` + `e69d8cb` — all endpoints correct
+- `requireSystemAdmin` used on all admin routes ✅
+- `system_admin` suspension/deletion blocked in service ✅
+- Rate limiting (5 reports/day) in `reportService` ✅
+- Audit logging on all moderation actions ✅
+- Email functions follow correct Resend pattern ✅
+- **BUG-007 (Minor)**: `suspendUser`/`unsuspendUser` pass `user.email` as `name` to email template — cosmetic only
+- Walid self-updated AI_CONTEXT — verified accurate ✅
+- ✅ All 4 members Days 0-4 complete — Day 5 integration unblocked
+
 ### 2026-02-21 11:30 PM - Baraa: Code review Raneem Days 3-4 + fixed BUG-004/005/006
 - Reviewed Raneem's commit `93054f7` merged into dev
 - **BUG-001** ✅ confirmed fixed by Raneem (ratings 1-5, year 2020)
@@ -667,7 +685,7 @@ if (!validReasons.includes(reason)) {
 - **BUG-005** ✅ FIXED: added `sendEmploymentRequestEmail`, `sendEmploymentApprovedEmail`, `sendEmploymentRejectedEmail` calls in `employmentController.js` (non-blocking try/catch)
 - **BUG-006** ✅ FIXED: removed `@sendgrid/mail` from `package.json` (we use Resend)
 - Raneem Days 3-4 now fully complete ✅
-- All 4 team members (Baraa, Aya, Raneem) Days 0-4 complete — only Walid remains ⚠️
+- ✅ All 4 team members (Baraa, Aya, Raneem, Walid) Days 0-4 complete — ready for Day 5 integration
 
 ### 2026-02-21 10:30 PM - Aya: Fixed BUG-002 + BUG-003
 - Commit `e42f767 fix(Aya): validate report reason + use shared checkVerifiedEmployment helper`

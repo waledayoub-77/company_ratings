@@ -82,6 +82,12 @@
 | BUG-032 | feedbackController.js | Duplicate feedback threw 400 instead of 409 | Changed to 409 |
 | BUG-033 | authService.js | `forgotPassword` crashed with 500 when Resend email fails | Wrapped `sendResetPasswordEmail` in try/catch (non-fatal) |
 | BUG-034 | rateLimiter.js | `authLimiter` max=5 blocked test suites (too restrictive) | Increased to 50 in `NODE_ENV=development` |
+| BUG-035 | adminController.js | `getAnalytics` queried `reviews` table (doesn't exist — correct is `company_reviews`) | Fixed table name → `company_reviews` |
+| BUG-036 | adminController.js | `getAnalytics` queried `reports` table (doesn't exist — correct is `reported_reviews`) ×2 | Fixed table names → `reported_reviews` |
+| BUG-037 | postman collection | `POST /reviews` body was snake_case (`company_id`, `overall_rating`, `is_anonymous`) but validator + service expect camelCase | Fixed collection bodies to camelCase |
+| BUG-038 | postman collection | Test 37 expected 201 from `POST /reviews/:id/report` — route was removed in BUG-010 | Changed assertion to expect 404 |
+| BUG-039 | authService.js | `registerUser` lost duplicate company name check in Day 5 rewrite (regression) | Re-added check with user rollback on conflict |
+| BUG-040 | adminRoutes.js | `reportLimiter` middleware was defined but never applied to `POST /reports` | Added `reportLimiter` to route |
 
 #### Auth & Services Fixes
 - [x] `authService.js` → `loginUser`: email_verified check skipped in development
@@ -798,6 +804,21 @@ if (!validReasons.includes(reason)) {
 ---
 
 ## 🔄 RECENT CHANGES LOG
+
+### 2026-02-23 (session 2) — Baraa: BUG-035→040 + Newman re-verification ✅
+
+**Summary**: Installed Newman CLI, re-ran the 70-test collection, found 9 assertion failures, diagnosed and fixed 6 root-cause bugs (BUG-035→040), re-ran — **70/70 assertions passing**. Commit `d0d7751` pushed to baraa + dev.
+
+**Bugs fixed**:
+- `getAnalytics` used wrong table names: `reviews` → `company_reviews` (BUG-035), `reports` → `reported_reviews` ×2 (BUG-036)
+- Postman collection `POST /reviews` body was snake_case — validator expects camelCase (BUG-037)
+- Postman collection test 37 expected 201 from `/reviews/:id/report` — route removed by BUG-010 (BUG-038)
+- `registerUser` lost duplicate company name check in Day 5 rewrite — re-added with user rollback on conflict (BUG-039)
+- `reportLimiter` middleware defined but never applied to `POST /reports` route (BUG-040)
+
+**Tools installed globally**: `newman`, `newman-reporter-htmlextra`
+
+---
 
 ### 2026-02-23 — Baraa: Day 5 Integration Testing Complete ✅ (70/70 assertions)
 

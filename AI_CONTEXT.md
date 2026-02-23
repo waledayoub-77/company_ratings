@@ -546,12 +546,12 @@ Body (JSON): { "professionalism": 6, ... }
 
 ## ⚠️ KNOWN BUGS
 
-### 🟡 BUG-007 — Walid: suspend/unsuspend email uses email as name
+### ✅ BUG-007 — Walid: suspend/unsuspend email uses email as name
 **File**: `backend/src/services/adminService.js`  
-**Status**: ❌ MINOR — cosmetic only, non-blocking  
+**Status**: ✅ FIXED — Baraa (code review)  
 **Owner**: Walid  
 **Problem**: `sendAccountSuspendedEmail({ to: user.email, name: user.email, reason })` — passes `user.email` as the `name` field. Email greeting shows "Hi john@example.com" instead of "Hi John".  
-**Fix**: Pass `name: user.full_name` instead.
+**Fix**: Added `full_name` to both select queries, passing `user.full_name || user.email` as name.
 
 ### ✅ BUG-001 — Raneem: Feedback rating validation 1-10 vs DB constraint 1-5
 **File**: `backend/src/controllers/feedbackController.js`  
@@ -674,7 +674,7 @@ if (!validReasons.includes(reason)) {
 - Rate limiting (5 reports/day) in `reportService` ✅
 - Audit logging on all moderation actions ✅
 - Email functions follow correct Resend pattern ✅
-- **BUG-007 (Minor)**: `suspendUser`/`unsuspendUser` pass `user.email` as `name` to email template — cosmetic only
+- **BUG-007 (Minor)**: ✅ FIXED — added `full_name` to user select in `suspendUser`/`unsuspendUser`, passes `user.full_name || user.email` as name
 - Walid self-updated AI_CONTEXT — verified accurate ✅
 - ✅ All 4 members Days 0-4 complete — Day 5 integration unblocked
 

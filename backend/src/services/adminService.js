@@ -99,7 +99,7 @@ const getUsers = async ({ search, role, page = 1, limit = 20 }) => {
 const suspendUser = async ({ userId, adminId, reason, ipAddress, userAgent }) => {
   const { data: user, error: userError } = await supabase
     .from('users')
-    .select('id, email, role, is_active')
+    .select('id, email, full_name, role, is_active')
     .eq('id', userId)
     .is('deleted_at', null)
     .maybeSingle();
@@ -142,7 +142,7 @@ const suspendUser = async ({ userId, adminId, reason, ipAddress, userAgent }) =>
 
   // Send suspension email (non-blocking)
   try {
-    await sendAccountSuspendedEmail({ to: user.email, name: user.email, reason });
+    await sendAccountSuspendedEmail({ to: user.email, name: user.full_name || user.email, reason });
   } catch (emailErr) {
     console.error('Failed to send suspension email:', emailErr.message);
   }
@@ -170,7 +170,7 @@ const suspendUser = async ({ userId, adminId, reason, ipAddress, userAgent }) =>
 const unsuspendUser = async ({ userId, adminId, ipAddress, userAgent }) => {
   const { data: user, error: userError } = await supabase
     .from('users')
-    .select('id, email, role, is_active')
+    .select('id, email, full_name, role, is_active')
     .eq('id', userId)
     .is('deleted_at', null)
     .maybeSingle();
@@ -201,7 +201,7 @@ const unsuspendUser = async ({ userId, adminId, ipAddress, userAgent }) => {
 
   // Send reactivation email (non-blocking)
   try {
-    await sendAccountUnsuspendedEmail({ to: user.email, name: user.email });
+    await sendAccountUnsuspendedEmail({ to: user.email, name: user.full_name || user.email });
   } catch (emailErr) {
     console.error('Failed to send unsuspension email:', emailErr.message);
   }

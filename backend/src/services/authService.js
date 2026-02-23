@@ -32,6 +32,18 @@ const registerUser = async ({ email, password, role, fullName, companyName }) =>
   }
 
   if (role === 'company_admin') {
+    // Check for duplicate company name
+    const { data: existingCompany } = await supabase
+      .from('companies')
+      .select('id')
+      .eq('name', companyName)
+      .is('deleted_at', null)
+      .maybeSingle();
+
+    if (existingCompany) {
+      throw new AppError('A company with this name already exists', 409, 'COMPANY_NAME_EXISTS');
+    }
+
     await supabase
       .from('companies')
       .insert({ user_id: user.id, name: companyName, industry: 'Not specified', location: 'Not specified' });
@@ -231,7 +243,23 @@ const forgotPassword = async (email) => {
     expires_at: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
   });
 
-  await sendResetPasswordEmail({ to: user.email, name: user.email, token });
+  // Look up display name (non-blocking — fallback to email)
+  let displayName = user.email;
+  try {
+    const { data: emp } = await supabase
+      .from('employees')
+      .select('full_name')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (emp?.full_name) displayName = emp.full_name;
+  } catch (_) {}
+
+  // Send email (non-blocking — never reveal if email exists)
+  try {
+    await sendResetPasswordEmail({ to: user.email, name: displayName, token });
+  } catch (e) {
+    console.error('Failed to send reset password email:', e.message);
+  }
 };
 
 // ─── RESET PASSWORD ───────────────────────────────────────────────────────────

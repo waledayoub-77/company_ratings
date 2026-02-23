@@ -1,11 +1,7 @@
 // Review Service - Business logic for reviews
 const supabase = require('../config/database');
 const { AppError } = require('../middlewares/errorHandler');
-const crypto = require('crypto');
 const checkVerifiedEmployment = require('../helpers/checkVerifiedEmployment');
-
-// Valid reasons for reporting a review (must match database enum)
-const VALID_REPORT_REASONS = ['false_info', 'spam', 'harassment', 'other'];
 
 /**
  * Check if user already reviewed this company
@@ -36,7 +32,7 @@ const recalculateCompanyRating = async (companyId) => {
     await supabase
       .from('companies')
       .update({
-        overall_rating: null,
+        overall_rating: 0,
         total_reviews: 0
       })
       .eq('id', companyId);
@@ -61,10 +57,10 @@ const recalculateCompanyRating = async (companyId) => {
  */
 const createReview = async (reviewData, userId) => {
   const {
-    company_id,
-    overall_rating,
+    companyId,
+    overallRating,
     content,
-    is_anonymous
+    isAnonymous
   } = reviewData;
 
   // First get employee ID from user ID
@@ -81,13 +77,13 @@ const createReview = async (reviewData, userId) => {
   const employeeId = employee.id;
 
   // Check verified employment
-  const hasEmployment = await checkVerifiedEmployment(employeeId, company_id);
+  const hasEmployment = await checkVerifiedEmployment(employeeId, companyId);
   if (!hasEmployment) {
     throw new AppError('You must have verified employment to review this company', 403);
   }
 
   // Check duplicate review
-  const isDuplicate = await checkDuplicateReview(employeeId, company_id);
+  const isDuplicate = await checkDuplicateReview(employeeId, companyId);
   if (isDuplicate) {
     throw new AppError('You have already reviewed this company', 400);
   }
@@ -97,7 +93,7 @@ const createReview = async (reviewData, userId) => {
     .from('employments')
     .select('id')
     .eq('employee_id', employeeId)
-    .eq('company_id', company_id)
+    .eq('company_id', companyId)
     .eq('verification_status', 'approved')
     .single();
 
@@ -106,11 +102,11 @@ const createReview = async (reviewData, userId) => {
     .from('company_reviews')
     .insert({
       employee_id: employeeId,
-      company_id,
+      company_id: companyId,
       employment_id: employment.id,
-      overall_rating,
+      overall_rating: overallRating,
       content,
-      is_anonymous: is_anonymous || false
+      is_anonymous: isAnonymous || false
     })
     .select()
     .single();
@@ -121,7 +117,7 @@ const createReview = async (reviewData, userId) => {
   }
 
   // Recalculate company rating
-  await recalculateCompanyRating(company_id);
+  await recalculateCompanyRating(companyId);
 
   return data;
 };
@@ -167,13 +163,13 @@ const updateReview = async (reviewId, updates, userId) => {
     throw new AppError('Reviews can only be edited within 48 hours of submission', 403);
   }
 
-  const { overall_rating, content } = updates;
+  const { overallRating, content } = updates;
 
   // Update review
   const { data, error } = await supabase
     .from('company_reviews')
     .update({
-      overall_rating,
+      overall_rating: overallRating,
       content,
       edited_at: new Date().toISOString()
     })
@@ -187,7 +183,7 @@ const updateReview = async (reviewId, updates, userId) => {
   }
 
   // Recalculate company rating if overall_rating changed
-  if (overall_rating && overall_rating !== review.overall_rating) {
+  if (overallRating && overallRating !== review.overall_rating) {
     await recalculateCompanyRating(review.company_id);
   }
 
@@ -216,8 +212,9 @@ const deleteReview = async (reviewId, userId, userRole) => {
     throw new AppError('Review not found', 404);
   }
 
-  // Check permissions (owner or admin)
-  if (employee && review.employee_id !== employee.id && userRole !== 'system_admin') {
+  // Check permissions (owner or system_admin only)
+  const isOwner = employee && review.employee_id === employee.id;
+  if (!isOwner && userRole !== 'system_admin') {
     throw new AppError('You do not have permission to delete this review', 403);
   }
 
@@ -353,41 +350,10 @@ const getReviewById = async (reviewId) => {
     throw new AppError('Review not found', 404);
   }
 
-  return data;
-};
-
-/**
- * Report a review
- */
-const reportReview = async (reviewId, reportData, userId) => {
-  const { reason, description } = reportData;
-
-  // Validate reason before saving to database
-  if (!reason || !VALID_REPORT_REASONS.includes(reason)) {
-    throw new AppError(
-      `Invalid report reason. Must be one of: ${VALID_REPORT_REASONS.join(', ')}`,
-      400
-    );
-  }
-
-  // Verify review exists
-  await getReviewById(reviewId);
-
-  // Create report
-  const { data, error } = await supabase
-    .from('reported_reviews')
-    .insert({
-      reporter_id: userId,
-      review_id: reviewId,
-      reason,
-      description
-    })
-    .select()
-    .single();
-
-  if (error) {
-    console.error('❌ Supabase error in reportReview:', error);
-    throw new AppError('Failed to submit report', 500);
+  // Strip identity info for anonymous reviews (BUG-012)
+  if (data.is_anonymous) {
+    delete data.employee_id;
+    delete data.employment_id;
   }
 
   return data;
@@ -400,7 +366,6 @@ module.exports = {
   getCompanyReviews,
   getMyReviews,
   getReviewById,
-  reportReview,
   checkDuplicateReview,
-  recalculateCompanyRating
+  recalculateCompanyRating,
 };

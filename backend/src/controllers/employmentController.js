@@ -214,6 +214,7 @@ exports.listPendingEmployments = async (req, res) => {
       .from("companies")
       .select("id, name")
       .eq("user_id", userId)
+      .is("deleted_at", null)
       .maybeSingle();
 
     if (cErr) throw cErr;

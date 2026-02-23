@@ -137,28 +137,6 @@ const getReviewById = async (req, res, next) => {
   }
 };
 
-/**
- * POST /reviews/:id/report
- * Report a review
- */
-const reportReview = async (req, res, next) => {
-  try {
-    const report = await reviewService.reportReview(
-      req.params.id,
-      req.body,
-      req.user.userId
-    );
-
-    res.status(201).json({
-      success: true,
-      message: 'Review reported successfully',
-      data: report
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
 module.exports = {
   createReview,
   updateReview,
@@ -166,6 +144,5 @@ module.exports = {
   getCompanyReviews,
   getMyReviews,
   getReviewById,
-  reportReview
 };
 

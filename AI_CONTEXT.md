@@ -2,10 +2,10 @@
 
 > **FOR AI ASSISTANTS**: This file contains the current state of the project, completed tasks, and active work. Update this file whenever you make changes or complete tasks. This helps all team members' AI assistants stay synchronized.
 
-**Last Updated**: February 23, 2026 12:00 PM UTC  
+**Last Updated**: February 23, 2026 — Day 5 Integration  
 **Project**: Company Ratings Platform (Glassdoor-like)  
 **Team Size**: 4 developers  
-**Sprint**: Days 3–4 - Baraa ✅ complete, Aya ✅ complete, Raneem ✅ complete, Walid ✅ Days 1-4 complete (10-day sprint)  
+**Sprint**: **Day 5 — Integration & End-to-End Testing** (10-day sprint)  
 **Tech Lead**: @baraa
 
 ---
@@ -18,7 +18,7 @@
 **Email Status**: ✅ Resend SDK configured — verification + reset emails sending  
 **Company & Review Status**: ✅ Full CRUD + analytics working
 **Admin & Reports Status**: ✅ Full admin panel — reports, users, companies, analytics, audit logs, employment override
-**Team Status**: ✅ Baraa Days 0-4 complete, Aya Days 0-4 complete, Raneem Days 0-4 complete, Walid ✅ Days 1-4 complete
+**Team Status**: ✅ All 4 members Days 0-4 complete | ✅ All branches merged to dev | ✅ BUG-001 through BUG-016 fixed | 🔄 Day 5: Integration testing in progress
 
 ---
 
@@ -635,6 +635,30 @@ if (!validReasons.includes(reason)) {
 
 ## 🔄 RECENT CHANGES LOG
 
+### 2026-02-23 — Baraa: Day 5 Individual Tasks Added to AI_CONTEXT
+- All 4 branches confirmed merged into `dev` (git merge-base verified)
+- Updated sprint header: Day 5 Integration in progress
+- Added individual task checklists for all 4 members under Day 5 sprint plan
+- Added Track A (Baraa + Aya) and Track B (Raneem + Walid) test flows
+- Added done criteria for Day 5 completion
+- No code changes — documentation only
+
+### 2026-02-23 — Baraa: Full Code Review — BUG-008 through BUG-016 Fixed
+- **BUG-008** ✅ FIXED: `deleteReview` auth bypass — company_admin could delete any review (permission check was `employee && ...` not `!isOwner && ...`)
+- **BUG-009** ✅ FIXED: `forgotPassword` error leak — email send error revealed if email exists; wrapped in try/catch
+- **BUG-010** ✅ FIXED: Duplicate unprotected report endpoint `POST /reviews/:id/report` — no rate limit, no 20-char min. Removed. Only `POST /reports` remains.
+- **BUG-011** ✅ FIXED: `POST /reviews` missing validation middleware — `validateReview` + `validate` now applied. Field names standardised to camelCase (`companyId`, `overallRating`, `isAnonymous`).
+- **BUG-012** ✅ FIXED: `getReviewById` exposed `employee_id`/`employment_id` for anonymous reviews — now stripped when `is_anonymous = true`
+- **BUG-013** ✅ FIXED: `recalculateCompanyRating` set `null` when no reviews — now sets `0` (consistent with DB default and `reportService` behaviour)
+- **BUG-014** ✅ FIXED: `forgotPassword` sent `name: user.email` — now looks up `full_name` from employees table
+- **BUG-015** ✅ FIXED: `listPendingEmployments` missing `.is("deleted_at", null)` on company query
+- **BUG-016** ✅ FIXED: Registration allowed duplicate company names — now checks before insert (same as `companyService.createCompany`)
+- **BUG-007 regression** ✅ FIXED: `users` table has no `full_name` column — previous fix was reading a non-existent column. Now looks up name from `employees` table separately in both suspend/unsuspend.
+- **Bonus** ✅: `validateMiddleware` `e.param` → `e.path` (express-validator v7 breaking change)
+- **Bonus** ✅: Removed unused `crypto` import from `reviewService.js`
+- Files modified: reviewService.js, reviewRoutes.js, reviewController.js, authService.js, adminService.js, employmentController.js, validateMiddleware.js
+- Committed: `8d95701`, pushed to `baraa` and `dev`
+
 ### 2026-02-23 12:00 PM - Walid: Days 1–4 Admin & Reports Module Complete ✅
 - Expanded `adminService.js` from 2 thin wrappers to full admin module (13 functions)
   - getUsers (search by email + employee name, role filter, pagination)
@@ -997,18 +1021,92 @@ cd backend
 ---
 
 ### Day 5: Integration Day 🔗
-> All together · Merge everything · Full end-to-end test
+> All branches merged ✅ · Full end-to-end testing in progress · dev → main when tracks pass
 
-**Morning (All Together)**:
-- [ ] Baraa: Lead the merge session
-- [ ] ALL: Merge all features to develop
-- [ ] ALL: Resolve merge conflicts together
-- [ ] Baraa: Review final merged code
-- [ ] ALL: Test server starts, no errors
+**Step 1 — ALL MEMBERS: Pull & verify server boots**
+```bash
+git checkout dev
+git pull origin dev
+cd backend
+npm install
+npm run dev
+```
+Server must start clean on `http://localhost:5000`. No errors in terminal.
 
-**Afternoon Split Testing**:
-- [ ] Baraa + Aya: Register → Login → Create Company → Search → Review submission flow
-- [ ] Raneem + Walid: Employment request → Approve → Review → Internal feedback → Report → Admin resolves
+---
+
+**Baraa (Tech Lead)**:
+- [x] Lead merge session — all 4 branches merged to dev ✅
+- [x] Full code review — BUG-008 through BUG-016 found and fixed ✅
+- [ ] Run **Track A** end-to-end test with Aya (see below)
+- [ ] Verify all 8 email functions fire correctly during the flow
+- [ ] Final: merge `dev → main` once both tracks pass
+- [ ] Update AI_CONTEXT — mark Day 5 complete
+
+**Aya**:
+- [ ] Pull `dev`, confirm server starts clean (`npm run dev`)
+- [ ] Test `GET /companies` — filters (industry, location, minRating), search, pagination
+- [ ] Test review flow: create review → edit within 48h → attempt edit after 48h (expect 403)
+- [ ] Test `DELETE /reviews/:id` — own review deletes, other user's review blocked
+- [ ] Test `GET /companies/:id/analytics` — rating distribution 1-5, reviews over time
+- [ ] Test `GET /companies/:id/stats` — DB RPC function
+- [ ] Verify `GET /reviews/:id` for anonymous review does NOT expose `employee_id` (BUG-012 fix)
+- [ ] Run Track A with Baraa
+
+**Raneem**:
+- [ ] Pull `dev`, confirm server starts clean
+- [ ] Full employment flow: POST request → GET /employments/pending (as admin) → PATCH approve → PATCH reject
+- [ ] Test PATCH /employments/:id/end — sets `is_current: false`, call again → 400
+- [ ] Test `POST /feedback` — two employees same company → submit, then duplicate (expect 400)
+- [ ] Test `GET /employees/:id` — public profile, private profile (expect 404 for non-owner)
+- [ ] Test `PATCH /employees/:id` — own profile updates, wrong user (expect 403)
+- [ ] Run Track B with Walid
+
+**Walid**:
+- [ ] Pull `dev`, confirm server starts clean
+- [ ] Test `GET /admin/users` — search by name/email, filter by role, pagination
+- [ ] Test `PATCH /admin/users/:id/suspend` — verify user can no longer log in, email fires
+- [ ] Test `PATCH /admin/users/:id/unsuspend` — user can log in again, email fires
+- [ ] Test `DELETE /admin/users/:id` — soft delete, verify user gone from list
+- [ ] Test `GET /admin/companies` + `PATCH /admin/companies/:id/verify`
+- [ ] Test `PATCH /admin/employments/:id/override` — force-approve a pending employment
+- [ ] Test `POST /reports` → `GET /admin/reports` → `PATCH /admin/reports/:id/resolve` (remove) → verify review deleted + rating updated
+- [ ] Test `GET /admin/analytics` — check all counts are correct
+- [ ] Test `GET /admin/audit-logs` — verify all admin actions logged
+- [ ] Run Track B with Raneem
+
+---
+
+**Track A — Baraa + Aya (Full user journey)**:
+```
+Register (employee) → verify email → login
+Register (company_admin) → verify email → login → create company
+Employee: POST /employments/request
+Company Admin: PATCH /employments/:id/approve
+Employee: POST /reviews → appears in GET /companies/:id/reviews
+Check: GET /companies/:id/analytics updates correctly
+```
+
+**Track B — Raneem + Walid (Moderation journey)**:
+```
+Login as employee → request employment
+Login as company_admin → approve employment
+Employee writes review
+Employee submits peer feedback to a colleague
+Another user reports the review (POST /reports)
+Login as system_admin → GET /admin/reports
+PATCH /admin/reports/:id/resolve (action: remove)
+Verify review gone, company rating recalculated
+Verify GET /admin/audit-logs shows the remove_review entry
+```
+
+**Done criteria for Day 5**:
+- [ ] Server starts with zero errors on clean `npm install && npm run dev`
+- [ ] Both Track A and Track B complete end-to-end without crashes
+- [ ] All emails fire (check console if no Resend key configured)
+- [ ] No 500 errors in any tested flow
+- [ ] `dev → main` merged and pushed
+- [ ] AI_CONTEXT updated: Day 5 ✅ complete
 
 ---
 

@@ -394,13 +394,13 @@ exports.getAnalytics = async (req, res) => {
     ] = await Promise.all([
       supabase.from('users').select('id', { count: 'exact', head: true }).eq('is_deleted', false),
       supabase.from('companies').select('id', { count: 'exact', head: true }).is('deleted_at', null),
-      supabase.from('reviews').select('id', { count: 'exact', head: true }).is('deleted_at', null),
-      supabase.from('reports').select('id', { count: 'exact', head: true }),
+      supabase.from('company_reviews').select('id', { count: 'exact', head: true }).is('deleted_at', null),
+      supabase.from('reported_reviews').select('id', { count: 'exact', head: true }),
       supabase.from('employments').select('id', { count: 'exact', head: true }).eq('verification_status', 'pending').is('deleted_at', null),
       supabase.from('users').select('id', { count: 'exact', head: true }).eq('is_active', true).eq('is_deleted', false),
     ]);
 
-    const { count: pendingReports } = await supabase.from('reports').select('id', { count: 'exact', head: true }).eq('status', 'pending');
+    const { count: pendingReports } = await supabase.from('reported_reviews').select('id', { count: 'exact', head: true }).eq('status', 'pending');
 
     return res.json({
       success: true,

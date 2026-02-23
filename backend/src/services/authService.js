@@ -37,6 +37,18 @@ const registerUser = async ({ email, password, role = 'employee', fullName, full
   }
 
   if (role === 'company_admin') {
+    // BUG-039 fix: check for duplicate company name before inserting
+    const { data: existingCompany } = await supabase
+      .from('companies')
+      .select('id')
+      .eq('name', companyName)
+      .is('deleted_at', null)
+      .maybeSingle();
+    if (existingCompany) {
+      // Roll back the user insert if company name already taken
+      await supabase.from('users').delete().eq('id', user.id);
+      throw new AppError('A company with this name already exists', 409, 'COMPANY_NAME_EXISTS');
+    }
     await supabase
       .from('companies')
       .insert({ user_id: user.id, name: companyName, industry: 'Not specified', location: 'Not specified' });

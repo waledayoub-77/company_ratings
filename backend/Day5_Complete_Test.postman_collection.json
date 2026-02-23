@@ -610,7 +610,7 @@
           "request": {
             "method": "POST",
             "header": [{"key":"Authorization","value":"Bearer {{employee_token}}"},{"key":"Content-Type","value":"application/json"}],
-            "body": {"mode":"raw","raw":"{\n  \"company_id\": \"{{company_id}}\",\n  \"overall_rating\": 4,\n  \"content\": \"Great place to work! Good culture and management. Highly recommend for engineers looking to grow their skills.\",\n  \"is_anonymous\": false\n}"},
+            "body": {"mode":"raw","raw":"{\n  \"companyId\": \"{{company_id}}\",\n  \"overallRating\": 4,\n  \"content\": \"Great place to work! Good culture and management. Highly recommend for engineers looking to grow their skills.\",\n  \"isAnonymous\": false\n}"},
             "url": {"raw":"{{base_url}}/reviews","host":["{{base_url}}"],"path":["reviews"]}
           },
           "event": [{"listen":"test","script":{"exec":[
@@ -644,7 +644,7 @@
           "request": {
             "method": "POST",
             "header": [{"key":"Authorization","value":"Bearer {{employee_token}}"},{"key":"Content-Type","value":"application/json"}],
-            "body": {"mode":"raw","raw":"{\n  \"company_id\": \"{{company_id}}\",\n  \"overall_rating\": 3,\n  \"content\": \"Second review attempt — this should be rejected as a duplicate submission.\",\n  \"is_anonymous\": true\n}"},
+            "body": {"mode":"raw","raw":"{\n  \"companyId\": \"{{company_id}}\",\n  \"overallRating\": 3,\n  \"content\": \"Second review attempt — this should be rejected as a duplicate submission.\",\n  \"isAnonymous\": true\n}"},
             "url": {"raw":"{{base_url}}/reviews","host":["{{base_url}}"],"path":["reviews"]}
           },
           "event": [{"listen":"test","script":{"exec":[
@@ -707,8 +707,8 @@
           },
           "event": [{"listen":"test","script":{"exec":[
             "const c=pm.response.code;",
-            "pm.test('Report via /reviews/:id/report (201)',()=>pm.response.to.have.status(201));",
-            "console.log('✅ Review reported via /reviews/:id/report');"
+            "pm.test('Report via /reviews/:id/report (removed → 404)',()=>pm.response.to.have.status(404));",
+            "console.log('✅ /reviews/:id/report correctly 404 — route removed (BUG-010)');"
           ]}}]
         }
       ]

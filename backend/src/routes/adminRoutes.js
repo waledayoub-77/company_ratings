@@ -3,9 +3,10 @@ const router = express.Router();
 const adminController = require('../controllers/adminController');
 const { requireAuth } = require('../middlewares/authMiddleware');
 const { requireSystemAdmin } = require('../middlewares/roleMiddleware');
+const { reportLimiter } = require('../middlewares/rateLimiter'); // BUG-040 fix
 
 // ─── REPORTS (any authenticated user can submit) ──────────────────────────────
-router.post('/reports', requireAuth, adminController.submitReport);
+router.post('/reports', requireAuth, reportLimiter, adminController.submitReport);
 
 // ─── ADMIN: REPORTS ───────────────────────────────────────────────────────────
 router.get('/admin/reports', requireAuth, requireSystemAdmin, adminController.getReports);

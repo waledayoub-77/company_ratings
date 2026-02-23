@@ -171,6 +171,16 @@ const validateUuidParam = (paramName = 'id') => [
     .withMessage(`Invalid ${paramName}`),
 ];
 
+/**
+ * Validation rules for user suspension
+ */
+const validateSuspendUser = [
+  body('reason')
+    .optional()
+    .isLength({ max: 1000 })
+    .withMessage('Reason must be at most 1000 characters'),
+];
+
 module.exports = {
   validateRegister,
   validateLogin,
@@ -180,4 +190,5 @@ module.exports = {
   validateReportSubmission,
   validateReportResolution,
   validateUuidParam,
+  validateSuspendUser,
 };

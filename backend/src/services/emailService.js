@@ -84,6 +84,42 @@ function employmentRequestTemplate(adminName, employeeName, companyName) {
   `;
 }
 
+function accountSuspendedTemplate(name, reason) {
+  return `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px;">
+      <h2 style="color:#dc2626;">Account Suspended</h2>
+      <p>Hi <strong>${name || 'User'}</strong>,</p>
+      <p>Your RateHub account has been <strong>suspended</strong> by a system administrator.</p>
+      ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
+      <p>If you believe this is a mistake, please contact support.</p>
+      <p style="color:#888;font-size:13px;">— The RateHub Team</p>
+    </div>
+  `;
+}
+
+function accountUnsuspendedTemplate(name) {
+  return `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px;">
+      <h2 style="color:#16a34a;">Account Reactivated ✅</h2>
+      <p>Hi <strong>${name || 'User'}</strong>,</p>
+      <p>Your RateHub account has been <strong>reactivated</strong>. You can now log in and use the platform again.</p>
+      <p style="color:#888;font-size:13px;">— The RateHub Team</p>
+    </div>
+  `;
+}
+
+function reportResolutionTemplate(decision) {
+  return `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px;">
+      <h2 style="color:#4f46e5;">Report Update</h2>
+      <p>Your report has been reviewed by our moderation team.</p>
+      <p><strong>Decision:</strong> ${decision === 'remove' ? 'The review has been removed.' : 'After review, the reported content does not violate our guidelines.'}</p>
+      <p>Thank you for helping keep RateHub a trustworthy platform.</p>
+      <p style="color:#888;font-size:13px;">— The RateHub Team</p>
+    </div>
+  `;
+}
+
 // ─── SEND FUNCTIONS ───────────────────────────────────────────────────────────
 
 async function sendWelcomeEmail({ to, name }) {
@@ -138,6 +174,30 @@ async function sendEmploymentRequestEmail({ to, adminName, employeeName, company
   });
 }
 
+async function sendAccountSuspendedEmail({ to, name, reason }) {
+  return sendEmail({
+    to,
+    subject: 'Your RateHub account has been suspended',
+    html: accountSuspendedTemplate(name, reason),
+  });
+}
+
+async function sendAccountUnsuspendedEmail({ to, name }) {
+  return sendEmail({
+    to,
+    subject: 'Your RateHub account has been reactivated',
+    html: accountUnsuspendedTemplate(name),
+  });
+}
+
+async function sendReportResolutionEmail({ to, decision }) {
+  return sendEmail({
+    to,
+    subject: 'Your report has been reviewed — RateHub',
+    html: reportResolutionTemplate(decision),
+  });
+}
+
 module.exports = {
   sendWelcomeEmail,
   sendVerifyEmail,
@@ -145,4 +205,7 @@ module.exports = {
   sendEmploymentApprovedEmail,
   sendEmploymentRejectedEmail,
   sendEmploymentRequestEmail,
+  sendAccountSuspendedEmail,
+  sendAccountUnsuspendedEmail,
+  sendReportResolutionEmail,
 };

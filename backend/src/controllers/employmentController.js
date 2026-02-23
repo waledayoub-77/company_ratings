@@ -161,14 +161,25 @@ exports.approveEmployment = async (req, res) => {
     if (!adminUserId) return res.status(401).json({ message: "Unauthorized" });
     if (role !== "company_admin") return res.status(403).json({ message: "Company admin only" });
 
-    const { data: company, error: cErr } = await supabase
+    const { data: companies, error: cErr } = await supabase
       .from("companies")
       .select("id, name")
       .eq("user_id", adminUserId)
-      .is("deleted_at", null)
-      .single();
+      .is("deleted_at", null);
 
-    if (cErr || !company) return res.status(400).json({ message: "Company not found for admin" });
+    if (cErr || !companies || companies.length === 0) {
+      return res.status(400).json({ message: "No companies found for this admin" });
+    }
+
+    // Check which company this employment belongs to
+    const { data: employment } = await supabase
+      .from("employments")
+      .select("company_id")
+      .eq("id", employmentId)
+      .maybeSingle();
+
+    const company = companies.find(c => c.id === (employment && employment.company_id));
+    if (!company) return res.status(403).json({ message: "This employment does not belong to your company" });
 
     const result = await employmentService.updateEmploymentStatus({
       employmentId,
@@ -210,15 +221,18 @@ exports.listPendingEmployments = async (req, res) => {
     const supabase = require("../config/database");
     const userId = req.user.userId;
 
-    const { data: company, error: cErr } = await supabase
+    const { data: companies, error: cErr } = await supabase
       .from("companies")
       .select("id, name")
       .eq("user_id", userId)
-      .is("deleted_at", null)
-      .maybeSingle();
+      .is("deleted_at", null);
 
     if (cErr) throw cErr;
-    if (!company) return res.status(404).json({ message: "Company not found for this admin" });
+    if (!companies || companies.length === 0) {
+      return res.status(404).json({ message: "No companies found for this admin" });
+    }
+
+    const companyIds = companies.map((c) => c.id);
 
     const { data, error } = await supabase
       .from("employments")
@@ -235,7 +249,7 @@ exports.listPendingEmployments = async (req, res) => {
         created_at,
         employees:employee_id ( id, full_name )
       `)
-      .eq("company_id", company.id)
+      .in("company_id", companyIds)
       .eq("verification_status", "pending")
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
@@ -259,14 +273,24 @@ exports.rejectEmployment = async (req, res) => {
     if (!adminUserId) return res.status(401).json({ message: "Unauthorized" });
     if (role !== "company_admin") return res.status(403).json({ message: "Company admin only" });
 
-    const { data: company, error: cErr } = await supabase
+    const { data: companies, error: cErr } = await supabase
       .from("companies")
       .select("id, name")
       .eq("user_id", adminUserId)
-      .is("deleted_at", null)
-      .single();
+      .is("deleted_at", null);
 
-    if (cErr || !company) return res.status(400).json({ message: "Company not found for admin" });
+    if (cErr || !companies || companies.length === 0) {
+      return res.status(400).json({ message: "No companies found for this admin" });
+    }
+
+    const { data: empRecord } = await supabase
+      .from("employments")
+      .select("company_id")
+      .eq("id", employmentId)
+      .maybeSingle();
+
+    const company = companies.find(c => c.id === (empRecord && empRecord.company_id));
+    if (!company) return res.status(403).json({ message: "This employment does not belong to your company" });
 
     const result = await employmentService.updateEmploymentStatus({
       employmentId,

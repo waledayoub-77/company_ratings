@@ -85,7 +85,7 @@ const createReview = async (reviewData, userId) => {
   // Check duplicate review
   const isDuplicate = await checkDuplicateReview(employeeId, companyId);
   if (isDuplicate) {
-    throw new AppError('You have already reviewed this company', 400);
+    throw new AppError('You have already reviewed this company', 409);
   }
 
   // Get employment ID

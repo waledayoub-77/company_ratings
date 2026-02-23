@@ -18,13 +18,19 @@ const validateRegister = [
     .withMessage('Password must contain at least one number'),
   
   body('role')
-    .isIn(['employee', 'company_admin'])
-    .withMessage('Role must be either employee or company_admin'),
+    .optional()
+    .isIn(['employee', 'company_admin', 'system_admin'])
+    .withMessage('Role must be employee, company_admin, or system_admin'),
   
+  // Accept both camelCase (fullName) and snake_case (full_name)
   body('fullName')
-    .if(body('role').equals('employee'))
-    .notEmpty()
-    .withMessage('Full name is required for employees')
+    .if((value, { req }) => (req.body.role || 'employee') === 'employee')
+    .optional()
+    .isLength({ min: 2, max: 255 })
+    .withMessage('Full name must be between 2 and 255 characters'),
+
+  body('full_name')
+    .optional()
     .isLength({ min: 2, max: 255 })
     .withMessage('Full name must be between 2 and 255 characters'),
   

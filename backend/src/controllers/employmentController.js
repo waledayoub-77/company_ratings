@@ -1,5 +1,10 @@
 const supabase = require("../config/database");
 const employmentService = require("../services/employmentService");
+const {
+  sendEmploymentRequestEmail,
+  sendEmploymentApprovedEmail,
+  sendEmploymentRejectedEmail
+} = require("../services/emailService");
 
 // POST /api/employments/request
 exports.requestEmployment = async (req, res) => {
@@ -32,6 +37,25 @@ exports.requestEmployment = async (req, res) => {
     });
 
     if (result.error) return res.status(400).json({ message: result.error });
+
+    // Send email notification to company admin (non-blocking)
+    try {
+      const [{ data: empProfile }, { data: companyData }] = await Promise.all([
+        supabase.from("employees").select("full_name").eq("id", employee.id).single(),
+        supabase.from("companies").select("name, user_id").eq("id", companyId).single()
+      ]);
+      if (companyData?.user_id) {
+        const { data: adminUser } = await supabase.from("users").select("email, full_name").eq("id", companyData.user_id).single();
+        if (adminUser) {
+          await sendEmploymentRequestEmail({
+            to: adminUser.email,
+            adminName: adminUser.full_name,
+            employeeName: empProfile?.full_name || "An employee",
+            companyName: companyData.name
+          });
+        }
+      }
+    } catch (_) {}
 
     return res.status(201).json({ data: result.data });
   } catch (e) {
@@ -137,14 +161,25 @@ exports.approveEmployment = async (req, res) => {
     if (!adminUserId) return res.status(401).json({ message: "Unauthorized" });
     if (role !== "company_admin") return res.status(403).json({ message: "Company admin only" });
 
-    const { data: company, error: cErr } = await supabase
+    const { data: companies, error: cErr } = await supabase
       .from("companies")
-      .select("id")
+      .select("id, name")
       .eq("user_id", adminUserId)
-      .is("deleted_at", null)
-      .single();
+      .is("deleted_at", null);
 
-    if (cErr || !company) return res.status(400).json({ message: "Company not found for admin" });
+    if (cErr || !companies || companies.length === 0) {
+      return res.status(400).json({ message: "No companies found for this admin" });
+    }
+
+    // Check which company this employment belongs to
+    const { data: employment } = await supabase
+      .from("employments")
+      .select("company_id")
+      .eq("id", employmentId)
+      .maybeSingle();
+
+    const company = companies.find(c => c.id === (employment && employment.company_id));
+    if (!company) return res.status(403).json({ message: "This employment does not belong to your company" });
 
     const result = await employmentService.updateEmploymentStatus({
       employmentId,
@@ -154,6 +189,22 @@ exports.approveEmployment = async (req, res) => {
     });
 
     if (result.error) return res.status(400).json({ message: result.error });
+
+    // Send approval email to employee (non-blocking)
+    try {
+      const { data: empData } = await supabase.from("employees").select("full_name, user_id").eq("id", result.data.employee_id).single();
+      if (empData?.user_id) {
+        const { data: empUser } = await supabase.from("users").select("email").eq("id", empData.user_id).single();
+        if (empUser) {
+          await sendEmploymentApprovedEmail({
+            to: empUser.email,
+            name: empData.full_name,
+            companyName: company.name
+          });
+        }
+      }
+    } catch (_) {}
+
     return res.json({ data: result.data });
   } catch (e) {
     console.error("approveEmployment error:", e);
@@ -170,14 +221,18 @@ exports.listPendingEmployments = async (req, res) => {
     const supabase = require("../config/database");
     const userId = req.user.userId;
 
-    const { data: company, error: cErr } = await supabase
+    const { data: companies, error: cErr } = await supabase
       .from("companies")
       .select("id, name")
       .eq("user_id", userId)
-      .maybeSingle();
+      .is("deleted_at", null);
 
     if (cErr) throw cErr;
-    if (!company) return res.status(404).json({ message: "Company not found for this admin" });
+    if (!companies || companies.length === 0) {
+      return res.status(404).json({ message: "No companies found for this admin" });
+    }
+
+    const companyIds = companies.map((c) => c.id);
 
     const { data, error } = await supabase
       .from("employments")
@@ -194,7 +249,7 @@ exports.listPendingEmployments = async (req, res) => {
         created_at,
         employees:employee_id ( id, full_name )
       `)
-      .eq("company_id", company.id)
+      .in("company_id", companyIds)
       .eq("verification_status", "pending")
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
@@ -218,14 +273,24 @@ exports.rejectEmployment = async (req, res) => {
     if (!adminUserId) return res.status(401).json({ message: "Unauthorized" });
     if (role !== "company_admin") return res.status(403).json({ message: "Company admin only" });
 
-    const { data: company, error: cErr } = await supabase
+    const { data: companies, error: cErr } = await supabase
       .from("companies")
-      .select("id")
+      .select("id, name")
       .eq("user_id", adminUserId)
-      .is("deleted_at", null)
-      .single();
+      .is("deleted_at", null);
 
-    if (cErr || !company) return res.status(400).json({ message: "Company not found for admin" });
+    if (cErr || !companies || companies.length === 0) {
+      return res.status(400).json({ message: "No companies found for this admin" });
+    }
+
+    const { data: empRecord } = await supabase
+      .from("employments")
+      .select("company_id")
+      .eq("id", employmentId)
+      .maybeSingle();
+
+    const company = companies.find(c => c.id === (empRecord && empRecord.company_id));
+    if (!company) return res.status(403).json({ message: "This employment does not belong to your company" });
 
     const result = await employmentService.updateEmploymentStatus({
       employmentId,
@@ -236,6 +301,23 @@ exports.rejectEmployment = async (req, res) => {
     });
 
     if (result.error) return res.status(400).json({ message: result.error });
+
+    // Send rejection email to employee (non-blocking)
+    try {
+      const { data: empData } = await supabase.from("employees").select("full_name, user_id").eq("id", result.data.employee_id).single();
+      if (empData?.user_id) {
+        const { data: empUser } = await supabase.from("users").select("email").eq("id", empData.user_id).single();
+        if (empUser) {
+          await sendEmploymentRejectedEmail({
+            to: empUser.email,
+            name: empData.full_name,
+            companyName: company.name,
+            reason: rejectionNote || null
+          });
+        }
+      }
+    } catch (_) {}
+
     return res.json({ data: result.data });
   } catch (e) {
     console.error("rejectEmployment error:", e);
@@ -243,38 +325,4 @@ exports.rejectEmployment = async (req, res) => {
   }
 };
 
-// PATCH /api/employments/:id/reject
-exports.rejectEmployment = async (req, res) => {
-  try {
-    const adminUserId = req.user?.userId;
-    const role = req.user?.role;
-    const employmentId = req.params.id;
-    const { rejectionNote } = req.body;
-
-    if (!adminUserId) return res.status(401).json({ message: "Unauthorized" });
-    if (role !== "company_admin") return res.status(403).json({ message: "Company admin only" });
-
-    const { data: company, error: cErr } = await supabase
-      .from("companies")
-      .select("id")
-      .eq("user_id", adminUserId)
-      .is("deleted_at", null)
-      .single();
-
-    if (cErr || !company) return res.status(400).json({ message: "Company not found for admin" });
-
-    const result = await employmentService.updateEmploymentStatus({
-      employmentId,
-      companyId: company.id,
-      adminUserId,
-      status: "rejected",
-      rejectionNote
-    });
-
-    if (result.error) return res.status(400).json({ message: result.error });
-    return res.json({ data: result.data });
-  } catch (e) {
-  console.error("requestEmployment error:", e);
-  return res.status(500).json({ message: "Server error" });
-}
-};
+// PATCH /api/employments/:id/reject — defined above, duplicate removed

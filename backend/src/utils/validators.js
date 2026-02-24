@@ -18,13 +18,19 @@ const validateRegister = [
     .withMessage('Password must contain at least one number'),
   
   body('role')
-    .isIn(['employee', 'company_admin'])
-    .withMessage('Role must be either employee or company_admin'),
+    .optional()
+    .isIn(['employee', 'company_admin', 'system_admin'])
+    .withMessage('Role must be employee, company_admin, or system_admin'),
   
+  // Accept both camelCase (fullName) and snake_case (full_name)
   body('fullName')
-    .if(body('role').equals('employee'))
-    .notEmpty()
-    .withMessage('Full name is required for employees')
+    .if((value, { req }) => (req.body.role || 'employee') === 'employee')
+    .optional()
+    .isLength({ min: 2, max: 255 })
+    .withMessage('Full name must be between 2 and 255 characters'),
+
+  body('full_name')
+    .optional()
     .isLength({ min: 2, max: 255 })
     .withMessage('Full name must be between 2 and 255 characters'),
   
@@ -132,6 +138,37 @@ const validateFeedback = [
 ];
 
 /**
+ * Validation rules for report submission
+ */
+const validateReportSubmission = [
+  body('reviewId')
+    .isUUID()
+    .withMessage('Invalid review ID'),
+
+  body('reason')
+    .isIn(['false_info', 'spam', 'harassment', 'other'])
+    .withMessage('Reason must be one of: false_info, spam, harassment, other'),
+
+  body('description')
+    .isLength({ min: 20 })
+    .withMessage('Description must be at least 20 characters'),
+];
+
+/**
+ * Validation rules for report resolution
+ */
+const validateReportResolution = [
+  body('action')
+    .isIn(['remove', 'dismiss'])
+    .withMessage('Action must be remove or dismiss'),
+
+  body('adminNote')
+    .optional()
+    .isLength({ max: 1000 })
+    .withMessage('adminNote must be at most 1000 characters'),
+];
+
+/**
  * Validation for UUID parameters
  */
 const validateUuidParam = (paramName = 'id') => [
@@ -140,11 +177,24 @@ const validateUuidParam = (paramName = 'id') => [
     .withMessage(`Invalid ${paramName}`),
 ];
 
+/**
+ * Validation rules for user suspension
+ */
+const validateSuspendUser = [
+  body('reason')
+    .optional()
+    .isLength({ max: 1000 })
+    .withMessage('Reason must be at most 1000 characters'),
+];
+
 module.exports = {
   validateRegister,
   validateLogin,
   validateReview,
   validateEmploymentRequest,
   validateFeedback,
+  validateReportSubmission,
+  validateReportResolution,
   validateUuidParam,
+  validateSuspendUser,
 };

@@ -1,27 +1,38 @@
-const nodemailer = require('nodemailer');
-const config = require('./env');
+const { Resend } = require('resend');
 
-// Create email transporter
-const transporter = nodemailer.createTransport({
-  host: config.email.host,
-  port: config.email.port,
-  secure: false, // true for 465, false for other ports
-  auth: {
-    user: config.email.user,
-    pass: config.email.password,
-  },
-});
+// Make Resend optional - if no API key, email won't work but app will still run
+const resendApiKey = process.env.RESEND_API_KEY || 'dummy-key-for-testing';
+const resend = new Resend(resendApiKey);
+const EMAIL_FROM = process.env.EMAIL_FROM || 'RateHub <onboarding@resend.dev>';
 
-// Test email connection
-const testEmailConnection = async () => {
-  try {
-    await transporter.verify();
-    console.log('✅ Email service ready');
-    return true;
-  } catch (error) {
-    console.warn('⚠️  Email service not configured:', error.message);
-    return false;
+/**
+ * Send an email via Resend
+ * @param {object} options
+ * @param {string} options.to
+ * @param {string} options.subject
+ * @param {string} options.html
+ */
+const sendEmail = async ({ to, subject, html }) => {
+  // Skip email if no real API key configured
+  if (!process.env.RESEND_API_KEY) {
+    console.log('⚠️  Email sending skipped (no RESEND_API_KEY):', { to, subject });
+    return { id: 'test-email-id', message: 'Email skipped in development' };
   }
+
+  const { data, error } = await resend.emails.send({
+    from: EMAIL_FROM,
+    to,
+    subject,
+    html,
+  });
+
+  if (error) {
+    console.error('❌ Email send failed:', error);
+    throw new Error(error.message);
+  }
+
+  console.log('✅ Email sent:', data.id);
+  return data;
 };
 
-module.exports = { transporter, testEmailConnection };
+module.exports = { sendEmail };

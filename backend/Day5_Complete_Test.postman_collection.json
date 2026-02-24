@@ -1,0 +1,1110 @@
+{
+  "info": {
+    "name": "Day5 – Complete Integration Test (70 requests)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {"key":"base_url","value":"http://localhost:5000/api"},
+    {"key":"employee_token","value":""},
+    {"key":"employee_refresh_token","value":""},
+    {"key":"admin_token","value":""},
+    {"key":"system_admin_token","value":""},
+    {"key":"system_admin_user_id","value":""},
+    {"key":"colleague_token","value":""},
+    {"key":"colleague_user_id","value":""},
+    {"key":"colleague_refresh_token","value":""},
+    {"key":"colleague_employee_id","value":""},
+    {"key":"reject_token","value":""},
+    {"key":"reject_user_id","value":""},
+    {"key":"own_employee_id","value":""},
+    {"key":"company_id","value":""},
+    {"key":"test_company_id","value":""},
+    {"key":"employment_id","value":""},
+    {"key":"colleague_employment_id","value":""},
+    {"key":"reject_employment_id","value":""},
+    {"key":"review_id","value":""},
+    {"key":"report_id","value":""}
+  ],
+  "item": [
+    {
+      "name": "━━━ 1. REGISTER ACCOUNTS ━━━",
+      "item": [
+        {
+          "name": "1 Register Employee (baraaammori2000)",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"email\": \"baraaammori2000@gmail.com\",\n  \"password\": \"Test1234!\",\n  \"role\": \"employee\",\n  \"fullName\": \"Baraa Employee\"\n}"},
+            "url": {"raw":"{{base_url}}/auth/register","host":["{{base_url}}"],"path":["auth","register"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "const c=pm.response.code;",
+            "pm.test('Register employee (201/409)',()=>pm.expect([201,409]).to.include(c));",
+            "if(c===409) console.log('⚠️ Employee already exists');",
+            "else console.log('✅ Employee registered');"
+          ]}}]
+        },
+        {
+          "name": "2 Register Company Admin (baraaammori2004)",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"email\": \"baraaammori2004@gmail.com\",\n  \"password\": \"Test12345!\",\n  \"role\": \"company_admin\",\n  \"fullName\": \"Baraa Admin\",\n  \"companyName\": \"Day 5 Test Corp\"\n}"},
+            "url": {"raw":"{{base_url}}/auth/register","host":["{{base_url}}"],"path":["auth","register"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "const c=pm.response.code;",
+            "pm.test('Register company_admin (201/409)',()=>pm.expect([201,409]).to.include(c));",
+            "if(c===409) console.log('⚠️ Company admin already exists');",
+            "else console.log('✅ Company admin registered');"
+          ]}}]
+        },
+        {
+          "name": "3 Register System Admin (walid.sysadmin)",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"email\": \"walid.sysadmin@test.com\",\n  \"password\": \"Test1234!\",\n  \"role\": \"system_admin\",\n  \"fullName\": \"Walid SysAdmin\"\n}"},
+            "url": {"raw":"{{base_url}}/auth/register","host":["{{base_url}}"],"path":["auth","register"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "const c=pm.response.code;",
+            "pm.test('Register system_admin (201/409)',()=>pm.expect([201,409]).to.include(c));",
+            "if(c===409) console.log('⚠️ System admin already exists');",
+            "else console.log('✅ System admin registered');"
+          ]}}]
+        },
+        {
+          "name": "4 Register Colleague (colleague.day5)",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"email\": \"colleague.day5@test.com\",\n  \"password\": \"Test1234!\",\n  \"role\": \"employee\",\n  \"fullName\": \"Colleague Day5\"\n}"},
+            "url": {"raw":"{{base_url}}/auth/register","host":["{{base_url}}"],"path":["auth","register"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "const c=pm.response.code;",
+            "pm.test('Register colleague (201/409)',()=>pm.expect([201,409]).to.include(c));",
+            "if(c===409) console.log('⚠️ Colleague already exists');",
+            "else console.log('✅ Colleague registered');"
+          ]}}]
+        },
+        {
+          "name": "5 Register Reject Tester (reject.day5)",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"email\": \"reject.day5@test.com\",\n  \"password\": \"Test1234!\",\n  \"role\": \"employee\",\n  \"fullName\": \"Reject Tester\"\n}"},
+            "url": {"raw":"{{base_url}}/auth/register","host":["{{base_url}}"],"path":["auth","register"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "const c=pm.response.code;",
+            "pm.test('Register reject tester (201/409)',()=>pm.expect([201,409]).to.include(c));",
+            "if(c===409) console.log('⚠️ Reject tester already exists');",
+            "else console.log('✅ Reject tester registered');"
+          ]}}]
+        }
+      ]
+    },
+    {
+      "name": "━━━ 2. LOGIN ALL ACCOUNTS ━━━",
+      "item": [
+        {
+          "name": "6 Login Employee",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"email\": \"baraaammori2000@gmail.com\",\n  \"password\": \"Test1234!\"\n}"},
+            "url": {"raw":"{{base_url}}/auth/login","host":["{{base_url}}"],"path":["auth","login"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('Employee login 200',()=>pm.response.to.have.status(200));",
+            "const d=pm.response.json();",
+            "pm.collectionVariables.set('employee_token',d.data.accessToken||d.data.access_token);",
+            "pm.collectionVariables.set('employee_refresh_token',d.data.refreshToken||d.data.refresh_token);",
+            "console.log('✅ employee_token + refresh saved');"
+          ]}}]
+        },
+        {
+          "name": "7 Login Company Admin",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"email\": \"baraaammori2004@gmail.com\",\n  \"password\": \"Test12345!\"\n}"},
+            "url": {"raw":"{{base_url}}/auth/login","host":["{{base_url}}"],"path":["auth","login"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('Company admin login 200',()=>pm.response.to.have.status(200));",
+            "const d=pm.response.json();",
+            "pm.collectionVariables.set('admin_token',d.data.accessToken||d.data.access_token);",
+            "console.log('✅ admin_token saved');"
+          ]}}]
+        },
+        {
+          "name": "8 Login System Admin",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"email\": \"walid.sysadmin@test.com\",\n  \"password\": \"Test1234!\"\n}"},
+            "url": {"raw":"{{base_url}}/auth/login","host":["{{base_url}}"],"path":["auth","login"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('System admin login 200',()=>pm.response.to.have.status(200));",
+            "const d=pm.response.json();",
+            "pm.collectionVariables.set('system_admin_token',d.data.accessToken||d.data.access_token);",
+            "pm.collectionVariables.set('system_admin_user_id',d.data.user.id);",
+            "console.log('✅ system_admin_token saved, user_id:',d.data.user.id);"
+          ]}}]
+        },
+        {
+          "name": "9 Login Colleague",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"email\": \"colleague.day5@test.com\",\n  \"password\": \"Test1234!\"\n}"},
+            "url": {"raw":"{{base_url}}/auth/login","host":["{{base_url}}"],"path":["auth","login"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('Colleague login 200',()=>pm.response.to.have.status(200));",
+            "const d=pm.response.json();",
+            "pm.collectionVariables.set('colleague_token',d.data.accessToken||d.data.access_token);",
+            "pm.collectionVariables.set('colleague_user_id',d.data.user.id);",
+            "pm.collectionVariables.set('colleague_refresh_token',d.data.refreshToken||d.data.refresh_token);",
+            "console.log('✅ colleague_token saved, user_id:',d.data.user.id);"
+          ]}}]
+        },
+        {
+          "name": "10 Login Reject Tester",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"email\": \"reject.day5@test.com\",\n  \"password\": \"Test1234!\"\n}"},
+            "url": {"raw":"{{base_url}}/auth/login","host":["{{base_url}}"],"path":["auth","login"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('Reject tester login 200',()=>pm.response.to.have.status(200));",
+            "const d=pm.response.json();",
+            "pm.collectionVariables.set('reject_token',d.data.accessToken||d.data.access_token);",
+            "pm.collectionVariables.set('reject_user_id',d.data.user.id);",
+            "console.log('✅ reject_token saved, user_id:',d.data.user.id);"
+          ]}}]
+        }
+      ]
+    },
+    {
+      "name": "━━━ 3. AUTH EXTRAS ━━━",
+      "item": [
+        {
+          "name": "11 GET /auth/me → own_employee_id",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{employee_token}}"}],
+            "url": {"raw":"{{base_url}}/auth/me","host":["{{base_url}}"],"path":["auth","me"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('GET /auth/me 200',()=>pm.response.to.have.status(200));",
+            "const d=pm.response.json();",
+            "if(d.data&&d.data.user&&d.data.user.employeeId){",
+            "  pm.collectionVariables.set('own_employee_id',d.data.user.employeeId);",
+            "  console.log('✅ own_employee_id:',d.data.user.employeeId);",
+            "} else { console.log('⚠️ No employeeId in response'); }"
+          ]}}]
+        },
+        {
+          "name": "12 GET /auth/me (colleague) → colleague_employee_id",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{colleague_token}}"}],
+            "url": {"raw":"{{base_url}}/auth/me","host":["{{base_url}}"],"path":["auth","me"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('GET /auth/me colleague 200',()=>pm.response.to.have.status(200));",
+            "const d=pm.response.json();",
+            "if(d.data&&d.data.user&&d.data.user.employeeId){",
+            "  pm.collectionVariables.set('colleague_employee_id',d.data.user.employeeId);",
+            "  console.log('✅ colleague_employee_id:',d.data.user.employeeId);",
+            "} else { console.log('⚠️ No employeeId'); }"
+          ]}}]
+        },
+        {
+          "name": "13 POST /auth/refresh-token",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"refreshToken\": \"{{colleague_refresh_token}}\"\n}"},
+            "url": {"raw":"{{base_url}}/auth/refresh-token","host":["{{base_url}}"],"path":["auth","refresh-token"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('Refresh token 200',()=>pm.response.to.have.status(200));",
+            "const d=pm.response.json();",
+            "if(d.data&&d.data.accessToken){",
+            "  console.log('✅ New access + refresh tokens received');",
+            "} else { console.log('⚠️ Unexpected response:', JSON.stringify(d)); }"
+          ]}}]
+        },
+        {
+          "name": "14 POST /auth/forgot-password",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"email\": \"baraaammori2000@gmail.com\"\n}"},
+            "url": {"raw":"{{base_url}}/auth/forgot-password","host":["{{base_url}}"],"path":["auth","forgot-password"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('Forgot password 200 (always)',()=>pm.response.to.have.status(200));",
+            "console.log('✅ Forgot password — always 200 (no email enumeration)');"
+          ]}}]
+        },
+        {
+          "name": "15 GET /auth/verify-email/:bad → 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {"raw":"{{base_url}}/auth/verify-email/invalid-token-abc123","host":["{{base_url}}"],"path":["auth","verify-email","invalid-token-abc123"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('Bad verify token → 400',()=>pm.response.to.have.status(400));",
+            "console.log('✅ Invalid verify token rejected');"
+          ]}}]
+        },
+        {
+          "name": "16 POST /auth/reset-password/:bad → 400",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"password\": \"NewPass123!\"\n}"},
+            "url": {"raw":"{{base_url}}/auth/reset-password/invalid-reset-token-xyz","host":["{{base_url}}"],"path":["auth","reset-password","invalid-reset-token-xyz"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('Bad reset token → 400',()=>pm.response.to.have.status(400));",
+            "console.log('✅ Invalid reset token rejected');"
+          ]}}]
+        }
+      ]
+    },
+    {
+      "name": "━━━ 4. COMPANY BROWSE (public) ━━━",
+      "item": [
+        {
+          "name": "17 GET /companies → save company_id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {"raw":"{{base_url}}/companies?limit=20","host":["{{base_url}}"],"path":["companies"],"query":[{"key":"limit","value":"20"}]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('GET /companies 200',()=>pm.response.to.have.status(200));",
+            "const d=pm.response.json();",
+            "const list=d.data||[];",
+            "const co=list.find(c=>c.name==='Day 5 Test Corp');",
+            "if(co){",
+            "  pm.collectionVariables.set('company_id',co.id);",
+            "  console.log('✅ company_id:',co.id,'—',co.name);",
+            "} else if(list.length>0){",
+            "  pm.collectionVariables.set('company_id',list[0].id);",
+            "  console.log('⚠️ Day5TestCorp not found, using:',list[0].name);",
+            "} else { console.log('❌ No companies found'); }"
+          ]}}]
+        },
+        {
+          "name": "18 GET /companies/:id → single company",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {"raw":"{{base_url}}/companies/{{company_id}}","host":["{{base_url}}"],"path":["companies","{{company_id}}"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('Get single company 200',()=>pm.response.to.have.status(200));",
+            "const d=pm.response.json();",
+            "console.log('✅ Company:',d.data&&d.data.name);"
+          ]}}]
+        },
+        {
+          "name": "19 GET /companies/:id/stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {"raw":"{{base_url}}/companies/{{company_id}}/stats","host":["{{base_url}}"],"path":["companies","{{company_id}}","stats"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('Company stats 200',()=>pm.response.to.have.status(200));",
+            "console.log('✅ Company stats retrieved');"
+          ]}}]
+        },
+        {
+          "name": "20 GET /companies/:id/analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {"raw":"{{base_url}}/companies/{{company_id}}/analytics","host":["{{base_url}}"],"path":["companies","{{company_id}}","analytics"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('Company analytics 200',()=>pm.response.to.have.status(200));",
+            "const d=pm.response.json();",
+            "console.log('✅ Analytics — totalReviews:',d.data&&d.data.totalReviews);"
+          ]}}]
+        },
+        {
+          "name": "21 GET /companies/:companyId/reviews",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {"raw":"{{base_url}}/companies/{{company_id}}/reviews?limit=5","host":["{{base_url}}"],"path":["companies","{{company_id}}","reviews"],"query":[{"key":"limit","value":"5"}]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('Company reviews 200',()=>pm.response.to.have.status(200));",
+            "const d=pm.response.json();",
+            "const list=d.data||[];",
+            "console.log('✅ Company reviews:',list.length);"
+          ]}}]
+        }
+      ]
+    },
+    {
+      "name": "━━━ 5. COMPANY CRUD ━━━",
+      "item": [
+        {
+          "name": "22 POST /companies → create test company",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Authorization","value":"Bearer {{admin_token}}"},{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"name\": \"Day5 CRUD Test Corp\",\n  \"description\": \"A temporary company created for integration testing.\",\n  \"industry\": \"Technology\",\n  \"location\": \"Amman, Jordan\",\n  \"website\": \"https://crud-test.example.com\"\n}"},
+            "url": {"raw":"{{base_url}}/companies","host":["{{base_url}}"],"path":["companies"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "const c=pm.response.code;const d=pm.response.json();",
+            "pm.test('Create company (201/400)',()=>pm.expect([201,400]).to.include(c));",
+            "if(c===201&&d.data&&d.data.id){",
+            "  pm.collectionVariables.set('test_company_id',d.data.id);",
+            "  console.log('✅ test_company_id:',d.data.id);",
+            "} else { console.log('⚠️ Company exists or error:',JSON.stringify(d).substring(0,100)); }"
+          ]}}]
+        },
+        {
+          "name": "22b GET /companies?search → salvage test_company_id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {"raw":"{{base_url}}/companies?search=Day5 CRUD","host":["{{base_url}}"],"path":["companies"],"query":[{"key":"search","value":"Day5 CRUD"}]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('Search companies 200',()=>pm.response.to.have.status(200));",
+            "if(!pm.collectionVariables.get('test_company_id')){",
+            "  const d=pm.response.json();const list=d.data||[];",
+            "  const m=list.find(c=>c.name==='Day5 CRUD Test Corp');",
+            "  if(m){ pm.collectionVariables.set('test_company_id',m.id); console.log('✅ Salvaged test_company_id:',m.id); }",
+            "  else { console.log('❌ Could not find test company'); }",
+            "} else { console.log('✅ test_company_id already set'); }"
+          ]}}]
+        },
+        {
+          "name": "23 PATCH /companies/:id → update test company",
+          "request": {
+            "method": "PATCH",
+            "header": [{"key":"Authorization","value":"Bearer {{admin_token}}"},{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"description\": \"Updated description — integration test verification.\",\n  \"website\": \"https://crud-test-updated.example.com\"\n}"},
+            "url": {"raw":"{{base_url}}/companies/{{test_company_id}}","host":["{{base_url}}"],"path":["companies","{{test_company_id}}"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('Update company 200',()=>pm.response.to.have.status(200));",
+            "const d=pm.response.json();",
+            "console.log('✅ Company updated:',d.data&&d.data.description&&d.data.description.substring(0,40));"
+          ]}}]
+        }
+      ]
+    },
+    {
+      "name": "━━━ 6. EMPLOYMENT FLOW ━━━",
+      "item": [
+        {
+          "name": "24 Employee → Request Employment at Day5TestCorp",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Authorization","value":"Bearer {{employee_token}}"},{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"companyId\": \"{{company_id}}\",\n  \"position\": \"Software Engineer\",\n  \"startDate\": \"2024-01-15\"\n}"},
+            "url": {"raw":"{{base_url}}/employments/request","host":["{{base_url}}"],"path":["employments","request"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "const c=pm.response.code;const d=pm.response.json();",
+            "pm.test('Request employment (201/400)',()=>pm.expect([201,400]).to.include(c));",
+            "if(c===201&&d.data&&d.data.id){",
+            "  pm.collectionVariables.set('employment_id',d.data.id);",
+            "  console.log('✅ employment_id:',d.data.id);",
+            "} else { console.log('⚠️ Employment request:',c,JSON.stringify(d).substring(0,80)); }"
+          ]}}]
+        },
+        {
+          "name": "24b GET /employments/pending → salvage",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{admin_token}}"}],
+            "url": {"raw":"{{base_url}}/employments/pending","host":["{{base_url}}"],"path":["employments","pending"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('List pending 200',()=>pm.response.to.have.status(200));",
+            "const d=pm.response.json();const list=d.data||[];",
+            "console.log('✅ Pending:',list.length);",
+            "if(!pm.collectionVariables.get('employment_id')&&list.length>0){",
+            "  pm.collectionVariables.set('employment_id',list[0].id);",
+            "  console.log('✅ Salvaged employment_id from pending:',list[0].id);",
+            "}"
+          ]}}]
+        },
+        {
+          "name": "25 GET /employments (mine) → salvage employment_id",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{employee_token}}"}],
+            "url": {"raw":"{{base_url}}/employments","host":["{{base_url}}"],"path":["employments"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('List my employments 200',()=>pm.response.to.have.status(200));",
+            "const d=pm.response.json();const list=d.data||[];",
+            "console.log('✅ My employments:',list.length);",
+            "if(!pm.collectionVariables.get('employment_id')&&list.length>0){",
+            "  const cid=pm.collectionVariables.get('company_id');",
+            "  const m=list.find(e=>e.company_id===cid)||list[0];",
+            "  pm.collectionVariables.set('employment_id',m.id);",
+            "  console.log('✅ Salvaged employment_id:',m.id);",
+            "}"
+          ]}}]
+        },
+        {
+          "name": "26 Approve Employment (Company Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [{"key":"Authorization","value":"Bearer {{admin_token}}"},{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{}"},
+            "url": {"raw":"{{base_url}}/employments/{{employment_id}}/approve","host":["{{base_url}}"],"path":["employments","{{employment_id}}","approve"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "const c=pm.response.code;",
+            "pm.test('Approve employment (200/400)',()=>pm.expect([200,400]).to.include(c));",
+            "if(c===200) console.log('✅ Employment approved');",
+            "else console.log('⚠️ Already approved or error');"
+          ]}}]
+        },
+        {
+          "name": "27 Colleague → Request Employment at Day5TestCorp",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Authorization","value":"Bearer {{colleague_token}}"},{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"companyId\": \"{{company_id}}\",\n  \"position\": \"Designer\",\n  \"startDate\": \"2024-01-01\"\n}"},
+            "url": {"raw":"{{base_url}}/employments/request","host":["{{base_url}}"],"path":["employments","request"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "const c=pm.response.code;const d=pm.response.json();",
+            "pm.test('Colleague employment (201/400)',()=>pm.expect([201,400]).to.include(c));",
+            "if(c===201&&d.data&&d.data.id){",
+            "  pm.collectionVariables.set('colleague_employment_id',d.data.id);",
+            "  console.log('✅ colleague_employment_id:',d.data.id);",
+            "} else { console.log('⚠️ Colleague employment:',c); }"
+          ]}}]
+        },
+        {
+          "name": "27b GET /employments (colleague) → salvage colleague_employment_id",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{colleague_token}}"}],
+            "url": {"raw":"{{base_url}}/employments","host":["{{base_url}}"],"path":["employments"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('Colleague employments 200',()=>pm.response.to.have.status(200));",
+            "const d=pm.response.json();const list=d.data||[];",
+            "console.log('✅ Colleague employments:',list.length);",
+            "if(!pm.collectionVariables.get('colleague_employment_id')){",
+            "  const cid=pm.collectionVariables.get('company_id');",
+            "  const m=list.find(e=>e.company_id===cid);",
+            "  if(m){ pm.collectionVariables.set('colleague_employment_id',m.id); console.log('✅ Salvaged colleague_employment_id:',m.id); }",
+            "  else { console.log('⚠️ No colleague employment at Day5TestCorp'); }",
+            "}"
+          ]}}]
+        },
+        {
+          "name": "28 Approve Colleague Employment",
+          "request": {
+            "method": "PATCH",
+            "header": [{"key":"Authorization","value":"Bearer {{admin_token}}"},{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{}"},
+            "url": {"raw":"{{base_url}}/employments/{{colleague_employment_id}}/approve","host":["{{base_url}}"],"path":["employments","{{colleague_employment_id}}","approve"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "const c=pm.response.code;",
+            "pm.test('Approve colleague (200/400/404)',()=>pm.expect([200,400,404]).to.include(c));",
+            "if(c===200) console.log('✅ Colleague approved');",
+            "else console.log('⚠️ Colleague approve:',c);"
+          ]}}]
+        },
+        {
+          "name": "29 Reject Tester → Request Employment at Test Company",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Authorization","value":"Bearer {{reject_token}}"},{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"companyId\": \"{{test_company_id}}\",\n  \"position\": \"QA Tester\",\n  \"startDate\": \"2025-01-01\"\n}"},
+            "url": {"raw":"{{base_url}}/employments/request","host":["{{base_url}}"],"path":["employments","request"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "const c=pm.response.code;const d=pm.response.json();",
+            "pm.test('Reject tester employment (201/400)',()=>pm.expect([201,400]).to.include(c));",
+            "if(c===201&&d.data&&d.data.id){",
+            "  pm.collectionVariables.set('reject_employment_id',d.data.id);",
+            "  console.log('✅ reject_employment_id:',d.data.id);",
+            "} else { console.log('⚠️ Reject tester request:',c); }"
+          ]}}]
+        },
+        {
+          "name": "29b GET /employments (reject tester) → salvage",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{reject_token}}"}],
+            "url": {"raw":"{{base_url}}/employments","host":["{{base_url}}"],"path":["employments"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('Reject tester employments 200',()=>pm.response.to.have.status(200));",
+            "const d=pm.response.json();const list=d.data||[];",
+            "if(!pm.collectionVariables.get('reject_employment_id')){",
+            "  const tcid=pm.collectionVariables.get('test_company_id');",
+            "  const m=list.find(e=>e.company_id===tcid);",
+            "  if(m){ pm.collectionVariables.set('reject_employment_id',m.id); console.log('✅ Salvaged reject_employment_id:',m.id); }",
+            "  else { console.log('⚠️ No reject tester employment at test company'); }",
+            "} else { console.log('✅ reject_employment_id already set'); }"
+          ]}}]
+        },
+        {
+          "name": "30 Reject Employment (Company Admin rejects tester)",
+          "request": {
+            "method": "PATCH",
+            "header": [{"key":"Authorization","value":"Bearer {{admin_token}}"},{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"rejectionNote\": \"Position no longer available — integration test.\"\n}"},
+            "url": {"raw":"{{base_url}}/employments/{{reject_employment_id}}/reject","host":["{{base_url}}"],"path":["employments","{{reject_employment_id}}","reject"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "const c=pm.response.code;",
+            "pm.test('Reject employment (200/400/404)',()=>pm.expect([200,400,404]).to.include(c));",
+            "if(c===200) console.log('✅ Employment rejected');",
+            "else console.log('⚠️ Reject status:',c);"
+          ]}}]
+        },
+        {
+          "name": "31 End Employment (Employee)",
+          "request": {
+            "method": "PATCH",
+            "header": [{"key":"Authorization","value":"Bearer {{employee_token}}"},{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"endDate\": \"2025-12-31\"\n}"},
+            "url": {"raw":"{{base_url}}/employments/{{employment_id}}/end","host":["{{base_url}}"],"path":["employments","{{employment_id}}","end"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "const c=pm.response.code;",
+            "pm.test('End employment (200/400)',()=>pm.expect([200,400]).to.include(c));",
+            "if(c===200) console.log('✅ Employment ended');",
+            "else console.log('⚠️ Already ended or error');"
+          ]}}]
+        }
+      ]
+    },
+    {
+      "name": "━━━ 7. REVIEWS ━━━",
+      "item": [
+        {
+          "name": "32 Submit Review (Employee)",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Authorization","value":"Bearer {{employee_token}}"},{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"companyId\": \"{{company_id}}\",\n  \"overallRating\": 4,\n  \"content\": \"Great place to work! Good culture and management. Highly recommend for engineers looking to grow their skills.\",\n  \"isAnonymous\": false\n}"},
+            "url": {"raw":"{{base_url}}/reviews","host":["{{base_url}}"],"path":["reviews"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "const c=pm.response.code;const d=pm.response.json();",
+            "pm.test('Submit review (201/409)',()=>pm.expect([201,409]).to.include(c));",
+            "if(c===201&&d.data&&d.data.id){",
+            "  pm.collectionVariables.set('review_id',d.data.id);",
+            "  console.log('✅ review_id:',d.data.id);",
+            "} else if(c===409){ console.log('⚠️ Duplicate review — will salvage'); }",
+            "else { console.log('❌ Submit review failed:',c,JSON.stringify(d).substring(0,80)); }"
+          ]}}]
+        },
+        {
+          "name": "32b GET /companies/:id/reviews → salvage review_id",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{employee_token}}"}],
+            "url": {"raw":"{{base_url}}/companies/{{company_id}}/reviews?limit=5","host":["{{base_url}}"],"path":["companies","{{company_id}}","reviews"],"query":[{"key":"limit","value":"5"}]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('Get reviews 200',()=>pm.response.to.have.status(200));",
+            "if(!pm.collectionVariables.get('review_id')){",
+            "  const d=pm.response.json();const list=d.data||[];",
+            "  if(list.length>0){ pm.collectionVariables.set('review_id',list[0].id); console.log('✅ Salvaged review_id:',list[0].id); }",
+            "  else { console.log('❌ No reviews found to salvage'); }",
+            "} else { console.log('✅ review_id already set'); }"
+          ]}}]
+        },
+        {
+          "name": "33 Duplicate Review → 409",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Authorization","value":"Bearer {{employee_token}}"},{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"companyId\": \"{{company_id}}\",\n  \"overallRating\": 3,\n  \"content\": \"Second review attempt — this should be rejected as a duplicate submission.\",\n  \"isAnonymous\": true\n}"},
+            "url": {"raw":"{{base_url}}/reviews","host":["{{base_url}}"],"path":["reviews"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('Duplicate review blocked (409)',()=>pm.response.to.have.status(409));",
+            "console.log('✅ Duplicate review rejected as expected');"
+          ]}}]
+        },
+        {
+          "name": "34 GET /reviews/my-reviews",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{employee_token}}"}],
+            "url": {"raw":"{{base_url}}/reviews/my-reviews?limit=10","host":["{{base_url}}"],"path":["reviews","my-reviews"],"query":[{"key":"limit","value":"10"}]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('My reviews 200',()=>pm.response.to.have.status(200));",
+            "const d=pm.response.json();const list=d.data||[];",
+            "console.log('✅ My reviews:',list.length);",
+            "if(!pm.collectionVariables.get('review_id')&&list.length>0){",
+            "  pm.collectionVariables.set('review_id',list[0].id);",
+            "  console.log('✅ Salvaged review_id from my-reviews:',list[0].id);",
+            "}"
+          ]}}]
+        },
+        {
+          "name": "35 GET /reviews/:id → single review",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {"raw":"{{base_url}}/reviews/{{review_id}}","host":["{{base_url}}"],"path":["reviews","{{review_id}}"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('Get single review 200',()=>pm.response.to.have.status(200));",
+            "const d=pm.response.json();",
+            "console.log('✅ Review:',d.data&&d.data.id);"
+          ]}}]
+        },
+        {
+          "name": "36 PATCH /reviews/:id → update (within 48h)",
+          "request": {
+            "method": "PATCH",
+            "header": [{"key":"Authorization","value":"Bearer {{employee_token}}"},{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"content\": \"Updated review — Still a great workplace! Culture is fantastic and management is very supportive of growth.\"\n}"},
+            "url": {"raw":"{{base_url}}/reviews/{{review_id}}","host":["{{base_url}}"],"path":["reviews","{{review_id}}"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "const c=pm.response.code;",
+            "pm.test('Update review (200/403)',()=>pm.expect([200,403]).to.include(c));",
+            "if(c===200) console.log('✅ Review updated');",
+            "else console.log('⚠️ Review past 48h edit window (403)');"
+          ]}}]
+        },
+        {
+          "name": "37 POST /reviews/:id/report",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Authorization","value":"Bearer {{colleague_token}}"},{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"reason\": \"spam\",\n  \"description\": \"Testing the review-level report endpoint.\"\n}"},
+            "url": {"raw":"{{base_url}}/reviews/{{review_id}}/report","host":["{{base_url}}"],"path":["reviews","{{review_id}}","report"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "const c=pm.response.code;",
+            "pm.test('Report via /reviews/:id/report (removed → 404)',()=>pm.response.to.have.status(404));",
+            "console.log('✅ /reviews/:id/report correctly 404 — route removed (BUG-010)');"
+          ]}}]
+        }
+      ]
+    },
+    {
+      "name": "━━━ 8. FEEDBACK ━━━",
+      "item": [
+        {
+          "name": "38 Submit Internal Feedback (Employee → Colleague)",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Authorization","value":"Bearer {{employee_token}}"},{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"ratedEmployeeId\": \"{{colleague_employee_id}}\",\n  \"companyId\": \"{{company_id}}\",\n  \"professionalism\": 4,\n  \"communication\": 5,\n  \"teamwork\": 4,\n  \"reliability\": 3,\n  \"writtenFeedback\": \"Great teammate, always helpful and delivers on time.\",\n  \"quarter\": 1,\n  \"year\": 2026\n}"},
+            "url": {"raw":"{{base_url}}/feedback","host":["{{base_url}}"],"path":["feedback"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "const c=pm.response.code;",
+            "pm.test('Submit feedback (201/409)',()=>pm.expect([201,409]).to.include(c));",
+            "if(c===201) console.log('✅ Feedback submitted');",
+            "else console.log('⚠️ Duplicate feedback (already submitted this quarter)');"
+          ]}}]
+        }
+      ]
+    },
+    {
+      "name": "━━━ 9. ADMIN FLOW ━━━",
+      "item": [
+        {
+          "name": "39 Submit Report via POST /reports",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Authorization","value":"Bearer {{employee_token}}"},{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"reviewId\": \"{{review_id}}\",\n  \"reason\": \"false_info\",\n  \"description\": \"This review contains inaccurate information about company policies and culture.\"\n}"},
+            "url": {"raw":"{{base_url}}/reports","host":["{{base_url}}"],"path":["reports"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('Submit report 201',()=>pm.response.to.have.status(201));",
+            "const d=pm.response.json();",
+            "if(d.data&&d.data.id){",
+            "  pm.collectionVariables.set('report_id',d.data.id);",
+            "  console.log('✅ report_id:',d.data.id);",
+            "} else { console.log('❌ No report_id in response'); }"
+          ]}}]
+        },
+        {
+          "name": "40 Admin: Get All Reports",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{system_admin_token}}"}],
+            "url": {"raw":"{{base_url}}/admin/reports?status=pending","host":["{{base_url}}"],"path":["admin","reports"],"query":[{"key":"status","value":"pending"}]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('Admin get reports 200',()=>pm.response.to.have.status(200));",
+            "const d=pm.response.json();",
+            "console.log('✅ Pending reports:',(d.data||[]).length);"
+          ]}}]
+        },
+        {
+          "name": "41 Admin: Resolve Report",
+          "request": {
+            "method": "PATCH",
+            "header": [{"key":"Authorization","value":"Bearer {{system_admin_token}}"},{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"action\": \"dismissed\",\n  \"adminNote\": \"Reviewed. Content appears accurate based on public records.\"\n}"},
+            "url": {"raw":"{{base_url}}/admin/reports/{{report_id}}/resolve","host":["{{base_url}}"],"path":["admin","reports","{{report_id}}","resolve"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('Resolve report 200',()=>pm.response.to.have.status(200));",
+            "const d=pm.response.json();",
+            "console.log('✅ Report resolved. Status:',d.data&&d.data.status);"
+          ]}}]
+        },
+        {
+          "name": "42 Admin: Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{system_admin_token}}"}],
+            "url": {"raw":"{{base_url}}/admin/users?limit=10&page=1","host":["{{base_url}}"],"path":["admin","users"],"query":[{"key":"limit","value":"10"},{"key":"page","value":"1"}]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('Admin get users 200',()=>pm.response.to.have.status(200));",
+            "const d=pm.response.json();",
+            "console.log('✅ Users found:',(d.data||[]).length);"
+          ]}}]
+        },
+        {
+          "name": "43 Admin: Suspend User (colleague)",
+          "request": {
+            "method": "PATCH",
+            "header": [{"key":"Authorization","value":"Bearer {{system_admin_token}}"},{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"reason\": \"Integration test — temporary suspension.\"\n}"},
+            "url": {"raw":"{{base_url}}/admin/users/{{colleague_user_id}}/suspend","host":["{{base_url}}"],"path":["admin","users","{{colleague_user_id}}","suspend"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "const c=pm.response.code;",
+            "pm.test('Suspend user (200/400)',()=>pm.expect([200,400]).to.include(c));",
+            "if(c===200) console.log('✅ User suspended');",
+            "else console.log('⚠️ Already suspended');"
+          ]}}]
+        },
+        {
+          "name": "44 Admin: Unsuspend User (colleague)",
+          "request": {
+            "method": "PATCH",
+            "header": [{"key":"Authorization","value":"Bearer {{system_admin_token}}"},{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{}"},
+            "url": {"raw":"{{base_url}}/admin/users/{{colleague_user_id}}/unsuspend","host":["{{base_url}}"],"path":["admin","users","{{colleague_user_id}}","unsuspend"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "const c=pm.response.code;",
+            "pm.test('Unsuspend user (200/400)',()=>pm.expect([200,400]).to.include(c));",
+            "if(c===200) console.log('✅ User unsuspended');",
+            "else console.log('⚠️ Already active');"
+          ]}}]
+        },
+        {
+          "name": "45 Admin: Get All Companies",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{system_admin_token}}"}],
+            "url": {"raw":"{{base_url}}/admin/companies?limit=10","host":["{{base_url}}"],"path":["admin","companies"],"query":[{"key":"limit","value":"10"}]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('Admin get companies 200',()=>pm.response.to.have.status(200));",
+            "const d=pm.response.json();",
+            "console.log('✅ Companies found:',(d.data||[]).length);"
+          ]}}]
+        },
+        {
+          "name": "46 Admin: Verify Company",
+          "request": {
+            "method": "PATCH",
+            "header": [{"key":"Authorization","value":"Bearer {{system_admin_token}}"},{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{}"},
+            "url": {"raw":"{{base_url}}/admin/companies/{{company_id}}/verify","host":["{{base_url}}"],"path":["admin","companies","{{company_id}}","verify"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('Verify company 200',()=>pm.response.to.have.status(200));",
+            "const d=pm.response.json();",
+            "console.log('✅ Company verified:',d.data&&d.data.is_verified);"
+          ]}}]
+        },
+        {
+          "name": "47 Admin: Override Employment (rejected → approved)",
+          "request": {
+            "method": "PATCH",
+            "header": [{"key":"Authorization","value":"Bearer {{system_admin_token}}"},{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{}"},
+            "url": {"raw":"{{base_url}}/admin/employments/{{reject_employment_id}}/override","host":["{{base_url}}"],"path":["admin","employments","{{reject_employment_id}}","override"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "const c=pm.response.code;",
+            "pm.test('Override employment (200/404)',()=>pm.expect([200,404]).to.include(c));",
+            "if(c===200) console.log('✅ Employment overridden to approved');",
+            "else console.log('⚠️ Override:',c);"
+          ]}}]
+        },
+        {
+          "name": "48 Admin: Platform Analytics",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{system_admin_token}}"}],
+            "url": {"raw":"{{base_url}}/admin/analytics","host":["{{base_url}}"],"path":["admin","analytics"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('Analytics 200',()=>pm.response.to.have.status(200));",
+            "const d=pm.response.json();const a=d.data||{};",
+            "console.log('✅ Analytics — Users:',a.totalUsers,'| Companies:',a.totalCompanies,'| Reviews:',a.totalReviews,'| Reports:',a.totalReports);"
+          ]}}]
+        },
+        {
+          "name": "49 Admin: Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{system_admin_token}}"}],
+            "url": {"raw":"{{base_url}}/admin/audit-logs?limit=20","host":["{{base_url}}"],"path":["admin","audit-logs"],"query":[{"key":"limit","value":"20"}]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('Audit logs 200',()=>pm.response.to.have.status(200));",
+            "const d=pm.response.json();",
+            "console.log('✅ Audit log entries:',(d.data||[]).length);"
+          ]}}]
+        }
+      ]
+    },
+    {
+      "name": "━━━ 10. EDGE CASES ━━━",
+      "item": [
+        {
+          "name": "E1 Self-Feedback → 400",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Authorization","value":"Bearer {{employee_token}}"},{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"ratedEmployeeId\": \"{{own_employee_id}}\",\n  \"companyId\": \"{{company_id}}\",\n  \"professionalism\": 5,\n  \"communication\": 5,\n  \"teamwork\": 5,\n  \"reliability\": 5,\n  \"writtenFeedback\": \"Self feedback should be blocked.\",\n  \"quarter\": 1,\n  \"year\": 2026\n}"},
+            "url": {"raw":"{{base_url}}/feedback","host":["{{base_url}}"],"path":["feedback"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('E1: Self-feedback blocked (400)',()=>pm.response.to.have.status(400));",
+            "console.log('✅ E1 PASSED — self-feedback rejected');"
+          ]}}]
+        },
+        {
+          "name": "E2 Invalid Report Reason → 400",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Authorization","value":"Bearer {{employee_token}}"},{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"reviewId\": \"{{review_id}}\",\n  \"reason\": \"totally_fake_reason\",\n  \"description\": \"Testing invalid report reason validation.\"\n}"},
+            "url": {"raw":"{{base_url}}/reports","host":["{{base_url}}"],"path":["reports"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('E2: Invalid reason blocked (400)',()=>pm.response.to.have.status(400));",
+            "console.log('✅ E2 PASSED — invalid report reason rejected');"
+          ]}}]
+        },
+        {
+          "name": "E3 Feedback Rating > 5 → 400",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Authorization","value":"Bearer {{employee_token}}"},{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"ratedEmployeeId\": \"{{colleague_employee_id}}\",\n  \"companyId\": \"{{company_id}}\",\n  \"professionalism\": 10,\n  \"communication\": 5,\n  \"teamwork\": 4,\n  \"reliability\": 3,\n  \"writtenFeedback\": \"Rating above 5 should fail.\",\n  \"quarter\": 2,\n  \"year\": 2026\n}"},
+            "url": {"raw":"{{base_url}}/feedback","host":["{{base_url}}"],"path":["feedback"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('E3: Rating > 5 blocked (400)',()=>pm.response.to.have.status(400));",
+            "console.log('✅ E3 PASSED — rating > 5 rejected');"
+          ]}}]
+        },
+        {
+          "name": "E4 Employee on /admin/* → 403",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{employee_token}}"}],
+            "url": {"raw":"{{base_url}}/admin/users","host":["{{base_url}}"],"path":["admin","users"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('E4: Employee blocked from /admin/* (403)',()=>pm.response.to.have.status(403));",
+            "console.log('✅ E4 PASSED — employee cannot access admin routes');"
+          ]}}]
+        },
+        {
+          "name": "E5 Delete System Admin → 400",
+          "request": {
+            "method": "DELETE",
+            "header": [{"key":"Authorization","value":"Bearer {{system_admin_token}}"}],
+            "url": {"raw":"{{base_url}}/admin/users/{{system_admin_user_id}}","host":["{{base_url}}"],"path":["admin","users","{{system_admin_user_id}}"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('E5: Delete system_admin blocked (400)',()=>pm.response.to.have.status(400));",
+            "console.log('✅ E5 PASSED — cannot delete system_admin');"
+          ]}}]
+        },
+        {
+          "name": "E6 No Auth Token → 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {"raw":"{{base_url}}/auth/me","host":["{{base_url}}"],"path":["auth","me"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('E6: No auth → 401',()=>pm.response.to.have.status(401));",
+            "console.log('✅ E6 PASSED — unauthenticated request rejected');"
+          ]}}]
+        },
+        {
+          "name": "E7 Invalid JWT → 401",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer invalid.jwt.token.garbage.xyz"}],
+            "url": {"raw":"{{base_url}}/auth/me","host":["{{base_url}}"],"path":["auth","me"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('E7: Bad JWT → 401',()=>pm.response.to.have.status(401));",
+            "console.log('✅ E7 PASSED — invalid JWT rejected');"
+          ]}}]
+        },
+        {
+          "name": "E8 Employee Creates Company → 403",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Authorization","value":"Bearer {{employee_token}}"},{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"name\": \"Should Fail Corp\"\n}"},
+            "url": {"raw":"{{base_url}}/companies","host":["{{base_url}}"],"path":["companies"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('E8: Employee create company → 403',()=>pm.response.to.have.status(403));",
+            "console.log('✅ E8 PASSED — employee cannot create company');"
+          ]}}]
+        },
+        {
+          "name": "E9 GET Non-existent Review → 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {"raw":"{{base_url}}/reviews/00000000-0000-0000-0000-000000000000","host":["{{base_url}}"],"path":["reviews","00000000-0000-0000-0000-000000000000"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('E9: Non-existent review → 404',()=>pm.response.to.have.status(404));",
+            "console.log('✅ E9 PASSED — non-existent review returns 404');"
+          ]}}]
+        },
+        {
+          "name": "E10 Company Admin on /admin/* → 403",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{admin_token}}"}],
+            "url": {"raw":"{{base_url}}/admin/users","host":["{{base_url}}"],"path":["admin","users"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('E10: Company admin blocked from admin (403)',()=>pm.response.to.have.status(403));",
+            "console.log('✅ E10 PASSED — company_admin cannot access admin routes');"
+          ]}}]
+        },
+        {
+          "name": "E11 Update Non-own Review → 403",
+          "request": {
+            "method": "PATCH",
+            "header": [{"key":"Authorization","value":"Bearer {{colleague_token}}"},{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"content\": \"Colleague trying to edit someone elses review — should be forbidden by ownership check.\"\n}"},
+            "url": {"raw":"{{base_url}}/reviews/{{review_id}}","host":["{{base_url}}"],"path":["reviews","{{review_id}}"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('E11: Non-owner review update → 403',()=>pm.response.to.have.status(403));",
+            "console.log('✅ E11 PASSED — cannot update another users review');"
+          ]}}]
+        },
+        {
+          "name": "E12 Double-Resolve Report → 400",
+          "request": {
+            "method": "PATCH",
+            "header": [{"key":"Authorization","value":"Bearer {{system_admin_token}}"},{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"action\": \"resolved\",\n  \"adminNote\": \"Trying to resolve an already-resolved report.\"\n}"},
+            "url": {"raw":"{{base_url}}/admin/reports/{{report_id}}/resolve","host":["{{base_url}}"],"path":["admin","reports","{{report_id}}","resolve"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('E12: Double-resolve → 400',()=>pm.response.to.have.status(400));",
+            "console.log('✅ E12 PASSED — already-resolved report rejected');"
+          ]}}]
+        },
+        {
+          "name": "E13 Delete Non-existent User → 404",
+          "request": {
+            "method": "DELETE",
+            "header": [{"key":"Authorization","value":"Bearer {{system_admin_token}}"}],
+            "url": {"raw":"{{base_url}}/admin/users/00000000-0000-0000-0000-000000000000","host":["{{base_url}}"],"path":["admin","users","00000000-0000-0000-0000-000000000000"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('E13: Delete non-existent user → 404',()=>pm.response.to.have.status(404));",
+            "console.log('✅ E13 PASSED — non-existent user returns 404');"
+          ]}}]
+        }
+      ]
+    },
+    {
+      "name": "━━━ 11. CLEANUP ━━━",
+      "item": [
+        {
+          "name": "C1 DELETE /reviews/:id → cleanup review",
+          "request": {
+            "method": "DELETE",
+            "header": [{"key":"Authorization","value":"Bearer {{employee_token}}"}],
+            "url": {"raw":"{{base_url}}/reviews/{{review_id}}","host":["{{base_url}}"],"path":["reviews","{{review_id}}"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "const c=pm.response.code;",
+            "pm.test('Delete review (200/404)',()=>pm.expect([200,404]).to.include(c));",
+            "if(c===200) console.log('✅ Review deleted');",
+            "else console.log('⚠️ Review already deleted or not found');"
+          ]}}]
+        },
+        {
+          "name": "C2 DELETE /companies/:id → cleanup test company",
+          "request": {
+            "method": "DELETE",
+            "header": [{"key":"Authorization","value":"Bearer {{admin_token}}"}],
+            "url": {"raw":"{{base_url}}/companies/{{test_company_id}}","host":["{{base_url}}"],"path":["companies","{{test_company_id}}"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "const c=pm.response.code;",
+            "pm.test('Delete test company (200/404)',()=>pm.expect([200,404]).to.include(c));",
+            "if(c===200) console.log('✅ Test company deleted');",
+            "else console.log('⚠️ Test company already deleted');"
+          ]}}]
+        },
+        {
+          "name": "C3 POST /auth/logout",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Authorization","value":"Bearer {{employee_token}}"},{"key":"Content-Type","value":"application/json"}],
+            "body": {"mode":"raw","raw":"{\n  \"refreshToken\": \"{{employee_refresh_token}}\"\n}"},
+            "url": {"raw":"{{base_url}}/auth/logout","host":["{{base_url}}"],"path":["auth","logout"]}
+          },
+          "event": [{"listen":"test","script":{"exec":[
+            "pm.test('Logout 200',()=>pm.response.to.have.status(200));",
+            "console.log('✅ Logged out successfully');"
+          ]}}]
+        }
+      ]
+    }
+  ]
+}

@@ -92,9 +92,12 @@ export default function LoginPage() {
             <div className="space-y-1.5">
               <div className="flex justify-between">
                 <label className="block text-[13px] font-medium text-navy-700">Password</label>
-                <button type="button" className="text-[12px] text-navy-500 hover:text-navy-700 transition-colors">
+                <Link
+                  to="/forgot-password"
+                  className="text-[12px] text-navy-500 hover:text-navy-700 transition-colors"
+                >
                   Forgot password?
-                </button>
+                </Link>
               </div>
               <div className="relative">
                 <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-navy-400" />

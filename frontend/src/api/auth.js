@@ -1,35 +1,62 @@
-const BASE = 'http://localhost:5000/api'
+import { request, authRequest } from './client'
 
-async function request(path, options = {}) {
-  const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
-    ...options,
+// ─── Public (no auth required) ───────────────────────────────────────────────
+
+/** POST /auth/register */
+export async function apiRegister({ email, password, role, fullName, companyName }) {
+  return request('/auth/register', {
+    method: 'POST',
+    body:   JSON.stringify({ email, password, role, fullName, companyName }),
   })
-  const data = await res.json()
-  if (!res.ok) {
-    // Pull the most useful message out of the response
-    const msg =
-      data?.error?.message ||
-      data?.message ||
-      (Array.isArray(data?.error?.details) && data.error.details[0]?.msg) ||
-      'Something went wrong'
-    throw new Error(msg)
-  }
-  return data
+  // returns { data: { id, email, role, emailVerified }, message }
 }
 
+/** POST /auth/login */
 export async function apiLogin({ email, password }) {
   return request('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body:   JSON.stringify({ email, password }),
   })
   // returns { user, accessToken, refreshToken }
 }
 
-export async function apiRegister({ email, password, role, fullName, companyName }) {
-  return request('/auth/register', {
+/** POST /auth/refresh-token */
+export async function apiRefreshToken(refreshToken) {
+  return request('/auth/refresh-token', {
     method: 'POST',
-    body: JSON.stringify({ email, password, role, fullName, companyName }),
+    body:   JSON.stringify({ refreshToken }),
   })
-  // returns { data: { id, email, role, emailVerified }, message }
+}
+
+/** GET /auth/verify-email/:token */
+export async function apiVerifyEmail(token) {
+  return request(`/auth/verify-email/${token}`)
+}
+
+/** POST /auth/forgot-password */
+export async function apiForgotPassword(email) {
+  return request('/auth/forgot-password', {
+    method: 'POST',
+    body:   JSON.stringify({ email }),
+  })
+}
+
+/** POST /auth/reset-password/:token */
+export async function apiResetPassword(token, password) {
+  return request(`/auth/reset-password/${token}`, {
+    method: 'POST',
+    body:   JSON.stringify({ password }),
+  })
+}
+
+// ─── Protected (auth required) ───────────────────────────────────────────────
+
+/** POST /auth/logout */
+export async function apiLogout() {
+  return authRequest('/auth/logout', { method: 'POST' })
+}
+
+/** GET /auth/me — rehydrate user from token */
+export async function apiGetMe() {
+  return authRequest('/auth/me')
 }

@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useCallback } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import { apiLogout, apiGetMe } from '../api/auth'
 
 const AuthContext = createContext(null)
 
@@ -23,6 +24,22 @@ export function AuthProvider({ children }) {
   const [user, setUser]               = useState(stored.user)
   const [accessToken, setAccessToken] = useState(stored.accessToken)
 
+  // Rehydrate user from server on first load (validates token is still active)
+  useEffect(() => {
+    if (stored.accessToken && !stored.user) {
+      apiGetMe()
+        .then((data) => {
+          setUser(data.data ?? data.user ?? data)
+        })
+        .catch(() => {
+          // Token invalid — wipe storage silently
+          localStorage.removeItem(ACCESS_KEY)
+          localStorage.removeItem(REFRESH_KEY)
+          localStorage.removeItem(STORAGE_KEY)
+        })
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   const saveSession = useCallback(({ user, accessToken, refreshToken }) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(user))
     localStorage.setItem(ACCESS_KEY,  accessToken)
@@ -39,8 +56,18 @@ export function AuthProvider({ children }) {
     setAccessToken(null)
   }, [])
 
+  const logout = useCallback(async () => {
+    try {
+      await apiLogout()
+    } catch {
+      // Swallow — clear session regardless
+    } finally {
+      clearSession()
+    }
+  }, [clearSession])
+
   return (
-    <AuthContext.Provider value={{ user, accessToken, saveSession, clearSession }}>
+    <AuthContext.Provider value={{ user, accessToken, saveSession, clearSession, logout }}>
       {children}
     </AuthContext.Provider>
   )

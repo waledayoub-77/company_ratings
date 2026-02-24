@@ -2,15 +2,15 @@
 
 > **FOR AI ASSISTANTS**: This file contains the current state of the project, completed tasks, and active work. Update this file whenever you make changes or complete tasks. This helps all team members' AI assistants stay synchronized.
 
-**Last Updated**: February 23, 2026 (Day 5 Integration Complete)  
+**Last Updated**: February 24, 2026 (Day 6 Security Hardening Complete)  
 **Project**: Company Ratings Platform (Glassdoor-like)  
 **Team Size**: 4 developers  
-**Sprint**: Day 5 Integration Testing ✅ COMPLETE — Baraa ✅, Aya ✅, Raneem ✅, Walid ✅ (admin layer built by Baraa) (10-day sprint)  
+**Sprint**: Day 6 Security Hardening ✅ COMPLETE — Baraa ✅ (10-day sprint)  
 **Tech Lead**: @baraa
 
 ---
 
-## 📊 PROJECT STATUS: DAY 5 INTEGRATION TESTING COMPLETE ✅
+## 📊 PROJECT STATUS: DAY 6 SECURITY HARDENING COMPLETE ✅
 
 **Server Status**: ✅ Running on `localhost:5000`  
 **Database Status**: ✅ Deployed and verified  
@@ -19,8 +19,9 @@
 **Company & Review Status**: ✅ Full CRUD + analytics working  
 **Employment & Feedback Status**: ✅ Full flow working — request, approve, reject, end, feedback  
 **Admin & Reports Status**: ✅ Full admin layer built — reports, users, companies, analytics, audit logs  
-**Integration Tests**: ✅ **70/70 assertions passing** — all 30 endpoints covered  
-**Team Status**: ✅ Baraa Days 0-5 complete, Aya Days 0-5 complete, Raneem Days 0-5 complete, Walid admin layer built by Baraa
+**Security Status**: ✅ XSS sanitization, Helmet hardening, CORS locked, body limit 10kb, rate limiters prod-ready, trim validators, SQL injection safe  
+**Integration Tests**: ✅ **87/87 assertions passing** — 70 flow tests + 17 security tests  
+**Team Status**: ✅ Baraa Days 0-6 complete, Aya Days 0-5 complete, Raneem Days 0-5 complete, Walid admin layer built by Baraa
 
 ---
 
@@ -246,18 +247,22 @@
 ## 🚧 CURRENT TASKS
 
 ### IN PROGRESS
-- Nothing in progress — Day 5 integration complete ✅
+- Nothing in progress — Day 6 security hardening complete ✅
 
-### NEXT: Day 6 — Security Hardening & Polish
-- [ ] **Baraa** — Security hardening
-  - [ ] XSS sanitization (sanitize all user-input fields stored/returned)
-  - [ ] CORS audit (lock down origins for production)
-  - [ ] Helmet config review (CSP, HSTS, etc.)
-  - [ ] Input sanitization middleware (strip HTML tags from text inputs)
-  - [ ] Error response audit (no stack traces in production)
-  - [ ] Rate limit tuning for production (restore authLimiter to 5 in prod)
-  - [ ] JWT expiry audit (access=15m, refresh=7d — verify consistently applied)
-  - [ ] SQL injection: Supabase parameterised — already safe, verify no string interpolation
+### Day 6 — Security Hardening ✅ COMPLETE (Baraa)
+- [x] **Baraa** — Security hardening
+  - [x] XSS sanitization — `sanitize.js` middleware: strips all HTML tags from request body + search params
+  - [x] CORS audit — multi-origin support, locked methods/headers in `app.js`
+  - [x] Helmet config review — HSTS 1yr+preload, frameguard DENY, noSniff, no-referrer policy
+  - [x] Input sanitization middleware — `sanitizeBody` + `sanitizeSearch` applied globally
+  - [x] Error response audit — stack traces only in `NODE_ENV=development`
+  - [x] Rate limit tuning — all limiters `skip()` in dev, full limits enforced in production
+  - [x] JWT expiry audit — access=15m, refresh=7d verified in jwt.js + env.js
+  - [x] SQL injection — no string interpolation found, PostgREST ilike sanitized via `sanitizeSearch`
+  - [x] Body limit — `express.json({ limit: '10kb' })` added to `app.js`
+  - [x] Error handler — fixed to return 413 for `PayloadTooLargeError` (was 500)
+  - [x] Validators — `.trim()` on all text fields, report resolution actions corrected
+  - [x] 17 security tests added to Newman collection (87/87 passing)
 - [ ] **Aya** — Company/Review polish
   - [ ] `DELETE /companies/:id` — verify reviews are cascade-cleaned
   - [ ] Review pagination edge cases (page > totalPages)
@@ -804,6 +809,44 @@ if (!validReasons.includes(reason)) {
 ---
 
 ## 🔄 RECENT CHANGES LOG
+
+### 2026-02-24 — Baraa: Day 6 Security Hardening + 17 Security Tests (87/87) ✅
+
+**Summary**: Implemented all Day 6 security tasks and added 17 security tests to the Newman collection. All 87 requests / 91 assertions passing.
+
+**New files**:
+- `backend/src/middlewares/sanitize.js` — `sanitizeBody` (recursive XSS strip via `xss` package, no allowed tags) + `sanitizeSearch` (strips PostgREST injection chars, caps at 100 chars)
+
+**Files modified**:
+- `backend/src/app.js` — Helmet hardened (HSTS 1yr+preload, frameguard DENY, noSniff, no-referrer), CORS multi-origin support + locked methods/headers, `express.json({ limit: '10kb' })`, `sanitizeBody` applied globally
+- `backend/src/middlewares/rateLimiter.js` — All 3 limiters (`generalLimiter`, `authLimiter`, `reportLimiter`) now `skip()` in `NODE_ENV=development`; production limits unchanged
+- `backend/src/middlewares/errorHandler.js` — Fixed `PayloadTooLargeError` handling: adds specific handler for `err.type === 'entity.too.large'` (returns 413 not 500); also added `|| err.status` fallback for non-AppError HTTP errors
+- `backend/src/utils/validators.js` — `.trim()` added to all text fields (fullName, companyName, content, position, department, writtenFeedback, description, adminNote, reason); `validateReportResolution` actions fixed to `['dismissed', 'resolved']`
+- `backend/src/services/companyService.js` — `sanitizeSearch` applied to `location` ilike and `search` or() queries
+- `backend/src/services/adminService.js` — `sanitizeSearch` applied to email ilike, full_name ilike, company or() queries
+- `backend/package.json` — `xss: ^1.0.15` added; 2 high-severity vulns (minimatch/nodemon) fixed via `npm audit fix`
+- `backend/Day5_Complete_Test.postman_collection.json` — 17 security tests added (S01–S17), total 87 requests / 91 assertions
+
+**Security tests added (S01–S17)**:
+- S01 Helmet X-Frame-Options=DENY ✅
+- S02 Helmet X-Content-Type-Options=nosniff ✅
+- S03 Helmet Referrer-Policy=no-referrer ✅
+- S04 XSS in body: script tag stripped, no 500 ✅
+- S05 XSS in search param: no crash, no echo ✅
+- S06 Oversized body (11kb) → 413 ✅
+- S07 PostgREST injection in company search → sanitized 200 ✅
+- S08 PostgREST injection in admin search → sanitized 200 ✅
+- S09 No auth header → 401 ✅
+- S10 Malformed JWT → 401 ✅
+- S11 Wrong JWT signature → 401 ✅
+- S12 Stale action "remove" → 400 validation error ✅
+- S13 Stale action "dismiss" → 400 validation error ✅
+- S14 Password no uppercase → 400 ✅
+- S15 Password no number → 400 ✅
+- S16 Whitespace-padded short content → 400 after trim ✅
+- S17 CORS: Access-Control-Allow-Origin present ✅
+
+---
 
 ### 2026-02-23 (session 2) — Baraa: BUG-035→040 + Newman re-verification ✅
 

@@ -97,7 +97,7 @@ exports.createFeedback = async (req, res) => {
       return res.status(500).json({ success: false, error: { message: existsRes.error, code: "SERVER_ERROR" } });
     }
     if (existsRes.data) {
-      return res.status(400).json({
+      return res.status(409).json({
         success: false,
         error: { message: "Feedback already submitted for this quarter", code: "FEEDBACK_EXISTS" },
       });

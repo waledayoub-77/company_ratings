@@ -3,6 +3,8 @@ const router = express.Router();
 const reviewController = require('../controllers/reviewController');
 const { requireAuth } = require('../middlewares/authMiddleware');
 const { requireEmployee } = require('../middlewares/roleMiddleware');
+const { validateReview } = require('../utils/validators');
+const { validate } = require('../middlewares/validateMiddleware');
 
 /**
  * All review routes require authentication
@@ -13,6 +15,8 @@ router.post(
   '/',
   requireAuth,
   requireEmployee,
+  validateReview,
+  validate,
   reviewController.createReview
 );
 
@@ -41,13 +45,6 @@ router.delete(
   '/:id',
   requireAuth,
   reviewController.deleteReview
-);
-
-// POST /reviews/:id/report - Report a review
-router.post(
-  '/:id/report',
-  requireAuth,
-  reviewController.reportReview
 );
 
 module.exports = router;

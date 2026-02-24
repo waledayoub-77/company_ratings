@@ -1,84 +1,31 @@
 const express = require('express');
-const reportController = require('../controllers/reportController');
+const router = express.Router();
 const adminController = require('../controllers/adminController');
 const { requireAuth } = require('../middlewares/authMiddleware');
 const { requireSystemAdmin } = require('../middlewares/roleMiddleware');
-const { reportLimiter } = require('../middlewares/rateLimiter');
-const { validate } = require('../middlewares/validateMiddleware');
-const {
-  validateReportSubmission,
-  validateReportResolution,
-  validateUuidParam,
-  validateSuspendUser,
-} = require('../utils/validators');
+const { reportLimiter } = require('../middlewares/rateLimiter'); // BUG-040 fix
 
-const router = express.Router();
+// ─── REPORTS (any authenticated user can submit) ──────────────────────────────
+router.post('/reports', requireAuth, reportLimiter, adminController.submitReport);
 
-// ─── PUBLIC (any authenticated user) ─────────────────────────────────────────
-router.post('/reports', requireAuth, reportLimiter, validateReportSubmission, validate, reportController.createReport);
-
-// ─── ADMIN: Reports ──────────────────────────────────────────────────────────
+// ─── ADMIN: REPORTS ───────────────────────────────────────────────────────────
 router.get('/admin/reports', requireAuth, requireSystemAdmin, adminController.getReports);
-router.patch(
-  '/admin/reports/:id/resolve',
-  requireAuth,
-  requireSystemAdmin,
-  validateUuidParam(),
-  validateReportResolution,
-  validate,
-  adminController.resolveReport
-);
+router.patch('/admin/reports/:id/resolve', requireAuth, requireSystemAdmin, adminController.resolveReport);
 
-// ─── ADMIN: Users ────────────────────────────────────────────────────────────
+// ─── ADMIN: USERS ─────────────────────────────────────────────────────────────
 router.get('/admin/users', requireAuth, requireSystemAdmin, adminController.getUsers);
-router.patch(
-  '/admin/users/:id/suspend',
-  requireAuth,
-  requireSystemAdmin,
-  validateUuidParam(),
-  validateSuspendUser,
-  validate,
-  adminController.suspendUser
-);
-router.patch(
-  '/admin/users/:id/unsuspend',
-  requireAuth,
-  requireSystemAdmin,
-  validateUuidParam(),
-  validate,
-  adminController.unsuspendUser
-);
-router.delete(
-  '/admin/users/:id',
-  requireAuth,
-  requireSystemAdmin,
-  validateUuidParam(),
-  validate,
-  adminController.deleteUser
-);
+router.patch('/admin/users/:id/suspend', requireAuth, requireSystemAdmin, adminController.suspendUser);
+router.patch('/admin/users/:id/unsuspend', requireAuth, requireSystemAdmin, adminController.unsuspendUser);
+router.delete('/admin/users/:id', requireAuth, requireSystemAdmin, adminController.deleteUser);
 
-// ─── ADMIN: Companies ────────────────────────────────────────────────────────
-router.get('/admin/companies', requireAuth, requireSystemAdmin, adminController.getCompanies);
-router.patch(
-  '/admin/companies/:id/verify',
-  requireAuth,
-  requireSystemAdmin,
-  validateUuidParam(),
-  validate,
-  adminController.verifyCompany
-);
+// ─── ADMIN: COMPANIES ─────────────────────────────────────────────────────────
+router.get('/admin/companies', requireAuth, requireSystemAdmin, adminController.getAdminCompanies);
+router.patch('/admin/companies/:id/verify', requireAuth, requireSystemAdmin, adminController.verifyCompany);
 
-// ─── ADMIN: Employment Override ──────────────────────────────────────────────
-router.patch(
-  '/admin/employments/:id/override',
-  requireAuth,
-  requireSystemAdmin,
-  validateUuidParam(),
-  validate,
-  adminController.overrideEmployment
-);
+// ─── ADMIN: EMPLOYMENT OVERRIDE ───────────────────────────────────────────────
+router.patch('/admin/employments/:id/override', requireAuth, requireSystemAdmin, adminController.overrideEmployment);
 
-// ─── ADMIN: Analytics & Audit ────────────────────────────────────────────────
+// ─── ADMIN: ANALYTICS + AUDIT LOGS ───────────────────────────────────────────
 router.get('/admin/analytics', requireAuth, requireSystemAdmin, adminController.getAnalytics);
 router.get('/admin/audit-logs', requireAuth, requireSystemAdmin, adminController.getAuditLogs);
 

@@ -140,9 +140,16 @@ const suspendUser = async ({ userId, adminId, reason, ipAddress, userAgent }) =>
     userAgent,
   });
 
+  // Look up display name for email
+  let suspendName = user.email;
+  try {
+    const { data: emp } = await supabase.from('employees').select('full_name').eq('user_id', user.id).maybeSingle();
+    if (emp?.full_name) suspendName = emp.full_name;
+  } catch (_) {}
+
   // Send suspension email (non-blocking)
   try {
-    await sendAccountSuspendedEmail({ to: user.email, name: user.email, reason });
+    await sendAccountSuspendedEmail({ to: user.email, name: suspendName, reason });
   } catch (emailErr) {
     console.error('Failed to send suspension email:', emailErr.message);
   }
@@ -199,9 +206,16 @@ const unsuspendUser = async ({ userId, adminId, ipAddress, userAgent }) => {
     userAgent,
   });
 
+  // Look up display name for email
+  let unsuspendName = user.email;
+  try {
+    const { data: emp } = await supabase.from('employees').select('full_name').eq('user_id', user.id).maybeSingle();
+    if (emp?.full_name) unsuspendName = emp.full_name;
+  } catch (_) {}
+
   // Send reactivation email (non-blocking)
   try {
-    await sendAccountUnsuspendedEmail({ to: user.email, name: user.email });
+    await sendAccountUnsuspendedEmail({ to: user.email, name: unsuspendName });
   } catch (emailErr) {
     console.error('Failed to send unsuspension email:', emailErr.message);
   }

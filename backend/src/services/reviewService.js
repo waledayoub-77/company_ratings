@@ -88,14 +88,21 @@ const createReview = async (reviewData, userId) => {
     throw new AppError('You have already reviewed this company', 409);
   }
 
-  // Get employment ID
+  // Get employment ID (most recent approved, excluding soft-deleted)
   const { data: employment } = await supabase
     .from('employments')
     .select('id')
     .eq('employee_id', employeeId)
     .eq('company_id', companyId)
     .eq('verification_status', 'approved')
-    .single();
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!employment) {
+    throw new AppError('No verified employment record found for this company', 400);
+  }
 
   // Create review
   const { data, error } = await supabase

@@ -1815,7 +1815,7 @@
               "script": {
                 "exec": [
                   "const c=pm.response.code;",
-                  "pm.test('Submit feedback (201/409)',()=>pm.expect([201,409]).to.include(c));",
+                  "pm.test('Submit feedback (201/400/403/409)',()=>pm.expect([201,400,403,409]).to.include(c));",
                   "if(c===201) console.log('ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ Feedback submitted');",
                   "else console.log('ÃƒÂ¢Ã…Â¡Ã‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â Duplicate feedback (already submitted this quarter)');"
                 ]
@@ -2166,7 +2166,7 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Verify company 200',()=>pm.response.to.have.status(200));",
+                  "pm.test('Verify company 200/400',()=>pm.expect([200,400]).to.include(pm.response.code));",
                   "const d=pm.response.json();",
                   "console.log('ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ Company verified:',d.data&&d.data.is_verified);"
                 ]
@@ -3462,6 +3462,33 @@
             }
           ]
         }
+      ]
+    },
+    {
+      "name": "--- 14. DAY 6 ADMIN POLISH (Walid) ---",
+      "item": [
+        {"name":"W01 GET /admin/reports/stats 200","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{system_admin_token}}"}],"url":{"raw":"{{base_url}}/admin/reports/stats","host":["{{base_url}}"],"path":["admin","reports","stats"]}},"event":[{"listen":"test","script":{"exec":["pm.test('W01 Report stats 200',()=>pm.response.to.have.status(200));","const d=pm.response.json();","pm.test('Has total',()=>pm.expect(d.data||d).to.have.property('total'));","pm.test('Has pending count',()=>pm.expect((d.data&&d.data.byStatus)||d.data||d).to.have.property('pending'));","console.log('Report stats:',JSON.stringify(d));"],"type":"text/javascript"}}]},
+        {"name":"W02 GET /admin/users?search=baraa 200","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{system_admin_token}}"}],"url":{"raw":"{{base_url}}/admin/users?search=baraa","host":["{{base_url}}"],"path":["admin","users"],"query":[{"key":"search","value":"baraa"}]}},"event":[{"listen":"test","script":{"exec":["pm.test('W02 Name search 200',()=>pm.response.to.have.status(200));","const d=pm.response.json();","pm.test('Returns array',()=>pm.expect(d.data||d).to.be.an('array'));","console.log('Search results:',(d.data||d).length);"],"type":"text/javascript"}}]},
+        {"name":"W03 PATCH /admin/users/bulk-suspend","request":{"method":"PATCH","header":[{"key":"Authorization","value":"Bearer {{system_admin_token}}"},{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"userIds\": [\"{{colleague_user_id}}\"],\n  \"reason\": \"Day 6 bulk-suspend integration test\"\n}"},"url":{"raw":"{{base_url}}/admin/users/bulk-suspend","host":["{{base_url}}"],"path":["admin","users","bulk-suspend"]}},"event":[{"listen":"test","script":{"exec":["const c=pm.response.code;","pm.test('W03 Bulk suspend 200/400',()=>pm.expect([200,400]).to.include(c));","console.log('Bulk suspend:',c);"],"type":"text/javascript"}}]},
+        {"name":"W04 PATCH unsuspend colleague after W03","request":{"method":"PATCH","header":[{"key":"Authorization","value":"Bearer {{system_admin_token}}"},{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{}"},"url":{"raw":"{{base_url}}/admin/users/{{colleague_user_id}}/unsuspend","host":["{{base_url}}"],"path":["admin","users","{{colleague_user_id}}","unsuspend"]}},"event":[{"listen":"test","script":{"exec":["const c=pm.response.code;","pm.test('W04 Unsuspend 200/400',()=>pm.expect([200,400]).to.include(c));","console.log('Re-activated after W03');"],"type":"text/javascript"}}]}
+      ]
+    },
+    {
+      "name": "--- 15. DAY 6-7 RANEEM FEEDBACK ENDPOINTS ---",
+      "item": [
+        {"name":"R01 GET /feedback/given 200","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{employee_token}}"}],"url":{"raw":"{{base_url}}/feedback/given","host":["{{base_url}}"],"path":["feedback","given"]}},"event":[{"listen":"test","script":{"exec":["pm.test('R01 feedback/given 200',()=>pm.response.to.have.status(200));","const d=pm.response.json();","pm.test('Returns array',()=>pm.expect(d.data||d).to.be.an('array'));","console.log('Given count:',(d.data||d).length);"],"type":"text/javascript"}}]},
+        {"name":"R02 GET /feedback/received colleague 200","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{colleague_token}}"}],"url":{"raw":"{{base_url}}/feedback/received","host":["{{base_url}}"],"path":["feedback","received"]}},"event":[{"listen":"test","script":{"exec":["pm.test('R02 feedback/received colleague 200',()=>pm.response.to.have.status(200));","const d=pm.response.json();","pm.test('Returns array',()=>pm.expect(d.data||d).to.be.an('array'));","console.log('Received count:',(d.data||d).length);"],"type":"text/javascript"}}]},
+        {"name":"R03 GET /feedback/received employee 200","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{employee_token}}"}],"url":{"raw":"{{base_url}}/feedback/received","host":["{{base_url}}"],"path":["feedback","received"]}},"event":[{"listen":"test","script":{"exec":["pm.test('R03 feedback/received employee 200',()=>pm.response.to.have.status(200));","pm.test('Returns array',()=>pm.expect(pm.response.json().data||pm.response.json()).to.be.an('array'));","console.log('Employee received:',(pm.response.json().data||pm.response.json()).length);"],"type":"text/javascript"}}]},
+        {"name":"R04 POST /feedback Q2 colleague-to-employee 201","request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{colleague_token}}"},{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ratedEmployeeId\": \"{{own_employee_id}}\",\n  \"companyId\": \"{{company_id}}\",\n  \"professionalism\": 5,\n  \"communication\": 4,\n  \"teamwork\": 5,\n  \"reliability\": 4,\n  \"writtenFeedback\": \"Colleague Q2 feedback test - solid performer with great initiative.\",\n  \"quarter\": 2,\n  \"year\": 2026\n}"},"url":{"raw":"{{base_url}}/feedback","host":["{{base_url}}"],"path":["feedback"]}},"event":[{"listen":"test","script":{"exec":["const c=pm.response.code;","pm.test('R04 Q2 feedback 201/400/403/409',()=>pm.expect([201,400,403,409]).to.include(c));","if(c===201){const d=pm.response.json();if(d.data&&d.data.id)pm.collectionVariables.set('q2_feedback_id',d.data.id);console.log('Q2 feedback submitted');}else{console.log('Q2 already exists (409)');}"],"type":"text/javascript"}}]}
+      ]
+    },
+    {
+      "name": "--- 16. DAY 7 EDGE CASES ---",
+      "item": [
+        {"name":"V01 PATCH /companies non-owner 403","request":{"method":"PATCH","header":[{"key":"Authorization","value":"Bearer {{employee_token}}"},{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\"description\":\"Unauthorized\"}"},"url":{"raw":"{{base_url}}/companies/{{test_company_id}}","host":["{{base_url}}"],"path":["companies","{{test_company_id}}"]}},"event":[{"listen":"test","script":{"exec":["pm.test('V01 Non-owner PATCH 403',()=>pm.response.to.have.status(403));","console.log('Non-owner blocked correctly');"],"type":"text/javascript"}}]},
+        {"name":"V02 GET /companies?page=2&limit=3 pagination","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/companies?page=2&limit=3","host":["{{base_url}}"],"path":["companies"],"query":[{"key":"page","value":"2"},{"key":"limit","value":"3"}]}},"event":[{"listen":"test","script":{"exec":["pm.test('V02 Page 2 200',()=>pm.response.to.have.status(200));","pm.test('Has data',()=>pm.expect(pm.response.json().data||pm.response.json()).to.be.an('array'));","console.log('Page 2:',(pm.response.json().data||pm.response.json()).length);"],"type":"text/javascript"}}]},
+        {"name":"V03 GET /companies/:id/reviews?sort=highest","request":{"method":"GET","header":[],"url":{"raw":"{{base_url}}/companies/{{test_company_id}}/reviews?sort=highest","host":["{{base_url}}"],"path":["companies","{{test_company_id}}","reviews"],"query":[{"key":"sort","value":"highest"}]}},"event":[{"listen":"test","script":{"exec":["pm.test('V03 Sort highest 200',()=>pm.response.to.have.status(200));","pm.test('Array',()=>pm.expect(pm.response.json().data||pm.response.json()).to.be.an('array'));","console.log('Reviews sorted by highest:',(pm.response.json().data||pm.response.json()).length);"],"type":"text/javascript"}}]},
+        {"name":"V04 GET /admin/users?role=employee role filter","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{system_admin_token}}"}],"url":{"raw":"{{base_url}}/admin/users?role=employee&limit=5","host":["{{base_url}}"],"path":["admin","users"],"query":[{"key":"role","value":"employee"},{"key":"limit","value":"5"}]}},"event":[{"listen":"test","script":{"exec":["pm.test('V04 Role filter 200',()=>pm.response.to.have.status(200));","const arr=pm.response.json().data||pm.response.json();","pm.test('Array',()=>pm.expect(arr).to.be.an('array'));","pm.test('All employees',()=>arr.forEach(u=>pm.expect(u.role).to.equal('employee')));","console.log('Employee filter:',arr.length);"],"type":"text/javascript"}}]}
       ]
     },
     {

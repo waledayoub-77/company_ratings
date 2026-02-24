@@ -1,113 +1,50 @@
+Aya Mansour
+ayamansour0034
+Invisible
+
+Raneem Bikai — 9:54 AM
+.
+Attachment file type: document
+sprint_plan (3).docx
+15.32 KB
+Raneem Bikai — 10:15 AM
 # 🤖 AI ASSISTANT PROJECT CONTEXT
 
 > **FOR AI ASSISTANTS**: This file contains the current state of the project, completed tasks, and active work. Update this file whenever you make changes or complete tasks. This helps all team members' AI assistants stay synchronized.
 
-**Last Updated**: February 23, 2026 (Day 5 Integration Complete)  
+**Last Updated**: February 24, 2026 — Raneem Days 6–7 complete ✅  
+**Project**: Company Ratings Platform (Glassdoor-like)  ... (10 KB left)
+
+message.txt
+60 KB
+﻿
+Raneem Bikai
+raneembikai
+# 🤖 AI ASSISTANT PROJECT CONTEXT
+
+> **FOR AI ASSISTANTS**: This file contains the current state of the project, completed tasks, and active work. Update this file whenever you make changes or complete tasks. This helps all team members' AI assistants stay synchronized.
+
+**Last Updated**: February 24, 2026 — Raneem Days 6–7 complete ✅  
 **Project**: Company Ratings Platform (Glassdoor-like)  
 **Team Size**: 4 developers  
-**Sprint**: Day 5 Integration Testing ✅ COMPLETE — Baraa ✅, Aya ✅, Raneem ✅, Walid ✅ (admin layer built by Baraa) (10-day sprint)  
+**Sprint**: Days 3–4 - Baraa ✅ complete, Aya ✅ complete, Raneem ✅ complete, Walid ✅ Days 1-4 complete (10-day sprint)  
 **Tech Lead**: @baraa
 
 ---
 
-## 📊 PROJECT STATUS: DAY 5 INTEGRATION TESTING COMPLETE ✅
+## 📊 PROJECT STATUS: AUTH + EMAIL SYSTEM LIVE ✅
 
 **Server Status**: ✅ Running on `localhost:5000`  
 **Database Status**: ✅ Deployed and verified  
-**Auth Status**: ✅ Full auth system — register, login, verify-email, forgot/reset-password, refresh, logout, getMe  
-**Email Status**: ✅ Resend SDK configured — verification + reset emails sending (forgot-password email failure now non-fatal)  
-**Company & Review Status**: ✅ Full CRUD + analytics working  
-**Employment & Feedback Status**: ✅ Full flow working — request, approve, reject, end, feedback  
-**Admin & Reports Status**: ✅ Full admin layer built — reports, users, companies, analytics, audit logs  
-**Integration Tests**: ✅ **70/70 assertions passing** — all 30 endpoints covered  
-**Team Status**: ✅ Baraa Days 0-5 complete, Aya Days 0-5 complete, Raneem Days 0-5 complete, Walid admin layer built by Baraa
+**Auth Status**: ✅ Full auth system working — register, login, verify-email, forgot/reset-password, refresh, logout, getMe  
+**Email Status**: ✅ Resend SDK configured — verification + reset emails sending  
+**Company & Review Status**: ✅ Full CRUD + analytics working
+**Admin & Reports Status**: ✅ Full admin panel — reports, users, companies, analytics, audit logs, employment override
+**Team Status**: ✅ Baraa Days 0-4 complete, Aya Days 0-6 complete, Raneem Days 0-4 complete, Walid ✅ Days 1-4 complete
 
 ---
 
 ## ✅ COMPLETED TASKS
-
-### Day 5: Integration Testing & Admin Layer (Baraa) ✅
-
-**What was built/fixed during Day 5 integration testing:**
-
-#### Admin Layer (built from scratch — Walid's tasks)
-- [x] Created `backend/src/controllers/adminController.js` — 12 endpoints:
-  - `submitReport` → inserts into `reported_reviews`, verifies review in `company_reviews`
-  - `getReports` → queries `reported_reviews` with optional `status` filter + pagination
-  - `resolveReport` → updates `reported_reviews`, valid actions: `dismissed` / `resolved`
-  - `getUsers` → queries `users` with role/search filters + pagination
-  - `suspendUser` → sets `is_active: false`, revokes refresh tokens, writes audit log
-  - `unsuspendUser` → sets `is_active: true`, writes audit log
-  - `deleteUser` → soft-delete (cannot delete `system_admin` or self)
-  - `getAdminCompanies` → queries `companies` with owner join
-  - `verifyCompany` → sets `is_verified: true`, writes audit log
-  - `overrideEmployment` → sets `verification_status: "approved"`, writes audit log
-  - `getAnalytics` → counts from all tables via `Promise.all`
-  - `getAuditLogs` → queries `audit_logs` with admin join
-  - `logAudit` helper → uses `entity_type` / `entity_id` columns (correct schema columns)
-- [x] Created `backend/src/routes/adminRoutes.js` — 13 routes:
-  - `POST /reports` — any authenticated user can submit a report
-  - `GET /admin/reports` — system_admin only
-  - `PATCH /admin/reports/:id/resolve` — system_admin only
-  - `GET /admin/users` — system_admin only
-  - `PATCH /admin/users/:id/suspend` — system_admin only
-  - `PATCH /admin/users/:id/unsuspend` — system_admin only
-  - `DELETE /admin/users/:id` — system_admin only
-  - `GET /admin/companies` — system_admin only
-  - `PATCH /admin/companies/:id/verify` — system_admin only
-  - `PATCH /admin/employments/:id/override` — system_admin only
-  - `GET /admin/analytics` — system_admin only
-  - `GET /admin/audit-logs` — system_admin only
-- [x] Mounted admin routes in `backend/src/routes/index.js`
-
-#### Bugs Fixed During Day 5 Testing
-
-| Bug ID | File | Problem | Fix |
-|--------|------|---------|-----|
-| BUG-017 | employmentController.js | `listPendingEmployments` crashed (500) when company_admin owns 2+ companies — used `.maybeSingle()` | Changed to `.in(companyIds)` pattern |
-| BUG-018 | employmentController.js | `approveEmployment` returned 400 when admin owns 2+ companies — used `.single()` | Fixed to fetch all companies then find match |
-| BUG-019 | employmentController.js | `rejectEmployment` same issue | Same fix |
-| BUG-020 | (missing) | Admin routes/controller completely missing | Created adminController.js + adminRoutes.js |
-| BUG-021 | adminController.js | Wrong table: `reports` → `reported_reviews` | Fixed table name |
-| BUG-022 | adminController.js | Wrong table: `reviews` → `company_reviews` | Fixed table name |
-| BUG-023 | adminController.js | Wrong audit_log columns: `target_type/target_id` → `entity_type/entity_id` | Fixed column names |
-| BUG-024 | adminController.js | Invalid resolve actions: `removed/warned` not in DB enum | Changed to `['dismissed', 'resolved']` |
-| BUG-025 | collection | Feedback body wrong field: `recipientId` → `ratedEmployeeId` | Fixed collection |
-| BUG-026 | collection | Feedback missing required `quarter` and `year` fields | Added to body |
-| BUG-027 | authService.js | Email verification blocked login (dev mode) | Skip check when `NODE_ENV=development` |
-| BUG-028 | validators.js | `system_admin` role rejected by register validator | Added to `.isIn()` list |
-| BUG-029 | .env | PORT typo: `RT=5000` instead of `PORT=5000` | Fixed |
-| BUG-030 | authService.js | `/auth/me` didn't return `employeeId` for employee users | Updated `getMe` to join employees table |
-| BUG-031 | reviewService.js | Duplicate review threw 400 instead of 409 | Changed to 409 |
-| BUG-032 | feedbackController.js | Duplicate feedback threw 400 instead of 409 | Changed to 409 |
-| BUG-033 | authService.js | `forgotPassword` crashed with 500 when Resend email fails | Wrapped `sendResetPasswordEmail` in try/catch (non-fatal) |
-| BUG-034 | rateLimiter.js | `authLimiter` max=5 blocked test suites (too restrictive) | Increased to 50 in `NODE_ENV=development` |
-| BUG-035 | adminController.js | `getAnalytics` queried `reviews` table (doesn't exist — correct is `company_reviews`) | Fixed table name → `company_reviews` |
-| BUG-036 | adminController.js | `getAnalytics` queried `reports` table (doesn't exist — correct is `reported_reviews`) ×2 | Fixed table names → `reported_reviews` |
-| BUG-037 | postman collection | `POST /reviews` body was snake_case (`company_id`, `overall_rating`, `is_anonymous`) but validator + service expect camelCase | Fixed collection bodies to camelCase |
-| BUG-038 | postman collection | Test 37 expected 201 from `POST /reviews/:id/report` — route was removed in BUG-010 | Changed assertion to expect 404 |
-| BUG-039 | authService.js | `registerUser` lost duplicate company name check in Day 5 rewrite (regression) | Re-added check with user rollback on conflict |
-| BUG-040 | adminRoutes.js | `reportLimiter` middleware was defined but never applied to `POST /reports` | Added `reportLimiter` to route |
-
-#### Auth & Services Fixes
-- [x] `authService.js` → `loginUser`: email_verified check skipped in development
-- [x] `authService.js` → `getMe`: now returns `employeeId` by joining employees table
-- [x] `authService.js` → `forgotPassword`: email send failure is now non-fatal (try/catch)
-- [x] `authService.js` → `registerUser`: auto-verifies email in dev mode
-- [x] `validators.js` → `validateRegister`: role now accepts `system_admin`
-- [x] `reviewService.js`: duplicate review now throws 409 (was 400)
-- [x] `feedbackController.js`: duplicate feedback now returns 409 (was 400)
-- [x] `rateLimiter.js`: `authLimiter` max increased to 50 in development mode
-
-#### Newman Integration Test Collection
-- [x] Created `backend/Day5_Complete_Test.postman_collection.json` — **70 requests, 70 assertions**
-  - All 30 endpoints covered (auth × 8, companies × 7, reviews × 6, feedback × 1, employments × 6, admin × 12)
-  - Fully self-contained: registers all accounts, logs in, saves tokens/IDs, runs full flows
-  - Salvage scripts: recovers IDs from list endpoints if prior runs left state
-  - Cleanup section: deletes test data + logs out
-  - **Result: 70/70 assertions passing, 0 failures** ✅
-
----
 
 ### Days 3–4: Email Verification & Password Reset (Baraa) ✅
 - [x] Replaced Nodemailer with Resend SDK
@@ -246,29 +183,41 @@
 ## 🚧 CURRENT TASKS
 
 ### IN PROGRESS
-- Nothing in progress — Day 5 integration complete ✅
+- [ ] **Auth Day 2** (Tech Lead @baraa)
+  - Status: Register + Login done ✅, starting Day 2
+  - Files to update:
+    - `backend/src/services/authService.js` — add logout, refreshToken, verifyEmail, forgotPassword, resetPassword, getMe
+    - `backend/src/controllers/authController.js` — add corresponding controllers
+    - `backend/src/routes/authRoutes.js` — add new routes
+  - Files to activate:
+    - `backend/src/middlewares/authMiddleware.js` — remove stub, enable real JWT verification
+    - `backend/src/middlewares/roleMiddleware.js` — remove stub, enable real role checking
+  - Remaining tasks:
+    - [ ] Activate `requireAuth` middleware (real JWT verification)
+    - [ ] Activate `roleMiddleware` (real role checking)
+    - [ ] Implement `POST /auth/logout` — revoke refresh token
+    - [ ] Implement `POST /auth/refresh-token` — issue new access token
+    - [ ] Implement `GET /auth/verify-email/:token` — mark email_verified = true
+    - [ ] Implement `POST /auth/forgot-password` — generate reset token
+    - [ ] Implement `POST /auth/reset-password/:token` — reset password
+    - [ ] Implement `GET /auth/me` — return current user data
+    - [ ] Re-enable email_verified check in loginUser (after verify-email works)
 
-### NEXT: Day 6 — Security Hardening & Polish
-- [ ] **Baraa** — Security hardening
-  - [ ] XSS sanitization (sanitize all user-input fields stored/returned)
-  - [ ] CORS audit (lock down origins for production)
-  - [ ] Helmet config review (CSP, HSTS, etc.)
-  - [ ] Input sanitization middleware (strip HTML tags from text inputs)
-  - [ ] Error response audit (no stack traces in production)
-  - [ ] Rate limit tuning for production (restore authLimiter to 5 in prod)
-  - [ ] JWT expiry audit (access=15m, refresh=7d — verify consistently applied)
-  - [ ] SQL injection: Supabase parameterised — already safe, verify no string interpolation
-- [ ] **Aya** — Company/Review polish
-  - [ ] `DELETE /companies/:id` — verify reviews are cascade-cleaned
-  - [ ] Review pagination edge cases (page > totalPages)
-  - [ ] Company search performance (add index if needed)
-- [ ] **Raneem** — Employment/Feedback polish
-  - [ ] Employee profile endpoints polish
-  - [ ] Employment edge cases (end an already-ended employment)
-- [ ] **Walid** — Admin polish
-  - [ ] Admin user search by name (currently only by email)
-  - [ ] Bulk suspend endpoint (optional)
-  - [ ] Report statistics by type
+### READY TO START
+- [ ] **Walid** — Start Days 1–2 tasks immediately (admin + reporting module)
+  - Branch: `feature/admin-reports`
+  - First task: Pull from dev to get Baraa's middleware stubs
+  - Independent module — fewest dependencies, can move fast
+
+### BLOCKED (Dependencies)
+- [ ] **Activate Production Middleware** - UNBLOCKED ✅ (auth endpoints done)
+  - Uncomment production code in `authMiddleware.js`
+  - Uncomment production code in `roleMiddleware.js`
+  - Remove stub/mock code
+  
+- [ ] **Email Verification** - BLOCKED until email credentials configured (Day 3)
+  - Configure Gmail SMTP credentials in `.env`
+  - Test email sending with Nodemailer
 
 ---
 
@@ -351,27 +300,30 @@ backend/
     │   ├── rateLimiter.js        # ✅ Rate limiting
     │   └── validateMiddleware.js # ✅ Validation checker
     ├── routes/
-    │   ├── index.js              # ✅ Route aggregator (all routes mounted)
+    │   ├── index.js              # ✅ Route aggregator (auth + company + review + employment + feedback mounted)
     │   ├── authRoutes.js         # ✅ POST /register, POST /login, POST /refresh-token, POST /logout, GET /me, GET /verify-email/:token, POST /forgot-password, POST /reset-password/:token
     │   ├── companyRoutes.js      # ✅ Aya's work
     │   ├── reviewRoutes.js       # ✅ Aya's work
     │   ├── employmentRoutes.js   # ✅ Raneem's work
     │   ├── feedbackRoutes.js     # ✅ Raneem's work
-    │   └── adminRoutes.js        # ✅ Built by Baraa (Day 5) — /reports + /admin/*
+    │   └── adminRoutes.js        # ✅ Walid's work — POST /reports, GET/PATCH /admin/reports, GET/PATCH/DELETE /admin/users, GET/PATCH /admin/companies, PATCH /admin/employments, GET /admin/analytics, GET /admin/audit-logs
     ├── controllers/
     │   ├── authController.js     # ✅ register, login, refresh, logout, getMe, verifyEmail, forgotPassword, resetPassword
     │   ├── companyController.js  # ✅ Aya's work
     │   ├── reviewController.js   # ✅ Aya's work
-    │   ├── employmentController.js # ✅ Raneem's work (BUG-017/018/019 fixed Day 5)
-    │   ├── feedbackController.js # ✅ Raneem's work (BUG-032 fixed Day 5: 409 for duplicates)
-    │   └── adminController.js    # ✅ Built by Baraa (Day 5) — 12 admin endpoints
+    │   ├── employmentController.js # ✅ Raneem's work
+    │   ├── feedbackController.js # ✅ Raneem's work
+    │   ├── reportController.js   # ✅ Walid — createReport
+    │   └── adminController.js    # ✅ Walid — getReports, resolveReport, getUsers, suspendUser, unsuspendUser, deleteUser, getCompanies, verifyCompany, overrideEmployment, getAnalytics, getAuditLogs
     └── services/
-        ├── authService.js        # ✅ registerUser, loginUser, refreshToken, logout, getMe, verifyEmail, forgotPassword (BUG-033 fixed), resetPassword
-        ├── emailService.js       # ✅ sendWelcomeEmail, sendVerifyEmail, sendResetPasswordEmail, sendEmploymentApproved/RejectedEmail
+        ├── authService.js        # ✅ registerUser, loginUser, refreshToken, logout, getMe, verifyEmail, forgotPassword, resetPassword
+        ├── emailService.js       # ✅ sendWelcomeEmail, sendVerifyEmail, sendResetPasswordEmail, sendEmploymentApproved/RejectedEmail, sendAccountSuspended/UnsuspendedEmail, sendReportResolutionEmail
         ├── companyService.js     # ✅ Aya's work
-        ├── reviewService.js      # ✅ Aya's work (BUG-031 fixed Day 5: 409 for duplicate review)
+        ├── reviewService.js      # ✅ Aya's work
         ├── employmentService.js  # ✅ Raneem's work
-        └── feedbackService.js    # ✅ Raneem's work
+        ├── feedbackService.js    # ✅ Raneem's work
+        ├── reportService.js      # ✅ Walid — createReport, getReports, resolveReport (with rating recalc + audit log)
+        └── adminService.js       # ✅ Walid — getUsers, suspendUser, unsuspendUser, deleteUser, getCompanies, verifyCompany, overrideEmployment, getAnalytics, getAuditLogs
 ```
 
 ---
@@ -582,38 +534,46 @@ Body (JSON): { "professionalism": 6, ... }
 
 ### @walid — Developer (Admin Panel & Reporting)
 **Branch**: `feature/admin-reports`  
-**Current Task**: Days 1–5 ✅ COMPLETE (built by Baraa during Day 5 integration)
+**Current Task**: Days 1–4 ✅ COMPLETE
 
-**Days 1–5 Status**:
-- ✅ `POST /reports` — any authenticated user, validates review exists
-- ✅ `GET /admin/reports` — system_admin only, filters by status, paginated
-- ✅ `PATCH /admin/reports/:id/resolve` — action: `dismissed` | `resolved`, writes audit log
-- ✅ `GET /admin/users` — system_admin, role/search filter, paginated
-- ✅ `PATCH /admin/users/:id/suspend` — sets is_active=false, revokes tokens, audit log
-- ✅ `PATCH /admin/users/:id/unsuspend` — sets is_active=true, audit log
-- ✅ `DELETE /admin/users/:id` — soft-delete, blocks deleting system_admin or self
-- ✅ `GET /admin/companies` — system_admin, paginated with owner join
-- ✅ `PATCH /admin/companies/:id/verify` — sets is_verified=true, audit log
-- ✅ `PATCH /admin/employments/:id/override` — sets verification_status='approved', audit log
-- ✅ `GET /admin/analytics` — totalUsers, activeUsers, totalCompanies, totalReviews, totalReports, pendingReports, pendingEmployments
-- ✅ `GET /admin/audit-logs` — paginated, joins admin user email
-- ✅ All endpoints integration tested and passing
+**Days 1–2 Status**: ✅ COMPLETE
+- ✅ Import Baraa's real middleware (requireAuth, requireSystemAdmin)
+- ✅ Build POST /reports (submit report) — was already done
+- ✅ Build rate limiting (5 reports/day) — reportLimiter was already done
+- ✅ Build GET /admin/reports (list all) — was already done
+- ✅ Build PATCH /admin/reports/:id/resolve — was already done
+- ✅ Create audit logging function (auditLogger.js) — was already done
+- ✅ Real auth middleware used (not stubs)
+- ✅ Build GET /admin/users (list users with search, role filter, pagination)
+- ✅ Build PATCH /admin/users/:id/suspend (with token revocation + audit log + email)
+- ✅ Build PATCH /admin/users/:id/unsuspend (with audit log + email)
+- ✅ Build DELETE /admin/users/:id (soft delete, BR-018 compliant, cannot delete system_admin)
+- ✅ Build GET /admin/companies (search + pagination)
+- ✅ Build GET /admin/analytics (users, companies, reviews, ratings, by-role, this-month, pending reports, recent activity)
 
-**Key DB Table Names (actual, verified)**:
-- Reports table: `reported_reviews` (NOT `reports`)
-- Reviews table: `company_reviews` (NOT `reviews`)
-- Audit log columns: `entity_type`, `entity_id` (NOT `target_type`, `target_id`)
-- Report status enum: `pending`, `resolved`, `dismissed` (NOT `removed`/`warned`)
-
-**Files Created**:
-- `backend/src/controllers/adminController.js`
-- `backend/src/routes/adminRoutes.js`
+**Days 3–4 Status**: ✅ COMPLETE
+- ✅ Build review removal logic (soft delete + recalculate rating) — in reportService.resolveReport
+- ✅ Build PATCH /admin/companies/:id/verify (company verification + audit log)
+- ✅ Build PATCH /admin/employments/:id/override (admin force-approve employment + audit log)
+- ✅ Build GET /admin/audit-logs (filter by adminId, action, pagination)
+- ✅ Added email templates: accountSuspended, accountUnsuspended, reportResolution
+- ✅ Added sendAccountSuspendedEmail, sendAccountUnsuspendedEmail, sendReportResolutionEmail to emailService
+- ✅ Added validateSuspendUser validator
+- ✅ All endpoints tested — server starts clean, no errors
+- ✅ Merged to develop
 
 ---
 
 ---
 
-## ✅ KNOWN BUGS — ALL FIXED (Days 1–5)
+## ⚠️ KNOWN BUGS
+
+### ✅ BUG-007 — Walid: suspend/unsuspend email uses email as name
+**File**: `backend/src/services/adminService.js`  
+**Status**: ✅ FIXED — Baraa (code review)  
+**Owner**: Walid  
+**Problem**: `sendAccountSuspendedEmail({ to: user.email, name: user.email, reason })` — passes `user.email` as the `name` field. Email greeting shows "Hi john@example.com" instead of "Hi John".  
+**Fix**: Added `full_name` to both select queries, passing `user.full_name || user.email` as name.
 
 ### ✅ BUG-001 — Raneem: Feedback rating validation 1-10 vs DB constraint 1-5
 **File**: `backend/src/controllers/feedbackController.js`  
@@ -669,114 +629,6 @@ if (!validReasons.includes(reason)) {
 **Problem**: Raneem added `@sendgrid/mail` — we use Resend SDK, not SendGrid. Unused dependency.
 **Fix**: Removed `@sendgrid/mail` from `package.json`.
 
-### ✅ BUG-017 — listPendingEmployments crashes for multi-company admins
-**File**: `backend/src/controllers/employmentController.js`  
-**Status**: ✅ FIXED — Baraa (Day 5 integration testing)  
-**Problem**: Used `.maybeSingle()` to look up company by admin_id — fails with 500 when admin owns 2+ companies.  
-**Fix**: Fetch all companies where `admin_id = userId`, collect IDs into array, use `.in(companyIds)` on employments query.
-
-### ✅ BUG-018 — approveEmployment returns 400 for multi-company admins
-**File**: `backend/src/controllers/employmentController.js`  
-**Status**: ✅ FIXED — Baraa (Day 5 integration testing)  
-**Problem**: Used `.single()` on company lookup — throws when admin owns 2+ companies.  
-**Fix**: Fetch all owned companies, verify that the employment's company_id is in that set.
-
-### ✅ BUG-019 — rejectEmployment returns 400 for multi-company admins
-**File**: `backend/src/controllers/employmentController.js`  
-**Status**: ✅ FIXED — Baraa (Day 5 integration testing)  
-**Problem**: Same `.single()` issue as BUG-018.  
-**Fix**: Same pattern as BUG-018.
-
-### ✅ BUG-020 — Admin controller and routes completely missing
-**File**: (not yet created)  
-**Status**: ✅ FIXED — Baraa (Day 5 integration testing)  
-**Problem**: `adminController.js` and `adminRoutes.js` were never created — all admin/report endpoints returned 404.  
-**Fix**: Created both files from scratch; mounted in `routes/index.js`.
-
-### ✅ BUG-021 — adminController used wrong table name `reports`
-**File**: `backend/src/controllers/adminController.js`  
-**Status**: ✅ FIXED — Baraa (Day 5 integration testing)  
-**Problem**: Table is `reported_reviews` not `reports`.  
-**Fix**: Updated all queries to use `reported_reviews`.
-
-### ✅ BUG-022 — adminController used wrong table name `reviews`
-**File**: `backend/src/controllers/adminController.js`  
-**Status**: ✅ FIXED — Baraa (Day 5 integration testing)  
-**Problem**: Table is `company_reviews` not `reviews`.  
-**Fix**: Updated all queries to use `company_reviews`.
-
-### ✅ BUG-023 — adminController used wrong audit_logs columns
-**File**: `backend/src/controllers/adminController.js`  
-**Status**: ✅ FIXED — Baraa (Day 5 integration testing)  
-**Problem**: Used `target_type`/`target_id` — actual schema columns are `entity_type`/`entity_id`.  
-**Fix**: Updated `logAudit` helper to use the correct column names.
-
-### ✅ BUG-024 — adminController used invalid report resolve actions
-**File**: `backend/src/controllers/adminController.js`  
-**Status**: ✅ FIXED — Baraa (Day 5 integration testing)  
-**Problem**: Allowed actions `removed` and `warned` — DB enum only has `dismissed` and `resolved`.  
-**Fix**: Valid actions changed to `['dismissed', 'resolved']`.
-
-### ✅ BUG-025 — Newman collection used wrong feedback field name `recipientId`
-**File**: `backend/Day5_Complete_Test.postman_collection.json`  
-**Status**: ✅ FIXED — Baraa (Day 5 integration testing)  
-**Problem**: Collection sent `recipientId` — API expects `ratedEmployeeId`.  
-**Fix**: Updated collection body to use `ratedEmployeeId`.
-
-### ✅ BUG-026 — Newman collection feedback request missing `quarter` and `year`
-**File**: `backend/Day5_Complete_Test.postman_collection.json`  
-**Status**: ✅ FIXED — Baraa (Day 5 integration testing)  
-**Problem**: Required fields `quarter` and `year` were missing from the feedback POST body.  
-**Fix**: Added `quarter: "Q1"` and `year: 2025` to the feedback request body.
-
-### ✅ BUG-027 — Login rejected in dev because email_verified = false
-**File**: `backend/src/services/authService.js`  
-**Status**: ✅ FIXED — Baraa (Day 5 integration testing)  
-**Problem**: `loginUser` checked `email_verified === false` and threw 403 — blocked all logins in dev (Resend doesn't send in test mode during Newman runs).  
-**Fix**: Added `if (process.env.NODE_ENV !== 'development')` guard around the check.
-
-### ✅ BUG-028 — system_admin role rejected by register validator
-**File**: `backend/src/utils/validators.js`  
-**Status**: ✅ FIXED — Baraa (Day 5 integration testing)  
-**Problem**: `validateRegister` role field only allowed `['employee', 'company_admin']` — registering as `system_admin` returned 400.  
-**Fix**: Added `'system_admin'` to the `.isIn()` array.
-
-### ✅ BUG-029 — .env PORT variable had typo `RT=5000`
-**File**: `backend/.env`  
-**Status**: ✅ FIXED — Baraa (Day 5 integration testing)  
-**Problem**: `.env` had `RT=5000` instead of `PORT=5000` — server fell back to default port (or crashed).  
-**Fix**: Corrected to `PORT=5000`.
-
-### ✅ BUG-030 — /auth/me did not return employeeId for employee users
-**File**: `backend/src/services/authService.js`  
-**Status**: ✅ FIXED — Baraa (Day 5 integration testing)  
-**Problem**: `getMe()` returned user data but no `employeeId` — employee users couldn't identify their profile.  
-**Fix**: When `role === 'employee'`, join the `employees` table by `user_id` and include `employeeId` in the response.
-
-### ✅ BUG-031 — Duplicate review returned 400 instead of 409
-**File**: `backend/src/services/reviewService.js`  
-**Status**: ✅ FIXED — Baraa (Day 5 integration testing)  
-**Problem**: When a user tried to review the same company twice the error code was 400 instead of the proper 409 Conflict.  
-**Fix**: Changed `throw new AppError('You have already reviewed this company', 400)` → **409**.
-
-### ✅ BUG-032 — Duplicate feedback returned 400 instead of 409
-**File**: `backend/src/controllers/feedbackController.js`  
-**Status**: ✅ FIXED — Baraa (Day 5 integration testing)  
-**Problem**: Duplicate feedback existed check returned `res.status(400)` instead of 409 Conflict.  
-**Fix**: Changed to `res.status(409)`.
-
-### ✅ BUG-033 — forgotPassword returned 500 when Resend email failed
-**File**: `backend/src/services/authService.js`  
-**Status**: ✅ FIXED — Baraa (Day 5 integration testing)  
-**Problem**: An unhandled exception from Resend bubbled up to the global error handler giving a 500. The endpoint should always return 200 (security: don't reveal if email exists).  
-**Fix**: Wrapped `await sendResetPasswordEmail(...)` in try/catch — on failure it logs a warning and the function still returns successfully.
-
-### ✅ BUG-034 — Auth rate limiter (5 requests/15min) blocked test suites
-**File**: `backend/src/middlewares/rateLimiter.js`  
-**Status**: ✅ FIXED — Baraa (Day 5 integration testing)  
-**Problem**: `authLimiter` max of 5 requests per 15 minutes caused all subsequent auth requests (register, login, forgot-password, reset-password) to return 429 after the first 5 Newman requests — breaking all 70 tests.  
-**Fix**: `max: process.env.NODE_ENV === 'development' ? 50 : 5` — production limit unchanged.
-
 ---
 
 ## 📝 IMPORTANT NOTES
@@ -805,60 +657,68 @@ if (!validReasons.includes(reason)) {
 
 ## 🔄 RECENT CHANGES LOG
 
-### 2026-02-23 (session 2) — Baraa: BUG-035→040 + Newman re-verification ✅
+### 2026-02-24 — Raneem: Days 6–7 Employment & Feedback Polish ✅
+- **feedbackService.js**:
+  - `bothApprovedInCompany`: added `is_current = true` filter — former employees blocked from giving/receiving feedback
+  - `bothApprovedInCompany`: separate error messages for reviewer vs rated employee restriction
+  - Added `getFeedbackReceived({ employeeId, isSystemAdmin, page, limit })` — paginated, employees see own, admins see all
+  - Added `getFeedbackGiven({ employeeId, isSystemAdmin, page, limit })` — same visibility rules
+- **feedbackController.js**: Full rewrite of `createFeedback` with hardened edge cases:
+  - UUID format validation for `ratedEmployeeId` and `companyId`
+  - `writtenFeedback` type + max 1000 chars validation (matches DB constraint)
+  - Future quarter/year guard — cannot submit feedback for Q3 2026 when it's Q1 2026
+  - Improved error message: "Feedback already submitted for Q{n} {year}"
+  - Added `getFeedbackReceived` controller
+  - Added `getFeedbackGiven` controller (admin can pass `?employeeId=` to filter)
+- **feedbackRoutes.js**: Added `GET /api/feedback/received` and `GET /api/feedback/given`
+- **employmentService.js**:
+  - `requestEmployment`: smarter duplicate check — allows re-apply after ended employment or rejection; blocks only pending+current-approved
+  - `updateEmploymentStatus`: enhanced to include `employee_id` in select; auto soft-deletes prior ended approved records before approving new request (avoids DB unique constraint violation on re-hire)
+- All modified files pass `node --check` ✅
+- Files modified: feedbackService.js, feedbackController.js, feedbackRoutes.js, employmentService.js
 
-**Summary**: Installed Newman CLI, re-ran the 70-test collection, found 9 assertion failures, diagnosed and fixed 6 root-cause bugs (BUG-035→040), re-ran — **70/70 assertions passing**. Commit `d0d7751` pushed to baraa + dev.
+### 2026-02-23 12:00 PM - Walid: Days 1–4 Admin & Reports Module Complete ✅
+- Expanded `adminService.js` from 2 thin wrappers to full admin module (13 functions)
+  - getUsers (search by email + employee name, role filter, pagination)
+  - suspendUser (prevents suspending system_admin, revokes tokens, audit log, email)
+  - unsuspendUser (reactivate + audit log + email)
+  - deleteUser (soft delete, prevents deleting system_admin, BR-018, audit log)
+  - getCompanies (search name/industry/location, pagination)
+  - verifyCompany (set is_verified=true, audit log)
+  - overrideEmployment (admin force-approve, audit log)
+  - getAnalytics (users, companies, reviews, avg rating, by-role, this-month, pending reports, recent activity)
+  - getAuditLogs (filter by adminId, action, pagination, join admin email)
+- Expanded `adminController.js` from 2 handlers to 11 handlers
+- Expanded `adminRoutes.js` from 3 routes to 11 routes:
+  - POST   /reports (existing)
+  - GET    /admin/reports (existing)
+  - PATCH  /admin/reports/:id/resolve (existing)
+  - GET    /admin/users (NEW)
+  - PATCH  /admin/users/:id/suspend (NEW)
+  - PATCH  /admin/users/:id/unsuspend (NEW)
+  - DELETE /admin/users/:id (NEW)
+  - GET    /admin/companies (NEW)
+  - PATCH  /admin/companies/:id/verify (NEW)
+  - PATCH  /admin/employments/:id/override (NEW)
+  - GET    /admin/analytics (NEW)
+  - GET    /admin/audit-logs (NEW)
+- Added 3 email templates + send functions to emailService.js:
+  - sendAccountSuspendedEmail, sendAccountUnsuspendedEmail, sendReportResolutionEmail
+- Added `validateSuspendUser` to validators.js
+- All routes protected with requireAuth + requireSystemAdmin
+- Server tested — loads clean, health check OK
+- Files modified: adminService.js, adminController.js, adminRoutes.js, emailService.js, validators.js
 
-**Bugs fixed**:
-- `getAnalytics` used wrong table names: `reviews` → `company_reviews` (BUG-035), `reports` → `reported_reviews` ×2 (BUG-036)
-- Postman collection `POST /reviews` body was snake_case — validator expects camelCase (BUG-037)
-- Postman collection test 37 expected 201 from `/reviews/:id/report` — route removed by BUG-010 (BUG-038)
-- `registerUser` lost duplicate company name check in Day 5 rewrite — re-added with user rollback on conflict (BUG-039)
-- `reportLimiter` middleware defined but never applied to `POST /reports` route (BUG-040)
-
-**Tools installed globally**: `newman`, `newman-reporter-htmlextra`
-
----
-
-### 2026-02-23 — Baraa: Day 5 Integration Testing Complete ✅ (70/70 assertions)
-
-**Summary**: Built the entire missing admin layer, fixed 18 bugs found during integration testing, and created a 70-request self-contained Newman test collection covering all 30 endpoints.
-
-**Admin layer created from scratch** (Walid's tasks):
-- `adminController.js` — 12 endpoints: reports CRUD, user management, company management, analytics, audit logs
-- `adminRoutes.js` — 13 routes (1 public-auth, 12 system_admin-only)
-- Mounted in `routes/index.js`
-
-**Auth & service fixes**:
-- `authService.js`: email_verified check bypassed in dev mode (BUG-027)
-- `authService.js`: `getMe` now returns `employeeId` for employees (BUG-030)
-- `authService.js`: `forgotPassword` email failure is non-fatal — returns 200 always (BUG-033)
-- `reviewService.js`: duplicate review throws 409 not 400 (BUG-031)
-- `feedbackController.js`: duplicate feedback returns 409 not 400 (BUG-032)
-- `validators.js`: `system_admin` added to role enum (BUG-028)
-- `rateLimiter.js`: `authLimiter` max = 50 in dev mode (BUG-034)
-- `.env`: `RT=5000` → `PORT=5000` (BUG-029)
-
-**Employment controller fixes** (multi-company admin):
-- `approveEmployment`: fixed `.single()` crash when admin owns 2+ companies (BUG-018)
-- `rejectEmployment`: same fix (BUG-019)
-- `listPendingEmployments`: fixed `.maybeSingle()` crash for multi-company admin (BUG-017)
-
-**Admin controller DB fixes** (correct table/column names):
-- `reported_reviews` not `reports` (BUG-021)
-- `company_reviews` not `reviews` (BUG-022)
-- `entity_type/entity_id` not `target_type/target_id` in audit_logs (BUG-023)
-- Resolve actions: `dismissed/resolved` not `removed/warned` (BUG-024)
-
-**Test collection** (`Day5_Complete_Test.postman_collection.json`):
-- 70 requests across 11 sections
-- All 30 API endpoints covered
-- Salvage scripts (resilient to prior test state)
-- Edge cases: 13 security/validation tests
-- Cleanup section: deletes review, test company, logs out
-- **Final result: 70/70 assertions, 0 failures** ✅
-
----
+### 2026-02-23 - Baraa: Code review Walid Days 1-4 ✅
+- Reviewed commits `e7e188d` + `e69d8cb` — all endpoints correct
+- `requireSystemAdmin` used on all admin routes ✅
+- `system_admin` suspension/deletion blocked in service ✅
+- Rate limiting (5 reports/day) in `reportService` ✅
+- Audit logging on all moderation actions ✅
+- Email functions follow correct Resend pattern ✅
+- **BUG-007 (Minor)**: ✅ FIXED — added `full_name` to user select in `suspendUser`/`unsuspendUser`, passes `user.full_name || user.email` as name
+- Walid self-updated AI_CONTEXT — verified accurate ✅
+- ✅ All 4 members Days 0-4 complete — Day 5 integration unblocked
 
 ### 2026-02-21 11:30 PM - Baraa: Code review Raneem Days 3-4 + fixed BUG-004/005/006
 - Reviewed Raneem's commit `93054f7` merged into dev
@@ -867,7 +727,7 @@ if (!validReasons.includes(reason)) {
 - **BUG-005** ✅ FIXED: added `sendEmploymentRequestEmail`, `sendEmploymentApprovedEmail`, `sendEmploymentRejectedEmail` calls in `employmentController.js` (non-blocking try/catch)
 - **BUG-006** ✅ FIXED: removed `@sendgrid/mail` from `package.json` (we use Resend)
 - Raneem Days 3-4 now fully complete ✅
-- All 4 team members (Baraa, Aya, Raneem) Days 0-4 complete — only Walid remains ⚠️
+- ✅ All 4 team members (Baraa, Aya, Raneem, Walid) Days 0-4 complete — ready for Day 5 integration
 
 ### 2026-02-21 10:30 PM - Aya: Fixed BUG-002 + BUG-003
 - Commit `e42f767 fix(Aya): validate report reason + use shared checkVerifiedEmployment helper`
@@ -884,6 +744,24 @@ if (!validReasons.includes(reason)) {
 - All bugs documented in KNOWN BUGS section above
 - Everything else verified correct: table names, column names, employment_id in review insert, auth middleware, route protection, anonymous review via view
 - Aya confirmed: AI_CONTEXT updated correctly after her push ✅
+
+### 2026-02-25 (Day 6) - Aya Day 6 Polish Complete ✅
+- **Cascade soft-delete in `deleteCompany()`** — when a company is deleted, all associated reviews are soft-deleted first (same timestamp), then the company
+- **Pagination edge case fix (count-first pattern)** applied to 3 functions:
+  - `companyService.getCompanies()` — count query first, check `page > totalPages`, return empty `{ data: [], pagination: { message: "Page X exceeds total pages (Y)" } }` if exceeded, THEN fetch data
+  - `reviewService.getCompanyReviews()` — same count-first pattern
+  - `reviewService.getMyReviews()` — same count-first pattern
+  - **Why**: Supabase throws 500 error if `.range(huge_offset, ...)` is called — must count first
+- **Search performance**: created `backend/day6-search-index.sql` — GIN trigram indexes on `name`, `description`, `location` + B-Tree on `industry`, `overall_rating` (all partial with `WHERE deleted_at IS NULL`) — needs to be run manually in Supabase SQL Editor
+- **Live tests passed**:
+  - ✅ GET /api/companies?page=1&limit=5 → total=8, page=1, totalPages=2, 5 results
+  - ✅ GET /api/companies?page=9999 → empty array, message: "Page 9999 exceeds total pages (1)"
+  - ✅ GET /api/companies?search=tech → 2 matching results
+  - ✅ POST /api/companies (employee token) → 403 Forbidden (role check)
+  - ✅ GET /api/reviews/my-reviews (no token) → 401 Unauthorized
+  - ✅ POST /api/reviews (employee, no employment) → 403 employment verification
+  - ✅ GET /api/companies/:id/reviews?page=9999 → empty array with message
+- Files changed: `companyService.js`, `reviewService.js`, `day6-search-index.sql`
 
 ### 2026-02-21 08:00 PM - Aya Days 0-4 Complete ✅
 - Implemented full company & review system (Days 0-2 + Days 3-4)
@@ -1100,257 +978,6 @@ cd backend
 - ✅ Build PATCH /employments/:id/reject
 - ✅ Create `checkVerifiedEmployment()` helper — on dev for Aya
 - ✅ Use real requireAuth middleware
-- ✅ Build POST /feedback (peer feedback)
-- ✅ Validate: no self-feedback / same company / one per quarter
-- ✅ Merge to develop
-- ✅ Merged into baraa (Feb 21)
-- ⚠️ Bug fixed: duplicate `rejectEmployment` export removed
-- ⚠️ Bug fixed: unused `supabase` import in employmentRoutes removed
-
-#### Walid (Admin & Reporting) ⚠️ NOT STARTED
-- ❌ Import middleware stubs
-- ❌ Build POST /reports (submit report)
-- ❌ Build rate limiting (5 reports/day)
-- ❌ Build GET /admin/reports (list all)
-- ❌ Build PATCH /admin/reports/:id/resolve
-- ❌ Create audit logging function
-- ❌ Replace mock auth with real middleware
-- ❌ Build GET /admin/users (list users)
-- ❌ Build PATCH /admin/users/:id/suspend
-- ❌ Build DELETE /admin/users/:id (soft)
-- ❌ Build GET /admin/companies
-- ❌ Build GET /admin/analytics
-- ❌ Merge to develop
-
----
-
-### Days 3–4: Advanced Features
-> Email system · Analytics · Notifications · Moderation
-
-#### Baraa (Email & Security) ✅ COMPLETE
-- ✅ Setup Resend SDK (replaced Nodemailer)
-- ✅ Create emailService.js (5 send functions)
-- ✅ Create DB tables: email_verification_tokens, password_reset_tokens
-- ✅ Welcome email on register
-- ✅ Build GET /auth/verify-email/:token
-- ✅ Build POST /auth/forgot-password
-- ✅ Build POST /auth/reset-password/:token
-- ✅ Re-enabled email_verified check in loginUser
-- ✅ Merge to baraa
-
-#### Aya (Review Features)
-- [ ] Build PATCH /reviews/:id (edit in 48h)
-- [ ] Build GET /reviews/my-reviews
-- [ ] Build GET /companies/:id/reviews (paginated)
-- [ ] Build anonymous review logic (hash author)
-- [ ] Test anonymous vs public reviews
-- [ ] Build GET /companies/:id/analytics
-- [ ] Calculate rating distribution (per star)
-- [ ] Calculate reviews over time (monthly)
-- [ ] Build review sorting (newest/highest/lowest)
-- [ ] Test with large dataset
-- [ ] Merge to develop
-
-#### Raneem (Profiles & Notifications)
-- [ ] Build GET /employees/:id (profile)
-- [ ] Build PATCH /employees/:id (update profile)
-- [ ] Build profile privacy (public/private)
-- [ ] Build PATCH /employments/:id/end
-- [ ] Work with Baraa on email notifications
-- [ ] Build GET /employments/pending (admin view)
-- [ ] Send email: employment request sent
-- [ ] Send email: employment approved/rejected
-- [ ] Build feedback quota check (one/quarter)
-- [ ] Merge to develop
-
-#### Walid (Advanced Admin)
-- [ ] Build review removal (soft delete + recalculate)
-- [ ] Build user suspension logic
-- [ ] Build company verification
-- [ ] Build employment override (admin force approve)
-- [ ] Test all moderation actions
-- [ ] Build audit log filtering
-- [ ] Build detailed platform analytics
-- [ ] Build recent activity feed
-- [ ] Build report statistics
-- [ ] Merge to develop
-
----
-
-### Day 5: Integration Day 🔗
-> All together · Merge everything · Full end-to-end test
-
-**Morning (All Together)**:
-- [ ] Baraa: Lead the merge session
-- [ ] ALL: Merge all features to develop
-- [ ] ALL: Resolve merge conflicts together
-- [ ] Baraa: Review final merged code
-- [ ] ALL: Test server starts, no errors
-
-**Afternoon Split Testing**:
-- [ ] Baraa + Aya: Register → Login → Create Company → Search → Review submission flow
-- [ ] Raneem + Walid: Employment request → Approve → Review → Internal feedback → Report → Admin resolves
-
----
-
-### Days 6–7: Polish & Edge Cases
-> Security hardening · Validation · Bug squashing
-
-#### Baraa (Security & Errors)
-- [ ] Add input validation everywhere
-- [ ] Add XSS protection (sanitize inputs)
-- [ ] Add SQL injection protection
-- [ ] Add request logging
-- [ ] Review codebase for security holes
-- [ ] Add comprehensive error handling
-- [ ] User-friendly error messages
-- [ ] Test malicious inputs
-- [ ] Add CORS configuration
-- [ ] Code review for team
-- [ ] Merge to develop
-
-#### Aya (Review System Polish)
-- [ ] Test: Cannot review without employment
-- [ ] Test: Cannot duplicate review
-- [ ] Test: Cannot edit after 48 hours
-- [ ] Test: Anonymous review hides identity
-- [ ] Fix all edge cases
-- [ ] Optimize search queries (add indexes)
-- [ ] Test pagination with 1000+ companies
-- [ ] Verify rating calculation accuracy
-- [ ] Test company update permissions
-- [ ] Merge to develop
-
-#### Raneem (Employment Polish)
-- [ ] Test: Cannot self-feedback
-- [ ] Test: Cannot feedback different company
-- [ ] Test: Quarterly limit works
-- [ ] Test: Former employee restrictions
-- [ ] Fix all edge cases
-- [ ] Test: All emails send correctly
-- [ ] Test: Feedback visibility rules
-- [ ] Test: Profile privacy works
-- [ ] Test: Multi-company employment history
-- [ ] Merge to develop
-
-#### Walid (Admin Polish)
-- [ ] Test: Only admin can access admin routes
-- [ ] Test: Report rate limiting works
-- [ ] Test: Review removal recalculates rating
-- [ ] Test: Suspension prevents login
-- [ ] Fix all edge cases
-- [ ] Test: Deleted user shows as 'Deleted User'
-- [ ] Test: Audit logs capture everything
-- [ ] Test: Analytics calculations correct
-- [ ] Test: Cannot delete system admin
-- [ ] Merge to develop
-
----
-
-### Days 8–10: Final Stretch
-> Staging deploy · Performance · Production launch 🚀
-
-#### Day 8: Frontend Integration
-- [ ] Deploy backend to staging
-- [ ] Connect frontend to staging
-- [ ] Test frontend-backend integration
-- [ ] Baraa + Aya: Test company/review pages
-- [ ] Raneem + Walid: Test employment/admin
-- [ ] Fix critical integration bugs
-
-#### Day 9: Performance & Docs
-- [ ] Baraa: Load test auth endpoints
-- [ ] ALL: Code search (1000 companies)
-- [ ] Raneem: Test employment at scale
-- [ ] Walid: Combine all docs into one file
-- [ ] Add database indexes if needed
-- [ ] Write API documentation
-
-#### Day 10: Production Deploy 🎉
-- [ ] Baraa: Final security review
-- [ ] ALL: Code review together
-- [ ] Baraa: Lead production deployment
-- [ ] ALL: Deploy to production server
-- [ ] ALL: Update frontend to prod API
-- [ ] ALL: Monitor logs, test thoroughly
-- [ ] Baraa: Final smoke tests
-- [ ] 🎉 Celebrate — Backend is LIVE!
-
----
-
-## 🤖 INSTRUCTIONS FOR AI ASSISTANTS
-
-**CRITICAL**: When you make changes to this project:
-
-1. **Update This File**:
-   - Move tasks from "READY TO START" to "IN PROGRESS" when starting
-   - Move tasks from "IN PROGRESS" to "COMPLETED TASKS" when done
-   - Add new files created to the appropriate section
-   - Update "Last Updated" timestamp
-   - Add entry to "RECENT CHANGES LOG"
-
-2. **What to Document**:
-   - New files created (with purpose/status)
-   - Completed features/endpoints
-   - Breaking changes
-   - New dependencies added
-   - Configuration changes
-   - Bugs fixed
-   - Tests added/passing
-
-3. **Format for Updates**:
-   ```markdown
-   ### YYYY-MM-DD HH:MM AM/PM - Brief Description
-   - Bullet point of change 1
-   - Bullet point of change 2
-   - Files affected: path/to/file.js
-   ```
-
-4. **Before Starting Work**:
-   - Read this entire file to understand current state
-   - Check "CURRENT TASKS" to see what's in progress
-   - Check "COMPLETED TASKS" to avoid duplicate work
-   - Verify your assigned tasks in "TEAM ASSIGNMENTS"
-
-5. **Commit Message Template**:
-   ```
-   feat: Brief description
-   
-   - Detail 1
-   - Detail 2
-   
-   Updated AI_CONTEXT.md
-   ```
-
-**Remember**: This file is the source of truth for all AI assistants on this project. Keep it accurate and up-to-date!
-
----
-
-## 🆘 TROUBLESHOOTING
-
-### Server won't start
-- Check if port 5000 is already in use
-- Verify `.env` file exists in `backend/` folder
-- Run `npm install` to ensure dependencies are installed
-
-### Database connection fails
-- Verify Supabase credentials in `.env`
-- Check internet connection
-- Run `node test-database.js` for detailed error
-
-### Middleware rejecting requests
-- Confirm middleware is in STUB MODE (check `authMiddleware.js`)
-- Production middleware should remain commented until auth complete
-
-### Tests failing
-- Ensure database schema is deployed
-- Check if RLS needs to be disabled (run `disable-rls.sql`)
-- Verify test data doesn't conflict with existing data
-
----
-
-**PROJECT GOAL**: Build a production-ready company rating platform (Glassdoor-like) where employees can anonymously review companies and provide internal feedback.
-
-**Current Focus**: Complete authentication system, then unblock team for parallel feature development.
-
-**Expected Completion**: Day 10 of sprint (February 29, 2026)
+- ✅ Build... (10 KB left)
+message.txt
+60 KB

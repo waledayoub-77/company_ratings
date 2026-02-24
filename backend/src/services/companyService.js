@@ -12,43 +12,58 @@ const getCompanies = async (filters = {}) => {
     location,
     minRating,
     search,
-    page = 1,
-    limit = 10,
     sortBy = 'created_at',
     sortOrder = 'desc'
   } = filters;
 
-  let query = supabase
-    .from('companies')
-    .select('*', { count: 'exact' })
-    .is('deleted_at', null);
+  // Day 6: Clamp pagination inputs — guard against page=0 or negative
+  const limit = Math.max(1, parseInt(filters.limit) || 10);
+  const page = Math.max(1, parseInt(filters.page) || 1);
 
-  // Apply filters
-  if (industry) {
-    query = query.eq('industry', industry);
+  // Build base query for reuse
+  const buildBaseQuery = () => {
+    let q = supabase
+      .from('companies')
+      .select('*', { count: 'exact' })
+      .is('deleted_at', null);
+    if (industry) q = q.eq('industry', industry);
+    if (location) q = q.ilike('location', `%${location}%`);
+    if (minRating) q = q.gte('overall_rating', parseFloat(minRating));
+    if (search) q = q.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+    return q;
+  };
+
+  // Step 1: Get total count first
+  const { count, error: countError } = await buildBaseQuery().limit(0);
+  if (countError) {
+    console.error('❌ Supabase error in getCompanies (count):', countError);
+    throw new AppError('Failed to fetch companies', 500);
   }
 
-  if (location) {
-    query = query.ilike('location', `%${location}%`);
+  const totalPages = count > 0 ? Math.ceil(count / limit) : 1;
+
+  // Day 6: Handle page > totalPages gracefully — return empty instead of crashing
+  if (page > totalPages) {
+    return {
+      companies: [],
+      pagination: {
+        total: count,
+        page,
+        limit,
+        totalPages,
+        message: `Page ${page} exceeds total pages (${totalPages})`
+      }
+    };
   }
 
-  if (minRating) {
-    query = query.gte('overall_rating', parseFloat(minRating));
-  }
-
-  // Search by company name or description
-  if (search) {
-    query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
-  }
-
-  // Sorting
-  query = query.order(sortBy, { ascending: sortOrder === 'asc' });
-
-  // Pagination
+  // Step 2: Fetch data for valid page
+  const validSortBy = ['created_at', 'name', 'overall_rating', 'total_reviews'];
+  const sortField = validSortBy.includes(sortBy) ? sortBy : 'created_at';
   const offset = (page - 1) * limit;
-  query = query.range(offset, offset + limit - 1);
 
-  const { data, error, count } = await query;
+  const { data, error } = await buildBaseQuery()
+    .order(sortField, { ascending: sortOrder === 'asc' })
+    .range(offset, offset + limit - 1);
 
   if (error) {
     console.error('❌ Supabase error in getCompanies:', error);
@@ -59,9 +74,9 @@ const getCompanies = async (filters = {}) => {
     companies: data,
     pagination: {
       total: count,
-      page: parseInt(page),
-      limit: parseInt(limit),
-      totalPages: Math.ceil(count / limit)
+      page,
+      limit,
+      totalPages
     }
   };
 };
@@ -181,6 +196,7 @@ const updateCompany = async (companyId, updates, userId, userRole) => {
 /**
  * Soft delete company
  * Only creator or system admin can delete
+ * Day 6: Cascade soft-deletes all reviews for this company
  */
 const deleteCompany = async (companyId, userId, userRole) => {
   const company = await getCompanyById(companyId);
@@ -190,9 +206,24 @@ const deleteCompany = async (companyId, userId, userRole) => {
     throw new AppError('You do not have permission to delete this company', 403);
   }
 
+  const now = new Date().toISOString();
+
+  // Day 6: Cascade soft-delete all reviews for this company first
+  const { error: reviewsError } = await supabase
+    .from('company_reviews')
+    .update({ deleted_at: now })
+    .eq('company_id', companyId)
+    .is('deleted_at', null);
+
+  if (reviewsError) {
+    console.error('❌ Supabase error cascade-deleting reviews:', reviewsError);
+    throw new AppError('Failed to cascade-delete company reviews', 500);
+  }
+
+  // Now soft-delete the company itself
   const { error } = await supabase
     .from('companies')
-    .update({ deleted_at: new Date().toISOString() })
+    .update({ deleted_at: now })
     .eq('id', companyId);
 
   if (error) {
@@ -200,7 +231,7 @@ const deleteCompany = async (companyId, userId, userRole) => {
     throw new AppError('Failed to delete company', 500);
   }
 
-  return { message: 'Company deleted successfully' };
+  return { message: 'Company and all associated reviews deleted successfully' };
 };
 
 /**

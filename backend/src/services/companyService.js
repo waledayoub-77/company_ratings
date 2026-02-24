@@ -1,6 +1,7 @@
 // Company Service - Business logic for companies
 const supabase = require('../config/database');
 const { AppError } = require('../middlewares/errorHandler');
+const { sanitizeSearch } = require('../middlewares/sanitize');
 
 /**
  * Get all companies with filters, search, and pagination
@@ -27,9 +28,15 @@ const getCompanies = async (filters = {}) => {
       .select('*', { count: 'exact' })
       .is('deleted_at', null);
     if (industry) q = q.eq('industry', industry);
-    if (location) q = q.ilike('location', `%${location}%`);
+    if (location) {
+      const safeLocation = sanitizeSearch(location);
+      if (safeLocation) q = q.ilike('location', `%${safeLocation}%`);
+    }
     if (minRating) q = q.gte('overall_rating', parseFloat(minRating));
-    if (search) q = q.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+    if (search) {
+      const safeSearch = sanitizeSearch(search);
+      if (safeSearch) q = q.or(`name.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%`);
+    }
     return q;
   };
 

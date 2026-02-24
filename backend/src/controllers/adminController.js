@@ -4,7 +4,7 @@
  *   POST   /api/reports                          — any authenticated user
  *   GET    /api/admin/reports                    — system_admin
  *   PATCH  /api/admin/reports/:id/resolve        — system_admin
- *   GET    /api/admin/users                      — system_admin
+ *   GET    /api/admin/users                      — system_admin (searches by email + full_name)
  *   PATCH  /api/admin/users/:id/suspend          — system_admin
  *   PATCH  /api/admin/users/:id/unsuspend        — system_admin
  *   DELETE /api/admin/users/:id                 — system_admin
@@ -16,6 +16,11 @@
  */
 
 const supabase = require('../config/database');
+const {
+  sendAccountSuspendedEmail,
+  sendAccountUnsuspendedEmail,
+  sendAccountDeletedEmail,
+} = require('../services/emailService');
 
 // ─── HELPER: log audit action ─────────────────────────────────────────────────
 async function logAudit({ adminId, action, targetType, targetId, details }) {
@@ -113,6 +118,39 @@ exports.getReports = async (req, res) => {
 };
 
 /**
+ * GET /api/admin/reports/stats
+ * Returns report counts grouped by reason and by status
+ */
+exports.getReportStats = async (req, res) => {
+  try {
+    const { data: rows, error } = await supabase
+      .from('reported_reviews')
+      .select('reason, status');
+
+    if (error) throw error;
+
+    const byReason = {};
+    const byStatus = { pending: 0, dismissed: 0, resolved: 0 };
+    let total = 0;
+
+    for (const row of rows || []) {
+      byReason[row.reason] = (byReason[row.reason] || 0) + 1;
+      if (byStatus[row.status] !== undefined) {
+        byStatus[row.status]++;
+      } else {
+        byStatus[row.status] = 1;
+      }
+      total++;
+    }
+
+    return res.json({ success: true, data: { total, byReason, byStatus } });
+  } catch (err) {
+    console.error('getReportStats error:', err);
+    return res.status(500).json({ success: false, error: { message: 'Server error', code: 'SERVER_ERROR' } });
+  }
+};
+
+/**
  * PATCH /api/admin/reports/:id/resolve
  * Body: { action: 'dismissed' | 'removed' | 'warned', adminNote }
  */
@@ -158,21 +196,43 @@ exports.resolveReport = async (req, res) => {
 
 /**
  * GET /api/admin/users?page=1&limit=10&role=employee&search=foo
+ * Searches by email AND employee full_name
  */
 exports.getUsers = async (req, res) => {
   try {
     const { page = 1, limit = 10, role, search } = req.query;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const safePage = Math.max(parseInt(page) || 1, 1);
+    const safeLimit = Math.min(Math.max(parseInt(limit) || 10, 1), 100);
+    const offset = (safePage - 1) * safeLimit;
+
+    // Resolve extra user IDs from employee name search
+    let extraUserIds = [];
+    if (search) {
+      const { data: matchingEmployees } = await supabase
+        .from('employees')
+        .select('user_id')
+        .ilike('full_name', `%${search}%`)
+        .is('deleted_at', null);
+      if (matchingEmployees && matchingEmployees.length > 0) {
+        extraUserIds = matchingEmployees.map((e) => e.user_id);
+      }
+    }
 
     let query = supabase
       .from('users')
       .select('id, email, role, is_active, email_verified, created_at', { count: 'exact' })
       .eq('is_deleted', false)
       .order('created_at', { ascending: false })
-      .range(offset, offset + parseInt(limit) - 1);
+      .range(offset, offset + safeLimit - 1);
 
     if (role) query = query.eq('role', role);
-    if (search) query = query.ilike('email', `%${search}%`);
+
+    if (search && extraUserIds.length > 0) {
+      // Match by email OR by user_id found from employee name search
+      query = query.or(`email.ilike.%${search}%,id.in.(${extraUserIds.join(',')})`);
+    } else if (search) {
+      query = query.ilike('email', `%${search}%`);
+    }
 
     const { data, error, count } = await query;
     if (error) throw error;
@@ -180,7 +240,7 @@ exports.getUsers = async (req, res) => {
     return res.json({
       success: true,
       data: data || [],
-      pagination: { total: count || 0, page: parseInt(page), limit: parseInt(limit) },
+      pagination: { total: count || 0, page: safePage, limit: safeLimit, pages: Math.ceil((count || 0) / safeLimit) },
     });
   } catch (err) {
     console.error('getUsers error:', err);
@@ -210,14 +270,21 @@ exports.suspendUser = async (req, res) => {
       .update({ is_active: false })
       .eq('id', id)
       .select('id, email, role, is_active')
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
+    if (!updated) return res.status(404).json({ success: false, error: { message: 'User not found after update', code: 'USER_NOT_FOUND' } });
 
     // Revoke all refresh tokens
     await supabase.from('refresh_tokens').update({ is_revoked: true }).eq('user_id', id);
 
     await logAudit({ adminId, action: 'user_suspended', targetType: 'user', targetId: id, details: { reason } });
+
+    try {
+      await sendAccountSuspendedEmail({ to: updated.email, name: updated.email, reason });
+    } catch (emailErr) {
+      console.error('Failed to send suspension email:', emailErr.message);
+    }
 
     return res.json({ success: true, data: updated });
   } catch (err) {
@@ -243,11 +310,18 @@ exports.unsuspendUser = async (req, res) => {
       .update({ is_active: true })
       .eq('id', id)
       .select('id, email, role, is_active')
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
+    if (!updated) return res.status(404).json({ success: false, error: { message: 'User not found after update', code: 'USER_NOT_FOUND' } });
 
     await logAudit({ adminId, action: 'user_unsuspended', targetType: 'user', targetId: id, details: {} });
+
+    try {
+      await sendAccountUnsuspendedEmail({ to: updated.email, name: updated.email });
+    } catch (emailErr) {
+      console.error('Failed to send unsuspension email:', emailErr.message);
+    }
 
     return res.json({ success: true, data: updated });
   } catch (err) {
@@ -265,17 +339,93 @@ exports.deleteUser = async (req, res) => {
     const adminId = req.user?.userId;
     const { id } = req.params;
 
-    const { data: target } = await supabase.from('users').select('id, role, is_deleted').eq('id', id).maybeSingle();
+    const { data: target } = await supabase.from('users').select('id, email, role, is_deleted').eq('id', id).maybeSingle();
     if (!target || target.is_deleted) return res.status(404).json({ success: false, error: { message: 'User not found', code: 'NOT_FOUND' } });
     if (target.role === 'system_admin') return res.status(400).json({ success: false, error: { message: 'Cannot delete a system admin', code: 'FORBIDDEN_ACTION' } });
     if (id === adminId) return res.status(400).json({ success: false, error: { message: 'Cannot delete your own account', code: 'FORBIDDEN_ACTION' } });
 
     await supabase.from('users').update({ is_deleted: true, is_active: false }).eq('id', id);
-    await logAudit({ adminId, action: 'user_deleted', targetType: 'user', targetId: id, details: {} });
+    await supabase.from('refresh_tokens').update({ is_revoked: true }).eq('user_id', id);
+    await logAudit({ adminId, action: 'user_deleted', targetType: 'user', targetId: id, details: { email: target.email } });
+
+    try {
+      await sendAccountDeletedEmail({ to: target.email, name: target.email });
+    } catch (emailErr) {
+      console.error('Failed to send deletion email:', emailErr.message);
+    }
 
     return res.json({ success: true, data: { message: 'User deleted successfully' } });
   } catch (err) {
     console.error('deleteUser error:', err);
+    return res.status(500).json({ success: false, error: { message: 'Server error', code: 'SERVER_ERROR' } });
+  }
+};
+
+/**
+ * PATCH /api/admin/users/bulk-suspend
+ * Body: { userIds: string[], reason: string }
+ */
+exports.bulkSuspendUsers = async (req, res) => {
+  try {
+    const adminId = req.user?.userId;
+    const { userIds, reason } = req.body;
+
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ success: false, error: { message: 'userIds must be a non-empty array', code: 'MISSING_FIELD' } });
+    }
+    if (userIds.length > 100) {
+      return res.status(400).json({ success: false, error: { message: 'Cannot suspend more than 100 users at once', code: 'LIMIT_EXCEEDED' } });
+    }
+    if (!reason || reason.trim().length < 3) {
+      return res.status(400).json({ success: false, error: { message: 'Reason is required (min 3 chars)', code: 'MISSING_FIELD' } });
+    }
+
+    const { data: targets, error: fetchError } = await supabase
+      .from('users')
+      .select('id, role, is_active, email')
+      .in('id', userIds)
+      .eq('is_deleted', false);
+
+    if (fetchError) throw fetchError;
+
+    const skipped = [];
+    const toSuspend = [];
+
+    for (const user of targets || []) {
+      if (user.role === 'system_admin') {
+        skipped.push({ id: user.id, reason: 'Cannot suspend system_admin' });
+      } else if (!user.is_active) {
+        skipped.push({ id: user.id, reason: 'Already suspended' });
+      } else if (user.id === adminId) {
+        skipped.push({ id: user.id, reason: 'Cannot suspend yourself' });
+      } else {
+        toSuspend.push(user.id);
+      }
+    }
+
+    if (toSuspend.length === 0) {
+      return res.status(400).json({ success: false, error: { message: 'No eligible users to suspend', code: 'NO_ELIGIBLE_USERS' }, skipped });
+    }
+
+    const { error: updateError } = await supabase.from('users').update({ is_active: false }).in('id', toSuspend);
+    if (updateError) throw updateError;
+
+    await supabase.from('refresh_tokens').update({ is_revoked: true }).in('user_id', toSuspend);
+
+    await logAudit({
+      adminId,
+      action: 'bulk_suspend',
+      targetType: 'user',
+      targetId: null,
+      details: { suspendedIds: toSuspend, reason: reason.trim(), skipped },
+    });
+
+    return res.json({
+      success: true,
+      data: { suspended: toSuspend.length, skipped: skipped.length, suspendedIds: toSuspend, skippedDetails: skipped },
+    });
+  } catch (err) {
+    console.error('bulkSuspendUsers error:', err);
     return res.status(500).json({ success: false, error: { message: 'Server error', code: 'SERVER_ERROR' } });
   }
 };
@@ -320,13 +470,14 @@ exports.verifyCompany = async (req, res) => {
 
     const { data: company } = await supabase.from('companies').select('id, name, is_verified').eq('id', id).is('deleted_at', null).maybeSingle();
     if (!company) return res.status(404).json({ success: false, error: { message: 'Company not found', code: 'NOT_FOUND' } });
+    if (company.is_verified) return res.status(400).json({ success: false, error: { message: 'Company is already verified', code: 'ALREADY_VERIFIED' } });
 
     const { data: updated, error } = await supabase
       .from('companies')
       .update({ is_verified: true })
       .eq('id', id)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
 

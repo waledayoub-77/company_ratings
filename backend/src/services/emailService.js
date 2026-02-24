@@ -108,6 +108,19 @@ function accountUnsuspendedTemplate(name) {
   `;
 }
 
+function accountDeletedTemplate(name) {
+  return `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px;">
+      <h2 style="color:#dc2626;">Account Deleted</h2>
+      <p>Hi <strong>${name || 'User'}</strong>,</p>
+      <p>Your RateHub account has been <strong>permanently deleted</strong> by a system administrator.</p>
+      <p>Your reviews will remain on the platform attributed to a deleted account.</p>
+      <p>If you believe this is a mistake, please contact support.</p>
+      <p style="color:#888;font-size:13px;">— The RateHub Team</p>
+    </div>
+  `;
+}
+
 function reportResolutionTemplate(decision) {
   return `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px;">
@@ -190,6 +203,14 @@ async function sendAccountUnsuspendedEmail({ to, name }) {
   });
 }
 
+async function sendAccountDeletedEmail({ to, name }) {
+  return sendEmail({
+    to,
+    subject: 'Your RateHub account has been deleted',
+    html: accountDeletedTemplate(name),
+  });
+}
+
 async function sendReportResolutionEmail({ to, decision }) {
   return sendEmail({
     to,
@@ -207,5 +228,6 @@ module.exports = {
   sendEmploymentRequestEmail,
   sendAccountSuspendedEmail,
   sendAccountUnsuspendedEmail,
+  sendAccountDeletedEmail,
   sendReportResolutionEmail,
 };

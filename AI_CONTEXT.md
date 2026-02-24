@@ -2,23 +2,26 @@
 
 > **FOR AI ASSISTANTS**: This file contains the current state of the project, completed tasks, and active work. Update this file whenever you make changes or complete tasks. This helps all team members' AI assistants stay synchronized.
 
-**Last Updated**: February 24, 2026 — Raneem Days 6–7 complete ✅  
+**Last Updated**: February 24, 2026 (Day 6 Complete — Baraa ✅ Aya ✅ Walid ✅ Raneem ✅ merged)  
 **Project**: Company Ratings Platform (Glassdoor-like)  
 **Team Size**: 4 developers  
-**Sprint**: Days 3–4 - Baraa ✅ complete, Aya ✅ complete, Raneem ✅ complete, Walid ✅ Days 1-4 complete (10-day sprint)  
+**Sprint**: Day 6 ✅ COMPLETE — All 4 members done (10-day sprint)  
 **Tech Lead**: @baraa
 
 ---
 
-## 📊 PROJECT STATUS: AUTH + EMAIL SYSTEM LIVE ✅
+## 📊 PROJECT STATUS: DAY 6 COMPLETE ✅
 
 **Server Status**: ✅ Running on `localhost:5000`  
 **Database Status**: ✅ Deployed and verified  
-**Auth Status**: ✅ Full auth system working — register, login, verify-email, forgot/reset-password, refresh, logout, getMe  
-**Email Status**: ✅ Resend SDK configured — verification + reset emails sending  
-**Company & Review Status**: ✅ Full CRUD + analytics working
-**Admin & Reports Status**: ✅ Full admin panel — reports, users, companies, analytics, audit logs, employment override
-**Team Status**: ✅ Baraa Days 0-4 complete, Aya Days 0-4 complete, Raneem Days 0-4 complete, Walid ✅ Days 1-4 complete
+**Auth Status**: ✅ Full auth system — register, login, verify-email, forgot/reset-password, refresh, logout, getMe  
+**Email Status**: ✅ Resend SDK + sendAccountDeletedEmail added  
+**Company & Review Status**: ✅ Full CRUD + analytics + cascade delete + pagination edge cases  
+**Employment & Feedback Status**: ✅ Full flow — feedback received/given, employment re-hire, is_current filter  
+**Admin & Reports Status**: ✅ Full admin layer — reports stats, bulk suspend, name search, audit logs  
+**Security Status**: ✅ XSS sanitization, Helmet hardening, CORS locked, body limit 10kb, rate limiters prod-ready, trim validators, SQL injection safe  
+**Integration Tests**: ✅ **87/87 assertions passing** — 70 flow tests + 17 security tests (Day 6+7 tests pending)  
+**Team Status**: ✅ Baraa Days 0-6, Aya Days 0-6, Walid Days 0-6, Raneem Days 0-6+7 ✅ all merged into dev
 
 ---
 
@@ -161,41 +164,17 @@
 ## 🚧 CURRENT TASKS
 
 ### IN PROGRESS
-- [ ] **Auth Day 2** (Tech Lead @baraa)
-  - Status: Register + Login done ✅, starting Day 2
-  - Files to update:
-    - `backend/src/services/authService.js` — add logout, refreshToken, verifyEmail, forgotPassword, resetPassword, getMe
-    - `backend/src/controllers/authController.js` — add corresponding controllers
-    - `backend/src/routes/authRoutes.js` — add new routes
-  - Files to activate:
-    - `backend/src/middlewares/authMiddleware.js` — remove stub, enable real JWT verification
-    - `backend/src/middlewares/roleMiddleware.js` — remove stub, enable real role checking
-  - Remaining tasks:
-    - [ ] Activate `requireAuth` middleware (real JWT verification)
-    - [ ] Activate `roleMiddleware` (real role checking)
-    - [ ] Implement `POST /auth/logout` — revoke refresh token
-    - [ ] Implement `POST /auth/refresh-token` — issue new access token
-    - [ ] Implement `GET /auth/verify-email/:token` — mark email_verified = true
-    - [ ] Implement `POST /auth/forgot-password` — generate reset token
-    - [ ] Implement `POST /auth/reset-password/:token` — reset password
-    - [ ] Implement `GET /auth/me` — return current user data
-    - [ ] Re-enable email_verified check in loginUser (after verify-email works)
+- Nothing in progress — Day 6 complete for Baraa/Aya/Walid ✅
 
-### READY TO START
-- [ ] **Walid** — Start Days 1–2 tasks immediately (admin + reporting module)
-  - Branch: `feature/admin-reports`
-  - First task: Pull from dev to get Baraa's middleware stubs
-  - Independent module — fewest dependencies, can move fast
-
-### BLOCKED (Dependencies)
-- [ ] **Activate Production Middleware** - UNBLOCKED ✅ (auth endpoints done)
-  - Uncomment production code in `authMiddleware.js`
-  - Uncomment production code in `roleMiddleware.js`
-  - Remove stub/mock code
-  
-- [ ] **Email Verification** - BLOCKED until email credentials configured (Day 3)
-  - Configure Gmail SMTP credentials in `.env`
-  - Test email sending with Nodemailer
+### Day 6 ✅ COMPLETE
+- [x] **Baraa** — Security hardening (all done, 87/87 tests passing)
+- [x] **Aya** — Company/Review polish (`DELETE /companies/:id` cascade, pagination edge cases, search indexes)
+- [x] **Walid** — Admin polish (name search, bulk suspend, report stats, email on delete)
+- [ ] **Raneem** — Employment/Feedback polish ⏳ NOT YET MERGED into dev
+  - Branch `origin/raneem` has commit `35bbcf7` with changes to: feedbackService.js, feedbackController.js, feedbackRoutes.js, employmentService.js
+  - `GET /api/feedback/received` and `GET /api/feedback/given` endpoints added
+  - Employment re-hire edge case fixed
+  - **Action required**: Raneem must open PR / merge to dev
 
 ---
 
@@ -635,25 +614,55 @@ if (!validReasons.includes(reason)) {
 
 ## 🔄 RECENT CHANGES LOG
 
-### 2026-02-24 — Raneem: Days 6–7 Employment & Feedback Polish ✅
-- **feedbackService.js**:
-  - `bothApprovedInCompany`: added `is_current = true` filter — former employees blocked from giving/receiving feedback
-  - `bothApprovedInCompany`: separate error messages for reviewer vs rated employee restriction
-  - Added `getFeedbackReceived({ employeeId, isSystemAdmin, page, limit })` — paginated, employees see own, admins see all
-  - Added `getFeedbackGiven({ employeeId, isSystemAdmin, page, limit })` — same visibility rules
-- **feedbackController.js**: Full rewrite of `createFeedback` with hardened edge cases:
-  - UUID format validation for `ratedEmployeeId` and `companyId`
-  - `writtenFeedback` type + max 1000 chars validation (matches DB constraint)
-  - Future quarter/year guard — cannot submit feedback for Q3 2026 when it's Q1 2026
-  - Improved error message: "Feedback already submitted for Q{n} {year}"
-  - Added `getFeedbackReceived` controller
-  - Added `getFeedbackGiven` controller (admin can pass `?employeeId=` to filter)
-- **feedbackRoutes.js**: Added `GET /api/feedback/received` and `GET /api/feedback/given`
-- **employmentService.js**:
-  - `requestEmployment`: smarter duplicate check — allows re-apply after ended employment or rejection; blocks only pending+current-approved
-  - `updateEmploymentStatus`: enhanced to include `employee_id` in select; auto soft-deletes prior ended approved records before approving new request (avoids DB unique constraint violation on re-hire)
-- All modified files pass `node --check` ✅
-- Files modified: feedbackService.js, feedbackController.js, feedbackRoutes.js, employmentService.js
+### 2026-02-24 — Baraa: Day 6 Security Hardening + 17 Security Tests (87/87) ✅
+
+**Summary**: Implemented all Day 6 security tasks and added 17 security tests to the Newman collection. All 87 requests / 91 assertions passing.
+
+**New files**:
+- `backend/src/middlewares/sanitize.js` — `sanitizeBody` (recursive XSS strip via `xss` package, no allowed tags) + `sanitizeSearch` (strips PostgREST injection chars, caps at 100 chars)
+
+**Files modified**:
+- `backend/src/app.js` — Helmet hardened (HSTS 1yr+preload, frameguard DENY, noSniff, no-referrer), CORS multi-origin support + locked methods/headers, `express.json({ limit: '10kb' })`, `sanitizeBody` applied globally
+- `backend/src/middlewares/rateLimiter.js` — All 3 limiters (`generalLimiter`, `authLimiter`, `reportLimiter`) now `skip()` in `NODE_ENV=development`; production limits unchanged
+- `backend/src/middlewares/errorHandler.js` — Fixed `PayloadTooLargeError` handling: adds specific handler for `err.type === 'entity.too.large'` (returns 413 not 500); also added `|| err.status` fallback for non-AppError HTTP errors
+- `backend/src/utils/validators.js` — `.trim()` added to all text fields (fullName, companyName, content, position, department, writtenFeedback, description, adminNote, reason); `validateReportResolution` actions fixed to `['dismissed', 'resolved']`
+- `backend/src/services/companyService.js` — `sanitizeSearch` applied to `location` ilike and `search` or() queries
+- `backend/src/services/adminService.js` — `sanitizeSearch` applied to email ilike, full_name ilike, company or() queries
+- `backend/package.json` — `xss: ^1.0.15` added; 2 high-severity vulns (minimatch/nodemon) fixed via `npm audit fix`
+- `backend/Day5_Complete_Test.postman_collection.json` — 17 security tests added (S01–S17), total 87 requests / 91 assertions
+
+**Security tests added (S01–S17)**:
+- S01 Helmet X-Frame-Options=DENY ✅
+- S02 Helmet X-Content-Type-Options=nosniff ✅
+- S03 Helmet Referrer-Policy=no-referrer ✅
+- S04 XSS in body: script tag stripped, no 500 ✅
+- S05 XSS in search param: no crash, no echo ✅
+- S06 Oversized body (11kb) → 413 ✅
+- S07 PostgREST injection in company search → sanitized 200 ✅
+- S08 PostgREST injection in admin search → sanitized 200 ✅
+- S09 No auth header → 401 ✅
+- S10 Malformed JWT → 401 ✅
+- S11 Wrong JWT signature → 401 ✅
+- S12 Stale action "remove" → 400 validation error ✅
+- S13 Stale action "dismiss" → 400 validation error ✅
+- S14 Password no uppercase → 400 ✅
+- S15 Password no number → 400 ✅
+- S16 Whitespace-padded short content → 400 after trim ✅
+- S17 CORS: Access-Control-Allow-Origin present ✅
+
+---
+
+### 2026-02-24 — Raneem: Days 6–7 Employment & Feedback Polish ⏳ (on origin/raneem, NOT YET in dev)
+- Branch: `origin/raneem`, commit `35bbcf7`
+- **feedbackService.js**: `is_current=true` filter, `getFeedbackReceived`, `getFeedbackGiven`
+- **feedbackController.js**: UUID validation, future quarter guard, `getFeedbackReceived`/`getFeedbackGiven` controllers
+- **feedbackRoutes.js**: `GET /api/feedback/received`, `GET /api/feedback/given`
+- **employmentService.js**: re-hire edge case, smarter duplicate check
+- **Status**: Not merged into dev — Raneem must create PR
+
+---
+
+### 2026-02-23 (session 2) — Baraa: BUG-035→040 + Newman re-verification ✅
 
 ### 2026-02-23 12:00 PM - Walid: Days 1–4 Admin & Reports Module Complete ✅
 - Expanded `adminService.js` from 2 thin wrappers to full admin module (13 functions)

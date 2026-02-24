@@ -45,8 +45,13 @@ const errorHandler = (err, req, res, next) => {
     error = new AppError('Referenced record does not exist.', 400, 'INVALID_REFERENCE');
   }
 
+  // Payload Too Large (body-parser limit exceeded)
+  if (err.type === 'entity.too.large') {
+    error = new AppError('Request body too large', 413, 'PAYLOAD_TOO_LARGE');
+  }
+
   // Default error response
-  const statusCode = error.statusCode || 500;
+  const statusCode = error.statusCode || err.status || 500;
   const code = error.code || 'SERVER_ERROR';
   const message = error.message || 'Internal server error';
 

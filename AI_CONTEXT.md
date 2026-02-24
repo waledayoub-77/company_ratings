@@ -22,7 +22,7 @@
 **Security Status**: ✅ XSS sanitization, Helmet hardening, CORS locked, body limit 10kb, rate limiters prod-ready, trim validators, SQL injection safe  
 **Integration Tests**: ✅ **113/113 assertions passing** — 87 flow+security tests + 12 Day 6-7 tests (W01-W04 admin, R01-R04 feedback, V01-V04 edge cases)  
 **Bug Fixed (BUG-041)**: `reviewService.js` null crash on `.single()` with multiple soft-deleted employment rows — added `deleted_at` filter + `.maybeSingle()`  
-**Team Status**: ✅ Baraa Days 0-6, Aya Days 0-6, Walid Days 0-6, Raneem Days 0-7 ✅ all merged into dev
+**Team Status**: ✅ Baraa Days 0-7, Aya Days 0-7, Walid Days 0-7, Raneem Days 0-7 ✅ all merged into dev
 
 ---
 
@@ -1071,17 +1071,17 @@ cd backend
 - [ ] Code review for team
 - [ ] Merge to develop
 
-#### Aya (Review System Polish)
-- [ ] Test: Cannot review without employment
-- [ ] Test: Cannot duplicate review
-- [ ] Test: Cannot edit after 48 hours
-- [ ] Test: Anonymous review hides identity
-- [ ] Fix all edge cases
-- [ ] Optimize search queries (add indexes)
-- [ ] Test pagination with 1000+ companies
-- [ ] Verify rating calculation accuracy
-- [ ] Test company update permissions
-- [ ] Merge to develop
+#### Aya (Review System Polish) ✅ COMPLETE
+- [x] Test: Cannot review without employment ✅ (checkVerifiedEmployment in reviewService)
+- [x] Test: Cannot duplicate review ✅ (checkDuplicateReview in reviewService)
+- [x] Test: Cannot edit after 48 hours ✅ (can_edit_until check in reviewService)
+- [x] Test: Anonymous review hides identity ✅ (BUG-012 fix, identity stripped)
+- [x] Fix all edge cases ✅
+- [x] Optimize search queries (add indexes) ✅
+- [x] Test pagination with 1000+ companies ✅ (page > totalPages graceful handling)
+- [x] Verify rating calculation accuracy ✅
+- [x] Test company update permissions ✅
+- [x] Merge to develop
 
 #### Raneem (Employment Polish) ✅ COMPLETE
 - [x] Test: Cannot self-feedback — `SELF_FEEDBACK` guard in feedbackController ✅
@@ -1095,17 +1095,17 @@ cd backend
 - [x] Test: Multi-company employment history — listMyEmployments returns all employments across companies; re-apply after end/rejection now allowed ✅
 - [x] Merge to develop
 
-#### Walid (Admin Polish)
-- [ ] Test: Only admin can access admin routes
-- [ ] Test: Report rate limiting works
-- [ ] Test: Review removal recalculates rating
-- [ ] Test: Suspension prevents login
-- [ ] Fix all edge cases
-- [ ] Test: Deleted user shows as 'Deleted User'
-- [ ] Test: Audit logs capture everything
-- [ ] Test: Analytics calculations correct
-- [ ] Test: Cannot delete system admin
-- [ ] Merge to develop
+#### Walid (Admin Polish) ✅ COMPLETE
+- [x] Test: Only admin can access admin routes ✅
+- [x] Test: Report rate limiting works ✅ (BUG-040 fix)
+- [x] Test: Review removal recalculates rating ✅
+- [x] Test: Suspension prevents login ✅ (is_active check in authService)
+- [x] Fix all edge cases ✅
+- [x] Test: Deleted user shows as 'Deleted User' ✅ (BUG-042: updated public_company_reviews view — JOIN users, check is_deleted)
+- [x] Test: Audit logs capture everything ✅
+- [x] Test: Analytics calculations correct ✅
+- [x] Test: Cannot delete system admin ✅
+- [x] Merge to develop
 
 ---
 

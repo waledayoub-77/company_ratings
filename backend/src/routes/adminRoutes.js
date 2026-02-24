@@ -10,10 +10,12 @@ router.post('/reports', requireAuth, reportLimiter, adminController.submitReport
 
 // ─── ADMIN: REPORTS ───────────────────────────────────────────────────────────
 router.get('/admin/reports', requireAuth, requireSystemAdmin, adminController.getReports);
+router.get('/admin/reports/stats', requireAuth, requireSystemAdmin, adminController.getReportStats);
 router.patch('/admin/reports/:id/resolve', requireAuth, requireSystemAdmin, adminController.resolveReport);
 
-// ─── ADMIN: USERS ─────────────────────────────────────────────────────────────
+// ─── ADMIN: USERS ───────────────────────────────────────────────────────────────────
 router.get('/admin/users', requireAuth, requireSystemAdmin, adminController.getUsers);
+router.patch('/admin/users/bulk-suspend', requireAuth, requireSystemAdmin, adminController.bulkSuspendUsers);
 router.patch('/admin/users/:id/suspend', requireAuth, requireSystemAdmin, adminController.suspendUser);
 router.patch('/admin/users/:id/unsuspend', requireAuth, requireSystemAdmin, adminController.unsuspendUser);
 router.delete('/admin/users/:id', requireAuth, requireSystemAdmin, adminController.deleteUser);

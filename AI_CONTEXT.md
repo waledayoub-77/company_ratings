@@ -2,7 +2,7 @@
 
 > **FOR AI ASSISTANTS**: This file contains the current state of the project, completed tasks, and active work. Update this file whenever you make changes or complete tasks. This helps all team members' AI assistants stay synchronized.
 
-**Last Updated**: February 24, 2026 (Day 6-7 Postman Tests Added — 99/113 passing ✅)  
+**Last Updated**: February 24, 2026 (Full Coverage Tests Added — 122/122 passing ✅)  
 **Project**: Company Ratings Platform (Glassdoor-like)  
 **Team Size**: 4 developers  
 **Sprint**: Day 7 ✅ COMPLETE — All 4 members done (10-day sprint)  
@@ -20,7 +20,7 @@
 **Employment & Feedback Status**: ✅ Full flow — feedback received/given, employment re-hire, is_current filter  
 **Admin & Reports Status**: ✅ Full admin layer — reports stats, bulk suspend, name search, audit logs  
 **Security Status**: ✅ XSS sanitization, Helmet hardening, CORS locked, body limit 10kb, rate limiters prod-ready, trim validators, SQL injection safe  
-**Integration Tests**: ✅ **113/113 assertions passing** — 87 flow+security tests + 12 Day 6-7 tests (W01-W04 admin, R01-R04 feedback, V01-V04 edge cases)  
+**Integration Tests**: ✅ **122/122 assertions passing** — 87 flow+security tests + 17 Day 6-7+ tests (W01-W04 admin, R01-R04 feedback, V01-V04 edge cases, 43b suspended login, E14/E15 employee profile, D0/D1 user delete)  
 **Bug Fixed (BUG-041)**: `reviewService.js` null crash on `.single()` with multiple soft-deleted employment rows — added `deleted_at` filter + `.maybeSingle()`  
 **Team Status**: ✅ Baraa Days 0-7, Aya Days 0-7, Walid Days 0-7, Raneem Days 0-7 ✅ all merged into dev
 
@@ -37,7 +37,7 @@
 - [x] Fixed test 38 expected codes `[201,409]` → `[201,400,403,409]` (Raneem's employment check now enforces `is_current=true`)  
 - [x] Fixed test 46 verify company to accept `[200,400]` (already verified from prior run)  
 - [x] Fixed W01 stats assertions to check `d.data.byStatus` for pending count  
-- [x] **Final result**: **99 requests / 113 assertions / 0 failures** ✅  
+- [x] **Final result**: **104 requests / 122 assertions / 0 failures** ✅  
 - [x] Installed missing `xss` npm package (required by Baraa's `sanitize.js` middleware)  
 - [x] Committed + pushed to `baraa` and `dev` branches  
 

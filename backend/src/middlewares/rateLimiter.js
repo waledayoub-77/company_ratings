@@ -3,11 +3,12 @@ const config = require('../config/env');
 
 /**
  * General API rate limiter
- * 100 requests per 15 minutes
+ * 100 requests per 15 minutes — disabled in development to support test suites
  */
 const generalLimiter = rateLimit({
   windowMs: config.rateLimit.windowMs,
   max: config.rateLimit.maxRequests,
+  skip: () => process.env.NODE_ENV === 'development',
   message: {
     success: false,
     error: {
@@ -21,11 +22,12 @@ const generalLimiter = rateLimit({
 
 /**
  * Auth endpoint rate limiter
- * 5 login/register attempts per 15 minutes (50 in development)
+ * 5 login/register attempts per 15 minutes — disabled in development to support test suites
  */
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'development' ? 50 : 5,
+  max: 5,
+  skip: () => process.env.NODE_ENV === 'development',
   message: {
     success: false,
     error: {
@@ -38,11 +40,12 @@ const authLimiter = rateLimit({
 
 /**
  * Report submission rate limiter
- * 5 reports per 24 hours per user
+ * 5 reports per 24 hours per user — disabled in development to support test suites
  */
 const reportLimiter = rateLimit({
   windowMs: 24 * 60 * 60 * 1000, // 24 hours
   max: 5,
+  skip: () => process.env.NODE_ENV === 'development',
   message: {
     success: false,
     error: {

@@ -11,17 +11,25 @@ async function requestEmployment({ employeeId, companyId, position, department, 
 
   if (companyErr || !company) return { error: "Company not found" };
 
-  // 2) prevent duplicates (same employee + company, not soft-deleted)
+  // 2) prevent duplicates — block if there's a pending request or an active current employment
+  //    (allows re-applying only after employment is ended AND old record is not pending)
   const { data: existing, error: existingErr } = await supabase
     .from("employments")
-    .select("id")
+    .select("id, verification_status, is_current")
     .eq("employee_id", employeeId)
     .eq("company_id", companyId)
     .is("deleted_at", null)
-    .limit(1);
+    .limit(10);
 
   if (existingErr) return { error: "Database error checking existing employment" };
-  if (existing && existing.length > 0) return { error: "Employment request already exists for this company" };
+
+  if (existing && existing.length > 0) {
+    const hasPending = existing.some(e => e.verification_status === "pending");
+    const hasCurrentApproved = existing.some(e => e.verification_status === "approved" && e.is_current === true);
+
+    if (hasPending) return { error: "You already have a pending employment request for this company" };
+    if (hasCurrentApproved) return { error: "You already have an active approved employment at this company" };
+  }
 
   // 3) insert request
   const payload = {
@@ -80,13 +88,27 @@ async function listEmploymentsByEmployee(employeeId) {
 async function updateEmploymentStatus({ employmentId, companyId, adminUserId, status, rejectionNote }) {
   const { data: emp, error: empErr } = await supabase
     .from("employments")
-    .select("id, company_id")
+    .select("id, company_id, employee_id")
     .eq("id", employmentId)
     .is("deleted_at", null)
     .single();
 
   if (empErr || !emp) return { error: "Employment not found" };
   if (emp.company_id !== companyId) return { error: "Not allowed for this company" };
+
+  // If approving: soft-delete any prior approved (ended) records for this employee+company
+  // to avoid violating the DB unique index on (employee_id, company_id) WHERE approved
+  if (status === "approved") {
+    await supabase
+      .from("employments")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("employee_id", emp.employee_id)
+      .eq("company_id", companyId)
+      .eq("verification_status", "approved")
+      .eq("is_current", false)
+      .neq("id", employmentId)
+      .is("deleted_at", null);
+  }
 
   const patch = {
     verification_status: status,

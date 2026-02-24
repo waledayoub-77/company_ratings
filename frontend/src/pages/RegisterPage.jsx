@@ -1,17 +1,55 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Mail, Lock, User, Briefcase, ArrowRight, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
+import { Mail, Lock, User, Briefcase, ArrowRight, Eye, EyeOff, CheckCircle2, AlertCircle } from 'lucide-react'
+import { apiRegister } from '../api/auth'
 
 export default function RegisterPage() {
+  const navigate = useNavigate()
+
   const [showPassword, setShowPassword] = useState(false)
   const [role, setRole] = useState('employee')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
 
-  const handleSubmit = (e) => {
+  // Controlled form fields
+  const [firstName, setFirstName]       = useState('')
+  const [lastName, setLastName]         = useState('')
+  const [email, setEmail]               = useState('')
+  const [password, setPassword]         = useState('')
+  const [companyName, setCompanyName]   = useState('')
+
+  // Password strength (0-4)
+  const passwordStrength = (() => {
+    let score = 0
+    if (password.length >= 8)          score++
+    if (/[A-Z]/.test(password))        score++
+    if (/[0-9]/.test(password))        score++
+    if (/[^A-Za-z0-9]/.test(password)) score++
+    return score
+  })()
+
+  const strengthColor = ['bg-red-400', 'bg-orange-400', 'bg-yellow-400', 'bg-emerald-400']
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
+    setError('')
     setLoading(true)
-    setTimeout(() => setLoading(false), 1500)
+    try {
+      await apiRegister({
+        email,
+        password,
+        role,
+        fullName:    role === 'employee'      ? `${firstName.trim()} ${lastName.trim()}` : undefined,
+        companyName: role === 'company_admin' ? companyName.trim()                      : undefined,
+      })
+      setSuccess(true)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -95,7 +133,28 @@ export default function RegisterPage() {
             Start sharing verified workplace feedback today.
           </p>
 
-          {/* Role selector */}
+          {/* ── Success state ───────────────────────── */}
+          {success ? (
+            <motion.div
+              className="mt-10 rounded-2xl bg-emerald-50 border border-emerald-200 p-8 text-center"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <CheckCircle2 size={40} className="text-emerald-500 mx-auto mb-4" />
+              <h2 className="text-lg font-semibold text-navy-900">Account created!</h2>
+              <p className="mt-2 text-sm text-navy-500">
+                We sent a verification link to <strong>{email}</strong>.<br />
+                Click the link in that email to activate your account, then sign in.
+              </p>
+              <button
+                onClick={() => navigate('/login')}
+                className="mt-6 inline-flex items-center gap-2 bg-navy-900 text-white text-sm font-medium px-6 py-2.5 rounded-xl hover:bg-navy-800 transition-all"
+              >
+                Go to Sign In <ArrowRight size={14} />
+              </button>
+            </motion.div>
+          ) : (
+          <>
           <div className="mt-8 grid grid-cols-2 gap-3">
             {([
               { value: 'employee', icon: User, label: 'Employee', desc: 'Review & give feedback' },
@@ -124,11 +183,20 @@ export default function RegisterPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+            {error && (
+              <div className="flex items-start gap-2.5 rounded-xl bg-red-50 border border-red-200 px-4 py-3">
+                <AlertCircle size={15} className="text-red-500 mt-0.5 shrink-0" />
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="block text-[13px] font-medium text-navy-700">First name</label>
                 <input
                   type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
                   placeholder="John"
                   className="w-full h-11 rounded-xl border border-navy-200 bg-white px-4 text-sm text-navy-900 placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
                   required
@@ -138,6 +206,8 @@ export default function RegisterPage() {
                 <label className="block text-[13px] font-medium text-navy-700">Last name</label>
                 <input
                   type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
                   placeholder="Doe"
                   className="w-full h-11 rounded-xl border border-navy-200 bg-white px-4 text-sm text-navy-900 placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
                   required
@@ -151,6 +221,8 @@ export default function RegisterPage() {
                 <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-navy-400" />
                 <input
                   type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@company.com"
                   className="w-full h-11 rounded-xl border border-navy-200 bg-white pl-10 pr-4 text-sm text-navy-900 placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
                   required
@@ -169,6 +241,8 @@ export default function RegisterPage() {
                   <Briefcase size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-navy-400" />
                   <input
                     type="text"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
                     placeholder="Your company name"
                     className="w-full h-11 rounded-xl border border-navy-200 bg-white pl-10 pr-4 text-sm text-navy-900 placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
                   />
@@ -182,6 +256,8 @@ export default function RegisterPage() {
                 <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-navy-400" />
                 <input
                   type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="Min. 8 characters"
                   className="w-full h-11 rounded-xl border border-navy-200 bg-white pl-10 pr-11 text-sm text-navy-900 placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
                   required
@@ -196,7 +272,12 @@ export default function RegisterPage() {
               </div>
               <div className="flex gap-1.5 mt-2">
                 {[1,2,3,4].map(i => (
-                  <div key={i} className="h-1 flex-1 rounded-full bg-navy-100" />
+                  <div
+                    key={i}
+                    className={`h-1 flex-1 rounded-full transition-colors duration-300 ${
+                      i <= passwordStrength ? strengthColor[passwordStrength - 1] : 'bg-navy-100'
+                    }`}
+                  />
                 ))}
               </div>
               <p className="text-[11px] text-navy-400 mt-1">Must include uppercase, number, 8+ characters</p>
@@ -243,6 +324,8 @@ export default function RegisterPage() {
               </Link>
             </p>
           </div>
+          </>
+          )}
         </motion.div>
       </div>
     </div>

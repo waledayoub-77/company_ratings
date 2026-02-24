@@ -1,18 +1,43 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react'
+import { Mail, Lock, ArrowRight, Eye, EyeOff, AlertCircle } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+import { apiLogin } from '../api/auth'
+
+const ROLE_REDIRECT = {
+  employee:      '/dashboard',
+  company_admin: '/company-admin',
+  system_admin:  '/admin',
+}
 
 export default function LoginPage() {
+  const navigate = useNavigate()
+  const { saveSession } = useAuth()
+
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
+    setError('')
     setLoading(true)
-    setTimeout(() => setLoading(false), 1500)
+    try {
+      const data = await apiLogin({ email, password })
+      saveSession({
+        user:         data.user,
+        accessToken:  data.accessToken,
+        refreshToken: data.refreshToken,
+      })
+      navigate(ROLE_REDIRECT[data.user.role] || '/')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -42,6 +67,13 @@ export default function LoginPage() {
           </p>
 
           <form onSubmit={handleSubmit} className="mt-10 space-y-5">
+            {error && (
+              <div className="flex items-start gap-2.5 rounded-xl bg-red-50 border border-red-200 px-4 py-3">
+                <AlertCircle size={15} className="text-red-500 mt-0.5 shrink-0" />
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <label className="block text-[13px] font-medium text-navy-700">Email address</label>
               <div className="relative">

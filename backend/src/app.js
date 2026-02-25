@@ -5,36 +5,74 @@ require('dotenv').config();
 
 const routes = require('./routes/index');
 const { errorHandler } = require('./middlewares/errorHandler');
+const { generalLimiter } = require('./middlewares/rateLimiter');
+const { sanitizeBody } = require('./middlewares/sanitize');
 
 const app = express();
 
-// Security middleware
-app.use(helmet());
+// ─── SECURITY: Helmet ─────────────────────────────────────────────────────────
+// This is a JSON API — disable CSP (no HTML served), keep all other protections
+app.use(
+  helmet({
+    contentSecurityPolicy: false,   // no HTML served from this API
+    crossOriginEmbedderPolicy: false,
+    hsts: {
+      maxAge: 31536000,             // 1 year
+      includeSubDomains: true,
+      preload: true,
+    },
+    frameguard: { action: 'deny' },
+    noSniff: true,
+    referrerPolicy: { policy: 'no-referrer' },
+  })
+);
 
-// CORS configuration
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  credentials: true
-}));
+// ─── SECURITY: CORS ───────────────────────────────────────────────────────────
+const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173')
+  .split(',')
+  .map((o) => o.trim());
 
-// Body parsing middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, Postman, server-to-server)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      callback(new Error(`CORS: origin '${origin}' not allowed`));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['X-RateLimit-Limit', 'X-RateLimit-Remaining'],
+  })
+);
 
-// Health check route
+// ─── RATE LIMITING: Global ────────────────────────────────────────────────────
+// 100 requests per 15 minutes per IP across all endpoints
+app.use(generalLimiter);
+
+// ─── BODY PARSING ─────────────────────────────────────────────────────────────
+app.use(express.json({ limit: '10kb' }));       // reject payloads > 10 KB
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+
+// ─── XSS SANITIZATION ────────────────────────────────────────────────────────
+// Strip HTML tags from all incoming body string fields
+app.use(sanitizeBody);
+
+// ─── HEALTH CHECK ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
   res.json({ success: true, status: 'ok', message: 'Server is running' });
 });
 
-// API routes
+// ─── API ROUTES ───────────────────────────────────────────────────────────────
 app.use('/api', routes);
 
-// 404 handler
+// ─── 404 HANDLER ──────────────────────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({ success: false, error: 'Route not found' });
 });
 
-// Error handler
+// ─── GLOBAL ERROR HANDLER ─────────────────────────────────────────────────────
 app.use(errorHandler);
 
 module.exports = app;

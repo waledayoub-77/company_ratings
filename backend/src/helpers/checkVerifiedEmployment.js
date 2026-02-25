@@ -1,3 +1,4 @@
+//to check if employee has approved employment at a specific company
 const supabase = require("../config/database");
 
 async function checkVerifiedEmployment(employeeId, companyId) {

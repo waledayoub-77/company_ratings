@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import {
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react'
 import Reveal from '../components/ui/Reveal.jsx'
 import Footer from '../components/layout/Footer.jsx'
+import { getCompanies } from '../api/companies'
 
 /* ─── Mock data ─── */
 const stats = [
@@ -71,16 +73,28 @@ const testimonials = [
   },
 ]
 
-const topCompanies = [
-  { name: 'Stripe', industry: 'Fintech', rating: 4.7, reviews: 342, color: 'from-indigo-500 to-violet-600' },
-  { name: 'Notion', industry: 'Productivity', rating: 4.6, reviews: 218, color: 'from-navy-500 to-navy-700' },
-  { name: 'Linear', industry: 'Dev Tools', rating: 4.8, reviews: 156, color: 'from-cyan-500 to-blue-600' },
-  { name: 'Vercel', industry: 'Cloud', rating: 4.5, reviews: 289, color: 'from-gray-800 to-gray-950' },
+const GRADIENTS = [
+  'from-indigo-500 to-violet-600', 'from-navy-500 to-navy-700',
+  'from-cyan-500 to-blue-600',     'from-gray-800 to-gray-950',
+  'from-pink-500 to-rose-600',     'from-emerald-500 to-teal-600',
 ]
+function pickGradient(name) {
+  let h = 0
+  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h)
+  return GRADIENTS[Math.abs(h) % GRADIENTS.length]
+}
 
 export default function LandingPage() {
   const { scrollYProgress } = useScroll()
   const heroY = useTransform(scrollYProgress, [0, 0.3], [0, -60])
+
+  const [topCompanies, setTopCompanies] = useState([])
+
+  useEffect(() => {
+    getCompanies({ sortBy: 'overall_rating', sortOrder: 'desc', limit: 4 })
+      .then(res => setTopCompanies(res.data || []))
+      .catch(() => {})
+  }, [])
 
   return (
     <div className="bg-ice-50 overflow-hidden">
@@ -417,12 +431,12 @@ export default function LandingPage() {
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {topCompanies.map((company, i) => (
-              <Reveal key={company.name} delay={i * 0.08}>
+              <Reveal key={company.id} delay={i * 0.08}>
                 <Link
-                  to="/companies/1"
+                  to={`/companies/${company.id}`}
                   className="group block p-6 rounded-2xl bg-white border border-navy-100/50 hover:border-navy-200 hover:shadow-lg hover:shadow-navy-900/4 transition-all duration-300"
                 >
-                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${company.color} flex items-center justify-center mb-5`}>
+                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${pickGradient(company.name)} flex items-center justify-center mb-5`}>
                     <Building2 size={22} className="text-white" strokeWidth={1.5} />
                   </div>
                   <h3 className="font-semibold text-navy-900 text-lg group-hover:text-navy-700 transition-colors">
@@ -432,9 +446,9 @@ export default function LandingPage() {
                   <div className="mt-4 flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                       <Star size={14} className="fill-amber-400 text-amber-400" />
-                      <span className="text-sm font-semibold text-navy-900">{company.rating}</span>
+                      <span className="text-sm font-semibold text-navy-900">{Number(company.overall_rating).toFixed(1)}</span>
                     </div>
-                    <span className="text-xs text-navy-400">{company.reviews} reviews</span>
+                    <span className="text-xs text-navy-400">{company.total_reviews} reviews</span>
                   </div>
                 </Link>
               </Reveal>

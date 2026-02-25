@@ -1,3 +1,4 @@
+//this file to make sure that reviewer and rated employee have approved employment in the same company
 const supabase = require("../config/database");
 
 // Get employee.id from logged-in userId
@@ -12,21 +13,27 @@ async function getEmployeeIdByUserId(userId) {
   return { data: data.id };
 }
 
-// Both reviewer + rated must have APPROVED employment in SAME company
+// Both reviewer + rated must have APPROVED, CURRENT employment in SAME company
+// Former employees (is_current = false) are restricted from giving/receiving feedback
 async function bothApprovedInCompany({ reviewerEmployeeId, ratedEmployeeId, companyId }) {
   const { data, error } = await supabase
     .from("employments")
     .select("employee_id")
     .eq("company_id", companyId)
     .eq("verification_status", "approved")
+    .eq("is_current", true)
     .in("employee_id", [reviewerEmployeeId, ratedEmployeeId])
     .is("deleted_at", null);
 
   if (error) return { error: error.message };
 
   const set = new Set((data || []).map((r) => r.employee_id));
-  if (!set.has(reviewerEmployeeId) || !set.has(ratedEmployeeId)) {
-    return { error: "Both employees must have approved employment in the same company" };
+
+  if (!set.has(reviewerEmployeeId)) {
+    return { error: "You must be a current approved employee at this company to submit feedback" };
+  }
+  if (!set.has(ratedEmployeeId)) {
+    return { error: "The rated employee must be a current approved employee at this company" };
   }
   return { data: true };
 }
@@ -81,9 +88,74 @@ async function createFeedback({
   return { data };
 }
 
+// GET feedback received — employee sees only feedback about themselves; admin sees all
+async function getFeedbackReceived({ employeeId, isSystemAdmin, page = 1, limit = 20 }) {
+  const offset = (page - 1) * limit;
+
+  let query = supabase
+    .from("employee_feedback")
+    .select(
+      `id, professionalism, communication, teamwork, reliability,
+       written_feedback, quarter, year, created_at,
+       company:company_id ( id, name ),
+       reviewer:reviewer_id ( id, full_name )`,
+      { count: "exact" }
+    )
+    .is("deleted_at", null)
+    .order("year", { ascending: false })
+    .order("quarter", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  // Filter by employee unless admin viewing all
+  if (!isSystemAdmin || employeeId) {
+    query = query.eq("rated_employee_id", employeeId);
+  }
+
+  const { data, error, count } = await query;
+  if (error) return { error: error.message };
+
+  return {
+    data,
+    pagination: { page, limit, total: count || 0, pages: Math.ceil((count || 0) / limit) }
+  };
+}
+
+// GET feedback given — employee sees feedback they submitted; admin sees all
+async function getFeedbackGiven({ employeeId, isSystemAdmin, page = 1, limit = 20 }) {
+  const offset = (page - 1) * limit;
+
+  let query = supabase
+    .from("employee_feedback")
+    .select(
+      `id, professionalism, communication, teamwork, reliability,
+       written_feedback, quarter, year, created_at,
+       company:company_id ( id, name ),
+       rated:rated_employee_id ( id, full_name )`,
+      { count: "exact" }
+    )
+    .is("deleted_at", null)
+    .order("year", { ascending: false })
+    .order("quarter", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (!isSystemAdmin || employeeId) {
+    query = query.eq("reviewer_id", employeeId);
+  }
+
+  const { data, error, count } = await query;
+  if (error) return { error: error.message };
+
+  return {
+    data,
+    pagination: { page, limit, total: count || 0, pages: Math.ceil((count || 0) / limit) }
+  };
+}
+
 module.exports = {
   getEmployeeIdByUserId,
   bothApprovedInCompany,
   feedbackAlreadyExists,
-  createFeedback
+  createFeedback,
+  getFeedbackReceived,
+  getFeedbackGiven
 };

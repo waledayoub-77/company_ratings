@@ -1,6 +1,7 @@
 const supabase = require('../config/database');
 const { AppError } = require('../middlewares/errorHandler');
 const { logAdminAction } = require('../utils/auditLogger');
+const { sanitizeSearch } = require('../middlewares/sanitize');
 const reportService = require('./reportService');
 const {
   sendAccountSuspendedEmail,
@@ -35,7 +36,8 @@ const getUsers = async ({ search, role, page = 1, limit = 20 }) => {
   }
 
   if (search) {
-    query = query.ilike('email', `%${search}%`);
+    const safeSearch = sanitizeSearch(search);
+    if (safeSearch) query = query.ilike('email', `%${safeSearch}%`);
   }
 
   const { data: users, error, count } = await query;
@@ -47,10 +49,11 @@ const getUsers = async ({ search, role, page = 1, limit = 20 }) => {
 
   if (search) {
     // Fetch employees matching full_name to get their user_ids
+    const safeSearch = sanitizeSearch(search);
     const { data: matchingEmployees } = await supabase
       .from('employees')
       .select('user_id, full_name')
-      .ilike('full_name', `%${search}%`)
+      .ilike('full_name', `%${safeSearch}%`)
       .is('deleted_at', null);
 
     if (matchingEmployees && matchingEmployees.length > 0) {
@@ -301,7 +304,8 @@ const getCompanies = async ({ search, page = 1, limit = 20 }) => {
     .range(from, to);
 
   if (search) {
-    query = query.or(`name.ilike.%${search}%,industry.ilike.%${search}%,location.ilike.%${search}%`);
+    const safeSearch = sanitizeSearch(search);
+    if (safeSearch) query = query.or(`name.ilike.%${safeSearch}%,industry.ilike.%${safeSearch}%,location.ilike.%${safeSearch}%`);
   }
 
   const { data: companies, error, count } = await query;

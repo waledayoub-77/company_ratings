@@ -1,7 +1,7 @@
 const supabase = require('../config/database');
 const { AppError } = require('../middlewares/errorHandler');
 const { logAdminAction } = require('../utils/auditLogger');
-
+ 
 const ALLOWED_REPORT_REASONS = ['false_info', 'spam', 'harassment', 'other'];
 const ALLOWED_RESOLVE_ACTIONS = ['remove', 'dismiss'];
 

@@ -8,7 +8,7 @@ const { requireAuth } = require("../middlewares/authMiddleware");
 router.post("/request", requireAuth, employmentController.requestEmployment);
 router.get("/", requireAuth, employmentController.listMyEmployments);
 
-// ✅ Admin view — MUST be before "/:id/..."
+// Admin view — MUST be before "/:id/..."
 router.get("/pending", requireAuth, employmentController.listPendingEmployments);
 
 // Approve / reject / end

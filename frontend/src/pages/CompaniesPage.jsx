@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -10,48 +10,106 @@ import {
   ChevronDown,
   ArrowUpDown,
   X,
+  AlertCircle,
 } from 'lucide-react'
 import PageHeader from '../components/ui/PageHeader.jsx'
 import Reveal from '../components/ui/Reveal.jsx'
+import { getCompanies } from '../api/companies'
 
-/* ─── Mock data ─── */
-const industries = ['All Industries', 'Technology', 'Finance', 'Healthcare', 'Education', 'Retail', 'Media', 'Manufacturing']
-const locations = ['All Locations', 'New York', 'San Francisco', 'London', 'Berlin', 'Toronto', 'Remote']
-const sortOptions = ['Highest Rated', 'Most Reviewed', 'Alphabetical', 'Recently Added']
-
-const companies = [
-  { id: 1, name: 'Stripe', industry: 'Fintech', location: 'San Francisco', rating: 4.7, reviews: 342, desc: 'Financial infrastructure for the internet. Building economic tools for businesses worldwide.', gradient: 'from-indigo-500 to-violet-600' },
-  { id: 2, name: 'Notion', industry: 'Technology', location: 'New York', rating: 4.6, reviews: 218, desc: 'All-in-one workspace for notes, docs, and project management.', gradient: 'from-navy-500 to-navy-700' },
-  { id: 3, name: 'Linear', industry: 'Technology', location: 'Remote', rating: 4.8, reviews: 156, desc: 'The issue tracking tool you\'ll enjoy using. Streamlined for modern teams.', gradient: 'from-cyan-500 to-blue-600' },
-  { id: 4, name: 'Vercel', industry: 'Technology', location: 'San Francisco', rating: 4.5, reviews: 289, desc: 'Frontend cloud platform enabling developers to build and deploy web applications.', gradient: 'from-gray-800 to-gray-950' },
-  { id: 5, name: 'Figma', industry: 'Technology', location: 'San Francisco', rating: 4.4, reviews: 431, desc: 'Collaborative interface design tool that connects everyone in the design process.', gradient: 'from-pink-500 to-rose-600' },
-  { id: 6, name: 'Datadog', industry: 'Technology', location: 'New York', rating: 4.2, reviews: 198, desc: 'Monitoring and analytics platform for cloud-scale infrastructure and applications.', gradient: 'from-purple-500 to-indigo-600' },
-  { id: 7, name: 'Plaid', industry: 'Fintech', location: 'San Francisco', rating: 4.3, reviews: 167, desc: 'Building the infrastructure for a connected financial ecosystem.', gradient: 'from-emerald-500 to-teal-600' },
-  { id: 8, name: 'Airtable', industry: 'Technology', location: 'San Francisco', rating: 4.1, reviews: 245, desc: 'Low-code platform for building collaborative apps that evolve with your organization.', gradient: 'from-amber-500 to-orange-600' },
-  { id: 9, name: 'Mercury', industry: 'Finance', location: 'Remote', rating: 4.6, reviews: 128, desc: 'Banking for startups. Powerful financial tools designed for ambitious companies.', gradient: 'from-blue-500 to-sky-600' },
+/* ─── Constants ─── */
+const industries = [
+  'All Industries', 'Technology', 'Healthcare', 'Finance', 'Education',
+  'Retail', 'Manufacturing', 'Consulting', 'Media & Entertainment',
+  'Real Estate', 'Transportation', 'Food & Beverage', 'Energy',
+  'Telecommunications', 'Automotive', 'Aerospace', 'Pharmaceuticals',
+  'Legal', 'Marketing & Advertising', 'Construction', 'Hospitality',
 ]
+const sortOptions = [
+  { label: 'Highest Rated',  sortBy: 'overall_rating', sortOrder: 'desc' },
+  { label: 'Most Reviewed',  sortBy: 'total_reviews',  sortOrder: 'desc' },
+  { label: 'Alphabetical',   sortBy: 'name',           sortOrder: 'asc'  },
+  { label: 'Recently Added', sortBy: 'created_at',     sortOrder: 'desc' },
+]
+const GRADIENTS = [
+  'from-indigo-500 to-violet-600',  'from-cyan-500 to-blue-600',
+  'from-pink-500 to-rose-600',      'from-emerald-500 to-teal-600',
+  'from-amber-500 to-orange-600',   'from-purple-500 to-indigo-600',
+  'from-blue-500 to-sky-600',       'from-gray-800 to-gray-950',
+  'from-navy-500 to-navy-700',      'from-red-500 to-rose-600',
+]
+function pickGradient(name) {
+  let h = 0
+  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h)
+  return GRADIENTS[Math.abs(h) % GRADIENTS.length]
+}
+function buildPageButtons(cur, total) {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+  const p = [1]
+  if (cur > 3) p.push('...')
+  for (let i = Math.max(2, cur - 1); i <= Math.min(total - 1, cur + 1); i++) p.push(i)
+  if (cur < total - 2) p.push('...')
+  p.push(total)
+  return p
+}
+const LIMIT = 9
 
 export default function CompaniesPage() {
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [industry, setIndustry] = useState('All Industries')
-  const [location, setLocation] = useState('All Locations')
+  const [locationFilter, setLocationFilter] = useState('')
   const [sort, setSort] = useState('Highest Rated')
   const [showFilters, setShowFilters] = useState(false)
   const [ratingFilter, setRatingFilter] = useState(0)
+  const [page, setPage] = useState(1)
 
-  const filtered = companies
-    .filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
-    .filter(c => industry === 'All Industries' || c.industry === industry)
-    .filter(c => location === 'All Locations' || c.location === location)
-    .filter(c => c.rating >= ratingFilter)
-    .sort((a, b) => {
-      if (sort === 'Highest Rated') return b.rating - a.rating
-      if (sort === 'Most Reviewed') return b.reviews - a.reviews
-      if (sort === 'Alphabetical') return a.name.localeCompare(b.name)
-      return 0
-    })
+  const [companies, setCompanies] = useState([])
+  const [pagination, setPagination] = useState({ total: 0, totalPages: 1 })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  const activeFilters = [industry !== 'All Industries' && industry, location !== 'All Locations' && location, ratingFilter > 0 && `${ratingFilter}+ stars`].filter(Boolean)
+  // Debounce search input
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 400)
+    return () => clearTimeout(t)
+  }, [search])
+
+  // Reset to page 1 when any filter changes
+  useEffect(() => { setPage(1) }, [debouncedSearch, industry, locationFilter, sort, ratingFilter])
+
+  // Fetch companies from API
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const s = sortOptions.find(o => o.label === sort) || sortOptions[0]
+        const params = { page, limit: LIMIT, sortBy: s.sortBy, sortOrder: s.sortOrder }
+        if (debouncedSearch) params.search = debouncedSearch
+        if (industry !== 'All Industries') params.industry = industry
+        if (locationFilter) params.location = locationFilter
+        if (ratingFilter > 0) params.minRating = ratingFilter
+
+        const res = await getCompanies(params)
+        if (!cancelled) {
+          setCompanies(res.data || [])
+          setPagination(res.pagination || { total: 0, totalPages: 1 })
+        }
+      } catch (err) {
+        if (!cancelled) setError(err.message || 'Failed to load companies')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [page, debouncedSearch, industry, locationFilter, sort, ratingFilter])
+
+  const activeFilters = [
+    industry !== 'All Industries' && industry,
+    locationFilter && `📍 ${locationFilter}`,
+    ratingFilter > 0 && `${ratingFilter}+ stars`,
+  ].filter(Boolean)
 
   return (
     <div className="min-h-screen bg-ice-50">
@@ -97,8 +155,17 @@ export default function CompaniesPage() {
           <div className="mb-8 p-6 rounded-2xl bg-white border border-navy-100/50 shadow-sm">
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <SelectFilter label="Industry" value={industry} options={industries} onChange={setIndustry} />
-              <SelectFilter label="Location" value={location} options={locations} onChange={setLocation} />
-              <SelectFilter label="Sort by" value={sort} options={sortOptions} onChange={setSort} />
+              <div className="space-y-1.5">
+                <label className="block text-[13px] font-medium text-navy-700">Location</label>
+                <input
+                  type="text"
+                  value={locationFilter}
+                  onChange={(e) => setLocationFilter(e.target.value)}
+                  placeholder="e.g. San Francisco"
+                  className="w-full h-10 rounded-xl border border-navy-200 bg-white pl-3 pr-3 text-sm text-navy-700 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
+                />
+              </div>
+              <SelectFilter label="Sort by" value={sort} options={sortOptions.map(s => s.label)} onChange={setSort} />
               <div className="space-y-1.5">
                 <label className="block text-[13px] font-medium text-navy-700">Min Rating</label>
                 <div className="flex items-center gap-2">
@@ -130,13 +197,13 @@ export default function CompaniesPage() {
                 {f}
                 <X size={12} className="cursor-pointer hover:text-navy-900" onClick={() => {
                   if (f === industry) setIndustry('All Industries')
-                  if (f === location) setLocation('All Locations')
+                  if (typeof f === 'string' && f.startsWith('📍')) setLocationFilter('')
                   if (typeof f === 'string' && f.includes('stars')) setRatingFilter(0)
                 }} />
               </span>
             ))}
             <button
-              onClick={() => { setIndustry('All Industries'); setLocation('All Locations'); setRatingFilter(0) }}
+              onClick={() => { setIndustry('All Industries'); setLocationFilter(''); setRatingFilter(0) }}
               className="text-xs text-navy-500 hover:text-navy-700 transition-colors"
             >
               Clear all
@@ -147,7 +214,10 @@ export default function CompaniesPage() {
         {/* Results count */}
         <div className="flex items-center justify-between mb-6">
           <p className="text-sm text-navy-500">
-            <span className="font-semibold text-navy-900">{filtered.length}</span> companies found
+            {loading
+              ? <span className="text-navy-400">Loading…</span>
+              : <><span className="font-semibold text-navy-900">{pagination.total}</span> companies found</>
+            }
           </p>
           <div className="hidden sm:flex items-center gap-2 text-xs text-navy-400">
             <ArrowUpDown size={14} />
@@ -155,19 +225,67 @@ export default function CompaniesPage() {
           </div>
         </div>
 
+        {/* Error state */}
+        {error && (
+          <div className="mb-8 p-6 rounded-2xl bg-red-50 border border-red-100 text-center">
+            <AlertCircle size={24} className="mx-auto text-red-400 mb-2" />
+            <p className="text-sm text-red-700 font-medium">{error}</p>
+          </div>
+        )}
+
+        {/* Loading skeleton */}
+        {loading && !error && (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {Array.from({ length: LIMIT }).map((_, i) => (
+              <div key={i} className="bg-white rounded-2xl border border-navy-100/50 overflow-hidden animate-pulse">
+                <div className="h-1.5 bg-navy-100" />
+                <div className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-navy-100" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-5 bg-navy-100 rounded w-2/3" />
+                      <div className="h-3 bg-navy-50 rounded w-1/2" />
+                    </div>
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    <div className="h-3 bg-navy-50 rounded w-full" />
+                    <div className="h-3 bg-navy-50 rounded w-4/5" />
+                  </div>
+                  <div className="mt-5 pt-4 border-t border-navy-100/50 flex justify-between">
+                    <div className="h-4 bg-navy-50 rounded w-16" />
+                    <div className="h-4 bg-navy-50 rounded w-20" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!loading && !error && companies.length === 0 && (
+          <div className="py-20 text-center">
+            <Building2 size={48} className="mx-auto text-navy-200 mb-4" />
+            <p className="text-lg font-semibold text-navy-700">No companies found</p>
+            <p className="text-sm text-navy-400 mt-1">Try adjusting your search or filters.</p>
+          </div>
+        )}
+
         {/* Company grid */}
+        {!loading && !error && companies.length > 0 && (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filtered.map((company, i) => (
+          {companies.map((company, i) => {
+            const gradient = pickGradient(company.name)
+            return (
             <Reveal key={company.id} delay={i * 0.05}>
               <Link
                 to={`/companies/${company.id}`}
                 className="group block bg-white rounded-2xl border border-navy-100/50 overflow-hidden hover:border-navy-200 hover:shadow-lg hover:shadow-navy-900/4 transition-all duration-300"
               >
                 {/* Card header accent */}
-                <div className={`h-1.5 bg-gradient-to-r ${company.gradient}`} />
+                <div className={`h-1.5 bg-gradient-to-r ${gradient}`} />
                 <div className="p-6">
                   <div className="flex items-start gap-4">
-                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${company.gradient} flex items-center justify-center shrink-0`}>
+                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shrink-0`}>
                       <Building2 size={22} className="text-white" strokeWidth={1.5} />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -186,44 +304,50 @@ export default function CompaniesPage() {
                   </div>
 
                   <p className="mt-4 text-sm text-navy-500 leading-relaxed line-clamp-2">
-                    {company.desc}
+                    {company.description || 'No description available.'}
                   </p>
 
                   <div className="mt-5 pt-4 border-t border-navy-100/50 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1">
                         <Star size={15} className="fill-amber-400 text-amber-400" />
-                        <span className="text-sm font-bold text-navy-900">{company.rating}</span>
+                        <span className="text-sm font-bold text-navy-900">{Number(company.overall_rating).toFixed(1)}</span>
                       </div>
                       <span className="text-xs text-navy-300">/5</span>
                     </div>
                     <span className="text-xs text-navy-400 font-medium">
-                      {company.reviews} reviews
+                      {company.total_reviews} reviews
                     </span>
                   </div>
                 </div>
               </Link>
             </Reveal>
-          ))}
+            )
+          })}
         </div>
+        )}
 
         {/* Pagination */}
+        {!loading && pagination.totalPages > 1 && (
         <div className="mt-12 flex items-center justify-center gap-2">
-          {[1, 2, 3, '...', 12].map((page, i) => (
+          {buildPageButtons(page, pagination.totalPages).map((pg, i) => (
             <button
               key={i}
+              disabled={pg === '...'}
+              onClick={() => typeof pg === 'number' && setPage(pg)}
               className={`w-10 h-10 rounded-xl text-sm font-medium transition-all ${
-                page === 1
+                pg === page
                   ? 'bg-navy-900 text-white'
-                  : typeof page === 'number'
-                  ? 'text-navy-600 hover:bg-navy-50'
+                  : typeof pg === 'number'
+                  ? 'text-navy-600 hover:bg-navy-50 cursor-pointer'
                   : 'text-navy-300 cursor-default'
               }`}
             >
-              {page}
+              {pg}
             </button>
           ))}
         </div>
+        )}
       </div>
     </div>
   )

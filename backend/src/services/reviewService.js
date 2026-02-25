@@ -88,14 +88,21 @@ const createReview = async (reviewData, userId) => {
     throw new AppError('You have already reviewed this company', 409);
   }
 
-  // Get employment ID
+  // Get employment ID (most recent approved, excluding soft-deleted)
   const { data: employment } = await supabase
     .from('employments')
     .select('id')
     .eq('employee_id', employeeId)
     .eq('company_id', companyId)
     .eq('verification_status', 'approved')
-    .single();
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!employment) {
+    throw new AppError('No verified employment record found for this company', 400);
+  }
 
   // Create review
   const { data, error } = await supabase
@@ -240,28 +247,52 @@ const deleteReview = async (reviewId, userId, userRole) => {
  */
 const getCompanyReviews = async (companyId, filters = {}) => {
   const {
-    page = 1,
-    limit = 10,
     sortBy = 'created_at',
     sortOrder = 'desc'
   } = filters;
 
-  // Use the public view for anonymous-safe access
-  let query = supabase
-    .from('public_company_reviews')
-    .select('*', { count: 'exact' })
-    .eq('company_id', companyId);
+  // Day 6: Clamp pagination inputs
+  const limit = Math.max(1, parseInt(filters.limit) || 10);
+  const page = Math.max(1, parseInt(filters.page) || 1);
 
-  // Sorting
   const validSortBy = ['created_at', 'overall_rating'];
   const sortField = validSortBy.includes(sortBy) ? sortBy : 'created_at';
-  query = query.order(sortField, { ascending: sortOrder === 'asc' });
 
-  // Pagination
+  // Step 1: Get total count first
+  const { count, error: countError } = await supabase
+    .from('public_company_reviews')
+    .select('*', { count: 'exact', head: true })
+    .eq('company_id', companyId);
+
+  if (countError) {
+    console.error('❌ Supabase error in getCompanyReviews (count):', countError);
+    throw new AppError('Failed to fetch reviews', 500);
+  }
+
+  const totalPages = count > 0 ? Math.ceil(count / limit) : 1;
+
+  // Day 6: Handle page > totalPages gracefully
+  if (page > totalPages) {
+    return {
+      reviews: [],
+      pagination: {
+        total: count,
+        page,
+        limit,
+        totalPages,
+        message: `Page ${page} exceeds total pages (${totalPages})`
+      }
+    };
+  }
+
+  // Step 2: Fetch data for valid page
   const offset = (page - 1) * limit;
-  query = query.range(offset, offset + limit - 1);
-
-  const { data, error, count } = await query;
+  const { data, error } = await supabase
+    .from('public_company_reviews')
+    .select('*')
+    .eq('company_id', companyId)
+    .order(sortField, { ascending: sortOrder === 'asc' })
+    .range(offset, offset + limit - 1);
 
   if (error) {
     console.error('❌ Supabase error in getCompanyReviews:', error);
@@ -272,9 +303,9 @@ const getCompanyReviews = async (companyId, filters = {}) => {
     reviews: data,
     pagination: {
       total: count,
-      page: parseInt(page),
-      limit: parseInt(limit),
-      totalPages: Math.ceil(count / limit)
+      page,
+      limit,
+      totalPages
     }
   };
 };
@@ -283,10 +314,9 @@ const getCompanyReviews = async (companyId, filters = {}) => {
  * Get current user's reviews (Days 3-4)
  */
 const getMyReviews = async (userId, filters = {}) => {
-  const {
-    page = 1,
-    limit = 10
-  } = filters;
+  // Day 6: Clamp pagination inputs
+  const limit = Math.max(1, parseInt(filters.limit) || 10);
+  const page = Math.max(1, parseInt(filters.page) || 1);
 
   // Get employee ID
   const { data: employee } = await supabase
@@ -299,7 +329,37 @@ const getMyReviews = async (userId, filters = {}) => {
     throw new AppError('Employee profile not found', 404);
   }
 
-  let query = supabase
+  // Step 1: Get total count first
+  const { count, error: countError } = await supabase
+    .from('company_reviews')
+    .select('*', { count: 'exact', head: true })
+    .eq('employee_id', employee.id)
+    .is('deleted_at', null);
+
+  if (countError) {
+    console.error('❌ Supabase error in getMyReviews (count):', countError);
+    throw new AppError('Failed to fetch your reviews', 500);
+  }
+
+  const totalPages = count > 0 ? Math.ceil(count / limit) : 1;
+
+  // Day 6: Handle page > totalPages gracefully
+  if (page > totalPages) {
+    return {
+      reviews: [],
+      pagination: {
+        total: count,
+        page,
+        limit,
+        totalPages,
+        message: `Page ${page} exceeds total pages (${totalPages})`
+      }
+    };
+  }
+
+  // Step 2: Fetch data for valid page
+  const offset = (page - 1) * limit;
+  const { data, error } = await supabase
     .from('company_reviews')
     .select(`
       *,
@@ -308,16 +368,11 @@ const getMyReviews = async (userId, filters = {}) => {
         name,
         logo_url
       )
-    `, { count: 'exact' })
+    `)
     .eq('employee_id', employee.id)
     .is('deleted_at', null)
-    .order('created_at', { ascending: false });
-
-  // Pagination
-  const offset = (page - 1) * limit;
-  query = query.range(offset, offset + limit - 1);
-
-  const { data, error, count } = await query;
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
 
   if (error) {
     console.error('❌ Supabase error in getMyReviews:', error);
@@ -328,9 +383,9 @@ const getMyReviews = async (userId, filters = {}) => {
     reviews: data,
     pagination: {
       total: count,
-      page: parseInt(page),
-      limit: parseInt(limit),
-      totalPages: Math.ceil(count / limit)
+      page,
+      limit,
+      totalPages
     }
   };
 };

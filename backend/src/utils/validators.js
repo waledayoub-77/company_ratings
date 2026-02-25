@@ -26,11 +26,13 @@ const validateRegister = [
   body('fullName')
     .if((value, { req }) => (req.body.role || 'employee') === 'employee')
     .optional()
+    .trim()
     .isLength({ min: 2, max: 255 })
     .withMessage('Full name must be between 2 and 255 characters'),
 
   body('full_name')
     .optional()
+    .trim()
     .isLength({ min: 2, max: 255 })
     .withMessage('Full name must be between 2 and 255 characters'),
   
@@ -38,6 +40,7 @@ const validateRegister = [
     .if(body('role').equals('company_admin'))
     .notEmpty()
     .withMessage('Company name is required for company admins')
+    .trim()
     .isLength({ min: 2, max: 255 })
     .withMessage('Company name must be between 2 and 255 characters'),
 ];
@@ -69,6 +72,7 @@ const validateReview = [
     .withMessage('Rating must be between 1 and 5'),
   
   body('content')
+    .trim()
     .isLength({ min: 50, max: 2000 })
     .withMessage('Review content must be between 50 and 2000 characters'),
   
@@ -89,11 +93,13 @@ const validateEmploymentRequest = [
   body('position')
     .notEmpty()
     .withMessage('Position is required')
+    .trim()
     .isLength({ min: 2, max: 255 })
     .withMessage('Position must be between 2 and 255 characters'),
   
   body('department')
     .optional()
+    .trim()
     .isLength({ max: 100 })
     .withMessage('Department must not exceed 100 characters'),
   
@@ -133,6 +139,7 @@ const validateFeedback = [
   
   body('writtenFeedback')
     .optional()
+    .trim()
     .isLength({ max: 1000 })
     .withMessage('Written feedback must not exceed 1000 characters'),
 ];
@@ -150,6 +157,7 @@ const validateReportSubmission = [
     .withMessage('Reason must be one of: false_info, spam, harassment, other'),
 
   body('description')
+    .trim()
     .isLength({ min: 20 })
     .withMessage('Description must be at least 20 characters'),
 ];
@@ -159,11 +167,12 @@ const validateReportSubmission = [
  */
 const validateReportResolution = [
   body('action')
-    .isIn(['remove', 'dismiss'])
-    .withMessage('Action must be remove or dismiss'),
+    .isIn(['dismissed', 'resolved'])
+    .withMessage('Action must be dismissed or resolved'),
 
   body('adminNote')
     .optional()
+    .trim()
     .isLength({ max: 1000 })
     .withMessage('adminNote must be at most 1000 characters'),
 ];
@@ -183,6 +192,7 @@ const validateUuidParam = (paramName = 'id') => [
 const validateSuspendUser = [
   body('reason')
     .optional()
+    .trim()
     .isLength({ max: 1000 })
     .withMessage('Reason must be at most 1000 characters'),
 ];

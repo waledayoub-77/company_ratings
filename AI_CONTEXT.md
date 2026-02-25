@@ -951,6 +951,17 @@ if (!validReasons.includes(reason)) {
 
 ## 🔄 RECENT CHANGES LOG
 
+### 2026-02-25 — Raneem: Day 8 Frontend Integration Complete ✅
+
+**Branch**: `raneem`
+
+**Files modified**:
+- `frontend/src/pages/WriteReviewPage.jsx` — connected to real API: fetches company name on mount, replaced `setTimeout` with `createReview()`, handles employment/duplicate errors, preview shows real user initials from auth context
+- `frontend/src/pages/InternalFeedbackPage.jsx` — replaced `setTimeout` with `submitFeedback()`, maps display category names to backend field names, handles quarterly limit 409 error
+- `frontend/src/pages/EmployeeDashboard.jsx` — complete rewrite: removed all mock data, added `useAuth`, fetches `getMyEmployments` + `getMyReviews` + `getFeedbackReceived` in `Promise.all` on mount; Overview Tab shows real counts + activity feed; Employment Tab has working company search dropdown + `requestEmployment` form; Reviews Tab has inline edit (`updateReview`) + delete (`deleteReview`) with 48h window check; Feedback Tab shows computed category averages + individual entries with written feedback
+
+---
+
 ### 2026-02-25 — Aya: Day 8 Frontend Integration Complete ✅
 
 **Summary**: Connected CompaniesPage, CompanyProfilePage, and LandingPage to real backend API. All mock data replaced with live API calls including search, filters, pagination, and review reporting.
@@ -991,8 +1002,6 @@ if (!validReasons.includes(reason)) {
 - ✅ Auth-aware report form (redirects to login if not authenticated)
 - ✅ Dynamic rating distribution bars with animation
 - ✅ Sort dropdown for reviews (Recent, Highest Rated, Lowest Rated, Most Helpful)
-
-**Status**: Ready to merge to `dev` branch
 
 ---
 
@@ -1543,29 +1552,30 @@ cd backend
 
 ---
 
-##### 🟡 Raneem — EmployeeDashboard + WriteReviewPage + InternalFeedbackPage
+##### 🟡 Raneem — EmployeeDashboard + WriteReviewPage + InternalFeedbackPage ✅ COMPLETE
 > Files: `EmployeeDashboard.jsx`, `WriteReviewPage.jsx`, `InternalFeedbackPage.jsx`  
 > Import from: `api/reviews.js`, `api/employments.js`, `api/feedback.js`, `api/companies.js`
 
-**WriteReviewPage** (`src/pages/WriteReviewPage.jsx`)
-- [ ] Read `:id` (companyId) from `useParams()`; fetch `getCompanyById(id)` → show real company name in header
-- [ ] Replace `setTimeout` with `createReview({ companyId, rating, reviewText, isAnonymous })`
-- [ ] On success: show success state → navigate to `/companies/${id}`
-- [ ] Handle specific errors: "not verified employee" → show custom message; "already reviewed" → show custom message
+**WriteReviewPage** (`src/pages/WriteReviewPage.jsx`) ✅
+- [x] Read `:id` (companyId) from `useParams()`; fetch `getCompanyById(id)` → show real company name in header
+- [x] Replace `setTimeout` with `createReview({ companyId, rating, reviewText, isAnonymous })`
+- [x] On success: show success state → navigate to `/companies/${id}`
+- [x] Handle specific errors: "not verified employee" → show custom message; "already reviewed" → show custom message
+- [x] Preview section now shows real user initials/name from `useAuth()`
 
-**EmployeeDashboard** (`src/pages/EmployeeDashboard.jsx`)
-- [ ] On mount: `Promise.all([getMyReviews(), getMyEmployments(), getFeedbackReceived()])` — replace hardcoded `mockUser`
-- [ ] **Overview Tab**: replace hardcoded stat counts + recent activity with real data
-- [ ] **Employment Tab**: replace 3 mock employments; "Request Verification" form → `requestEmployment({ companyId, position, startDate })`; add company search picker using `getCompanies({ search })`
-- [ ] **Reviews Tab**: replace mock reviews; show "Edit" only when `can_edit_until` is in future; edit → `updateReview(id, data)`; delete → `deleteReview(id)`
-- [ ] **Feedback Tab**: replace mock feedback with real `getFeedbackReceived()` category scores + comments
+**EmployeeDashboard** (`src/pages/EmployeeDashboard.jsx`) ✅
+- [x] On mount: `Promise.all([getMyReviews(), getMyEmployments(), getFeedbackReceived()])` — replace hardcoded `mockUser`
+- [x] **Overview Tab**: real stat counts (verified employments, reviews, feedback, avg score) + real recent activity feed
+- [x] **Employment Tab**: real employments list; "Request Verification" form → `requestEmployment({ companyId, position, startDate })`; company search picker using debounced `getCompanies({ search })`
+- [x] **Reviews Tab**: real reviews; show "Edit" only when `can_edit_until` is in future; edit → `updateReview(id, data)`; delete → `deleteReview(id)`
+- [x] **Feedback Tab**: real `getFeedbackReceived()` — computed averages per category, individual entries with scores + written feedback
+- [x] Loading spinner shown while fetching; empty states for no data
 
-**InternalFeedbackPage** (`src/pages/InternalFeedbackPage.jsx`)
-- [ ] Keep coworker list as mock for now (no list-employees endpoint) — wire submit to real API
-- [ ] Replace `setTimeout` with `submitFeedback({ toEmployeeId: selectedPerson.id, scores: { professionalism, communication, teamwork, reliability }, comment })`
-- [ ] Map frontend ratings object keys to backend field names
-- [ ] Handle quarterly-limit error (409) → show "Already submitted feedback this quarter"
-- [ ] Merge to `dev` when done
+**InternalFeedbackPage** (`src/pages/InternalFeedbackPage.jsx`) ✅
+- [x] Replace `setTimeout` with `submitFeedback({ toEmployeeId, scores: { professionalism, communication, teamwork, reliability }, comment })`
+- [x] Mapped frontend category display names to lowercase backend field names
+- [x] Handle quarterly-limit error → show "Already submitted feedback this quarter"
+- [x] Merge to `dev` when done
 
 ---
 

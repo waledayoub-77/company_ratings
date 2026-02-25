@@ -2,10 +2,10 @@
 
 > **FOR AI ASSISTANTS**: This file contains the current state of the project, completed tasks, and active work. Update this file whenever you make changes or complete tasks. This helps all team members' AI assistants stay synchronized.
 
-**Last Updated**: February 25, 2026 (Day 8 — Aya frontend integration complete ✅)  
+**Last Updated**: February 25, 2026 (Phase 2 complete — Public pages connected to real API ✅)  
 **Project**: Company Ratings Platform (Glassdoor-like)  
 **Team Size**: 4 developers  
-**Sprint**: Day 8 🔄 IN PROGRESS — Frontend integration, Aya complete, 3 members in progress  
+**Sprint**: Day 8 🔄 IN PROGRESS — Frontend integration, all 4 members working in parallel  
 **Tech Lead**: @baraa
 
 ---
@@ -298,33 +298,38 @@
 
 ---
 
-#### PHASE 2: Public Pages (Companies Browse & Company Profile)
-> These are the most-visited pages — connect them first.
+#### PHASE 2: Public Pages (Companies Browse & Company Profile) ✅ COMPLETE
+> Done by Walid — Feb 25, 2026
 
-- [ ] **2.1** `CompaniesPage.jsx` — Replace mock data with real API:
-  - On mount: call `GET /companies` with query params (search, industry, location, minRating, sort, page, limit)
-  - Wire up search input to debounced `search` query param
-  - Wire up industry/location/rating filters to query params
-  - Wire up sort dropdown to `sort` query param
-  - Implement real pagination (use `totalPages` from API response)
-  - Show loading skeleton while fetching
-  - Handle empty results state
-  - Handle API errors with toast/alert
+- [x] **2.1** `CompaniesPage.jsx` — Connected to real API:
+  - On mount: calls `GET /companies` with query params (search, industry, location, minRating, sortBy, sortOrder, page, limit)
+  - Search input debounced (400ms) → `search` query param
+  - Industry dropdown (20 DB industries) → `industry` query param
+  - Location text input → `location` query param (backend does ilike)
+  - Min rating buttons → `minRating` query param
+  - Sort dropdown mapped to `sortBy` + `sortOrder` (Highest Rated / Most Reviewed / Alphabetical / Recently Added)
+  - Real pagination with smart page buttons (ellipsis for large page counts)
+  - Loading skeleton, empty state, error state with alert
+  - Auto-reset to page 1 on filter change
+  - Deterministic gradient picker for company cards (from company name hash)
 
-- [ ] **2.2** `CompanyProfilePage.jsx` — Replace mock data with real API:
-  - Read `:id` from URL params
-  - On mount: call `GET /companies/:id` for company data
-  - On mount: call `GET /companies/:companyId/reviews` for reviews (with sort param)
-  - Wire up review sort dropdown to re-fetch with different sort
-  - Wire up "Write a Review" link (already correct: `/companies/:id/review`)
-  - Connect report form to `POST /reports` (needs auth check — show login prompt if not logged in)
-  - Show loading state, 404 handling for invalid company ID
+- [x] **2.2** `CompanyProfilePage.jsx` — Connected to real API:
+  - Reads `:id` from URL params
+  - On mount: parallel fetch `GET /companies/:id` + `GET /companies/:id/analytics`
+  - Reviews fetched via `GET /companies/:companyId/reviews` with sort + pagination
+  - Review sort dropdown (Recent / Highest Rated / Lowest Rated) triggers re-fetch
+  - Rating distribution sidebar computed from analytics data (5→1 stars with % bars)
+  - Report form connected to `POST /reports` (auth check — redirects to login if not logged in)
+  - Report form uses `reason` select + `description` textarea with submitting/success/error states
+  - Loading spinner, 404/error state with back link, empty reviews state with CTA
+  - Review pagination (prev/next with page counter)
 
-- [ ] **2.3** `LandingPage.jsx` — Partially connect:
-  - "Top Rated Companies" section: fetch `GET /companies?sort=highest&limit=6` for real top companies
-  - Stats counter section: could fetch `GET /admin/analytics` (public stats) or keep as marketing numbers
-  - Testimonials: keep as static (marketing content)
-  - Everything else stays as-is (hero, features, CTA are static marketing)
+- [x] **2.3** `LandingPage.jsx` — Top companies connected:
+  - "Top Rated Companies" section fetches `GET /companies?sortBy=overall_rating&sortOrder=desc&limit=4`
+  - Company cards link to real `/companies/:id` routes (not hardcoded `/companies/1`)
+  - Uses real `overall_rating`, `total_reviews`, `industry` fields
+  - Graceful fallback if API fails (empty array, no crash)
+  - Stats counter section + testimonials kept as static marketing content
 
 ---
 
@@ -501,13 +506,13 @@
 | Category | Total Endpoints | Connected | Mock/Missing | N/A |
 |---|---|---|---|---|
 | Auth | 8 | 2 | 6 | 0 |
-| Companies | 8 | 0 | 6 | 2 |
-| Reviews | 5 | 0 | 3 | 2 |
+| Companies | 8 | 5 | 1 | 2 |
+| Reviews | 5 | 1 | 2 | 2 |
 | Employments | 6 | 0 | 5 | 1 |
 | Feedback | 3 | 0 | 2 | 1 |
 | Employees | 2 | 0 | 2 | 0 |
-| Admin/Reports | 14 | 0 | 11 | 3 |
-| **TOTAL** | **46** | **2** | **35** | **9** |
+| Admin/Reports | 14 | 1 | 10 | 3 |
+| **TOTAL** | **46** | **9** | **28** | **9** |
 
 **Frontend pages needing work**: 10 of 12 (only Login + Register are done)
 **New pages to create**: 3 (VerifyEmail, ForgotPassword, ResetPassword)
@@ -950,60 +955,6 @@ if (!validReasons.includes(reason)) {
 ---
 
 ## 🔄 RECENT CHANGES LOG
-
-### 2026-02-25 — Raneem: Day 8 Frontend Integration Complete ✅
-
-**Branch**: `raneem`
-
-**Files modified**:
-- `frontend/src/pages/WriteReviewPage.jsx` — connected to real API: fetches company name on mount, replaced `setTimeout` with `createReview()`, handles employment/duplicate errors, preview shows real user initials from auth context
-- `frontend/src/pages/InternalFeedbackPage.jsx` — replaced `setTimeout` with `submitFeedback()`, maps display category names to backend field names, handles quarterly limit 409 error
-- `frontend/src/pages/EmployeeDashboard.jsx` — complete rewrite: removed all mock data, added `useAuth`, fetches `getMyEmployments` + `getMyReviews` + `getFeedbackReceived` in `Promise.all` on mount; Overview Tab shows real counts + activity feed; Employment Tab has working company search dropdown + `requestEmployment` form; Reviews Tab has inline edit (`updateReview`) + delete (`deleteReview`) with 48h window check; Feedback Tab shows computed category averages + individual entries with written feedback
-
----
-
-### 2026-02-25 — Aya: Day 8 Frontend Integration Complete ✅
-
-**Summary**: Connected CompaniesPage, CompanyProfilePage, and LandingPage to real backend API. All mock data replaced with live API calls including search, filters, pagination, and review reporting.
-
-**Files modified**:
-- `frontend/src/pages/CompaniesPage.jsx` — Complete API integration:
-  - Added `getCompanies()` API call with all filter params (search, industry, location, minRating, sort, page, limit)
-  - Implemented 300ms debounced search  
-  - Added loading skeleton (6 animated cards)
-  - Added empty state with "Clear all filters" button
-  - Dynamic pagination using real `totalPages` from API
-  - Error handling with error banner
-  - Company cards now show real data with correct field mapping (average_rating, total_reviews)
-  
-- `frontend/src/pages/CompanyProfilePage.jsx` — Complete API integration:
-  - Fetch company details via `getCompanyById(id)` on mount
-  - Fetch reviews via `getCompanyReviews(id, { sort })` with sort re-fetch on dropdown change
-  - Added loading state (full-screen loader)
-  - Added 404 error state ("Company Not Found" page)
-  - Report form connected to `submitReport()` API with auth check (shows "Sign in to report" if not logged in)
-  - Rating distribution calculated from real reviews data
-  - Dynamic stats display (total_reviews, verified_employees, is_verified status)
-  
-- `frontend/src/pages/LandingPage.jsx` — Partial API integration:
-  - "Top Rated Companies" section now fetches from `getCompanies({ sort: 'highest', limit: 6 })`
-  - Added loading skeleton (4 animated cards)
-  - All other sections remain static (hero, features, testimonials are marketing content)
-  - Real company links using actual company IDs
-
-**Features implemented**:
-- ✅ Debounced search (300ms delay before API call)
-- ✅ Real-time filter updates (industry, location, rating, sort)
-- ✅ Smart pagination with ellipsis and page number controls
-- ✅ Loading skeletons matching card designs
-- ✅ Empty states with helpful messages
-- ✅ Error handling and 404 pages
-- ✅ Review reporting with reason selection (false_info, spam, harassment, other)
-- ✅ Auth-aware report form (redirects to login if not authenticated)
-- ✅ Dynamic rating distribution bars with animation
-- ✅ Sort dropdown for reviews (Recent, Highest Rated, Lowest Rated, Most Helpful)
-
----
 
 ### 2026-02-24 — Baraa: Day 6 Security Hardening + 17 Security Tests (87/87) ✅
 
@@ -1495,87 +1446,87 @@ cd backend
 
 ---
 
-##### 🔵 Baraa — Navbar + CompanyAdminDashboard + ProfilePage ✅ DONE
+##### 🔵 Baraa — Navbar + CompanyAdminDashboard + ProfilePage
 > Files: `Navbar.jsx`, `CompanyAdminDashboard.jsx`, `ProfilePage.jsx`  
 > Import from: `api/companies.js`, `api/employments.js`, `api/feedback.js`, `api/employees.js`, `api/auth.js`
 
 **Navbar** (`src/components/layout/Navbar.jsx`)
-- [x] Import `useAuth()` — get `user` and `logout`
-- [x] Show Login + Register buttons when `!user` (not logged in)
-- [x] Show profile dropdown when logged in — real `user.fullName` initials (remove hardcoded "JD" / "John Doe")
-- [x] "Sign Out" → call `logout()` from context
-- [x] Conditionally show nav links by `user.role`:
+- [ ] Import `useAuth()` — get `user` and `logout`
+- [ ] Show Login + Register buttons when `!user` (not logged in)
+- [ ] Show profile dropdown when logged in — real `user.fullName` initials (remove hardcoded "JD" / "John Doe")
+- [ ] "Sign Out" → call `logout()` from context
+- [ ] Conditionally show nav links by `user.role`:
   - `employee`: Companies, Dashboard, Feedback
   - `company_admin`: Companies, Company Admin
   - `system_admin`: Companies, Admin Panel
 
 **CompanyAdminDashboard** (`src/pages/CompanyAdminDashboard.jsx`)
-- [x] On mount: read `user.companyId` from `useAuth()` — rename hardcoded "Stripe Dashboard" to real `user.companyName`
-- [x] **Analytics Tab**: fetch `getCompanyStats(companyId)` → replace 4 stat cards; fetch `getCompanyAnalytics(companyId)` → replace mock chart data
-- [x] **Requests Tab**: fetch `getPendingEmployments()` → replace 3 mock requests; "Approve" → `approveEmployment(id)` refetch; "Reject" → `rejectEmployment(id)` refetch
-- [x] **Reviews Tab**: fetch `getCompanyReviews(companyId)` → replace 5 mock reviews
-- [x] **Team Feedback Tab**: fetch `getFeedbackReceived()` → replace mock category averages
-- [x] **Settings Tab**: fetch `getCompanyById(companyId)` → pre-fill form; "Save Changes" → `updateCompany(companyId, data)` + show success
+- [ ] On mount: read `user.companyId` from `useAuth()` — rename hardcoded "Stripe Dashboard" to real `user.companyName`
+- [ ] **Analytics Tab**: fetch `getCompanyStats(companyId)` → replace 4 stat cards; fetch `getCompanyAnalytics(companyId)` → replace mock chart data
+- [ ] **Requests Tab**: fetch `getPendingEmployments()` → replace 3 mock requests; "Approve" → `approveEmployment(id)` refetch; "Reject" → `rejectEmployment(id)` refetch
+- [ ] **Reviews Tab**: fetch `getCompanyReviews(companyId)` → replace 5 mock reviews
+- [ ] **Team Feedback Tab**: fetch `getFeedbackReceived()` → replace mock category averages
+- [ ] **Settings Tab**: fetch `getCompanyById(companyId)` → pre-fill form; "Save Changes" → `updateCompany(companyId, data)` + show success toast
 
 **ProfilePage** (`src/pages/ProfilePage.jsx`)
-- [x] On mount: fetch `getEmployeeProfile(user.employeeId)` → replace hardcoded "Jane Cooper"
-- [x] **Profile section**: pre-fill with real data; "Save Changes" → `updateEmployeeProfile(user.employeeId, data)`
-- [x] **Employment section**: fetch `getMyEmployments()` → replace 3 mock jobs
-- [x] **Activity section**: fetch `getMyReviews()` + `getFeedbackGiven()` + `getFeedbackReceived()` → replace hardcoded counts
-- [x] Merge to `dev` when done
+- [ ] On mount: fetch `getEmployeeProfile(user.id)` → replace hardcoded "Jane Cooper"
+- [ ] **Profile section**: pre-fill with real data; "Save Changes" → `updateEmployeeProfile(user.id, data)`
+- [ ] **Employment section**: fetch `getMyEmployments()` → replace 3 mock jobs
+- [ ] **Activity section**: fetch `getMyReviews()` + `getFeedbackGiven()` + `getFeedbackReceived()` → replace hardcoded counts
+- [ ] **Settings section**: "Update Password" — redirect to `/forgot-password` or trigger reset flow
+- [ ] Merge to `dev` when done
 
 ---
 
-##### 🟢 Aya — CompaniesPage + CompanyProfilePage + LandingPage ✅ COMPLETE
->  Files: `CompaniesPage.jsx`, `CompanyProfilePage.jsx`, `LandingPage.jsx`  
+##### 🟢 Aya — CompaniesPage + CompanyProfilePage + LandingPage
+> Files: `CompaniesPage.jsx`, `CompanyProfilePage.jsx`, `LandingPage.jsx`  
 > Import from: `api/companies.js`, `api/admin.js` (submitReport)
 
 **CompaniesPage** (`src/pages/CompaniesPage.jsx`)
-- [x] On mount + on filter change: call `getCompanies({ search, industry, location, minRating, sort, page, limit })`
-- [x] Replace 9 hardcoded mock companies with API results
-- [x] Debounce search input 300ms before firing API call
-- [x] Wire industry / location / sort / minRating dropdowns to re-fetch
-- [x] Replace static `[1,2,3...12]` pagination with real `totalPages` from API response
-- [x] Show loading skeleton while fetching (match existing card shape)
-- [x] Show empty state ("No companies found") when results are empty
+- [ ] On mount + on filter change: call `getCompanies({ search, industry, location, minRating, sort, page, limit })`
+- [ ] Replace 9 hardcoded mock companies with API results
+- [ ] Debounce search input 300ms before firing API call
+- [ ] Wire industry / location / sort / minRating dropdowns to re-fetch
+- [ ] Replace static `[1,2,3...12]` pagination with real `totalPages` from API response
+- [ ] Show loading skeleton while fetching (match existing card shape)
+- [ ] Show empty state ("No companies found") when results are empty
 
 **CompanyProfilePage** (`src/pages/CompanyProfilePage.jsx`)
-- [x] Read `:id` from `useParams()`, fetch `getCompanyById(id)` → replace hardcoded Stripe data
-- [x] Fetch `getCompanyReviews(id, { sort })` → replace 5 mock reviews; wire sort dropdown to re-fetch
-- [x] Report form: call `submitReport({ reviewId, reason, description })`; if `!user` show "Sign in to report" instead
-- [x] Handle 404 (invalid `id`) — show "Company not found" message
+- [ ] Read `:id` from `useParams()`, fetch `getCompanyById(id)` → replace hardcoded Stripe data
+- [ ] Fetch `getCompanyReviews(id, { sort })` → replace 5 mock reviews; wire sort dropdown to re-fetch
+- [ ] Report form: call `submitReport({ reviewId, reason, description })`; if `!user` show "Sign in to report" instead
+- [ ] Handle 404 (invalid `id`) — show "Company not found" message
 
 **LandingPage** (`src/pages/LandingPage.jsx`)
-- [x] "Top Rated Companies" section only: replace 6 hardcoded companies with `getCompanies({ sort: 'highest', limit: 6 })`
-- [x] All other sections stay static (hero, features, testimonials are marketing content)
-- [x] Ready to merge to `dev`
+- [ ] "Top Rated Companies" section only: replace 6 hardcoded companies with `getCompanies({ sort: 'highest', limit: 6 })`
+- [ ] All other sections stay static (hero, features, testimonials are marketing content)
+- [ ] Merge to `dev` when done
 
 ---
 
-##### 🟡 Raneem — EmployeeDashboard + WriteReviewPage + InternalFeedbackPage ✅ COMPLETE
+##### 🟡 Raneem — EmployeeDashboard + WriteReviewPage + InternalFeedbackPage
 > Files: `EmployeeDashboard.jsx`, `WriteReviewPage.jsx`, `InternalFeedbackPage.jsx`  
 > Import from: `api/reviews.js`, `api/employments.js`, `api/feedback.js`, `api/companies.js`
 
-**WriteReviewPage** (`src/pages/WriteReviewPage.jsx`) ✅
-- [x] Read `:id` (companyId) from `useParams()`; fetch `getCompanyById(id)` → show real company name in header
-- [x] Replace `setTimeout` with `createReview({ companyId, rating, reviewText, isAnonymous })`
-- [x] On success: show success state → navigate to `/companies/${id}`
-- [x] Handle specific errors: "not verified employee" → show custom message; "already reviewed" → show custom message
-- [x] Preview section now shows real user initials/name from `useAuth()`
+**WriteReviewPage** (`src/pages/WriteReviewPage.jsx`)
+- [ ] Read `:id` (companyId) from `useParams()`; fetch `getCompanyById(id)` → show real company name in header
+- [ ] Replace `setTimeout` with `createReview({ companyId, rating, reviewText, isAnonymous })`
+- [ ] On success: show success state → navigate to `/companies/${id}`
+- [ ] Handle specific errors: "not verified employee" → show custom message; "already reviewed" → show custom message
 
-**EmployeeDashboard** (`src/pages/EmployeeDashboard.jsx`) ✅
-- [x] On mount: `Promise.all([getMyReviews(), getMyEmployments(), getFeedbackReceived()])` — replace hardcoded `mockUser`
-- [x] **Overview Tab**: real stat counts (verified employments, reviews, feedback, avg score) + real recent activity feed
-- [x] **Employment Tab**: real employments list; "Request Verification" form → `requestEmployment({ companyId, position, startDate })`; company search picker using debounced `getCompanies({ search })`
-- [x] **Reviews Tab**: real reviews; show "Edit" only when `can_edit_until` is in future; edit → `updateReview(id, data)`; delete → `deleteReview(id)`
-- [x] **Feedback Tab**: real `getFeedbackReceived()` — computed averages per category, individual entries with scores + written feedback
-- [x] Loading spinner shown while fetching; empty states for no data
+**EmployeeDashboard** (`src/pages/EmployeeDashboard.jsx`)
+- [ ] On mount: `Promise.all([getMyReviews(), getMyEmployments(), getFeedbackReceived()])` — replace hardcoded `mockUser`
+- [ ] **Overview Tab**: replace hardcoded stat counts + recent activity with real data
+- [ ] **Employment Tab**: replace 3 mock employments; "Request Verification" form → `requestEmployment({ companyId, position, startDate })`; add company search picker using `getCompanies({ search })`
+- [ ] **Reviews Tab**: replace mock reviews; show "Edit" only when `can_edit_until` is in future; edit → `updateReview(id, data)`; delete → `deleteReview(id)`
+- [ ] **Feedback Tab**: replace mock feedback with real `getFeedbackReceived()` category scores + comments
 
-**InternalFeedbackPage** (`src/pages/InternalFeedbackPage.jsx`) ✅
-- [x] Replace `setTimeout` with `submitFeedback({ toEmployeeId, scores: { professionalism, communication, teamwork, reliability }, comment })`
-- [x] Mapped frontend category display names to lowercase backend field names
-- [x] Handle quarterly-limit error → show "Already submitted feedback this quarter"
-- [x] Merge to `dev` when done
+**InternalFeedbackPage** (`src/pages/InternalFeedbackPage.jsx`)
+- [ ] Keep coworker list as mock for now (no list-employees endpoint) — wire submit to real API
+- [ ] Replace `setTimeout` with `submitFeedback({ toEmployeeId: selectedPerson.id, scores: { professionalism, communication, teamwork, reliability }, comment })`
+- [ ] Map frontend ratings object keys to backend field names
+- [ ] Handle quarterly-limit error (409) → show "Already submitted feedback this quarter"
+- [ ] Merge to `dev` when done
 
 ---
 

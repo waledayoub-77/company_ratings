@@ -18,7 +18,7 @@ import Reveal from '../components/ui/Reveal.jsx'
 import Footer from '../components/layout/Footer.jsx'
 import { getCompanies } from '../api/companies'
 
-/* ─── Static content (marketing data) ─── */
+/* ─── Mock data ─── */
 const stats = [
   { value: '10K+', label: 'Verified Reviews' },
   { value: '2,500+', label: 'Companies Listed' },
@@ -73,34 +73,27 @@ const testimonials = [
   },
 ]
 
-// Gradient colors for company cards
-const gradients = [
-  'from-indigo-500 to-violet-600',
-  'from-navy-500 to-navy-700',
-  'from-cyan-500 to-blue-600',
-  'from-gray-800 to-gray-950',
-  'from-pink-500 to-rose-600',
-  'from-purple-500 to-indigo-600',
+const GRADIENTS = [
+  'from-indigo-500 to-violet-600', 'from-navy-500 to-navy-700',
+  'from-cyan-500 to-blue-600',     'from-gray-800 to-gray-950',
+  'from-pink-500 to-rose-600',     'from-emerald-500 to-teal-600',
 ]
+function pickGradient(name) {
+  let h = 0
+  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h)
+  return GRADIENTS[Math.abs(h) % GRADIENTS.length]
+}
 
 export default function LandingPage() {
   const { scrollYProgress } = useScroll()
   const heroY = useTransform(scrollYProgress, [0, 0.3], [0, -60])
 
-  // Fetch top companies from API
   const [topCompanies, setTopCompanies] = useState([])
-  
+
   useEffect(() => {
-    const fetchTopCompanies = async () => {
-      try {
-        const response = await getCompanies({ sort: 'highest', limit: 6 })
-        setTopCompanies(response.data || [])
-      } catch (err) {
-        console.error('Error fetching top companies:', err)
-        // Fail silently, just show empty section
-      }
-    }
-    fetchTopCompanies()
+    getCompanies({ sortBy: 'overall_rating', sortOrder: 'desc', limit: 4 })
+      .then(res => setTopCompanies(res.data || []))
+      .catch(() => {})
   }, [])
 
   return (
@@ -437,46 +430,29 @@ export default function LandingPage() {
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {topCompanies.length === 0 ? (
-              // Loading skeleton
-              [1, 2, 3, 4].map((i) => (
-                <div key={i} className="p-6 rounded-2xl bg-white border border-navy-100/50 animate-pulse">
-                  <div className="w-12 h-12 rounded-xl bg-navy-100 mb-5" />
-                  <div className="h-5 bg-navy-100 rounded w-3/4 mb-2" />
-                  <div className="h-3 bg-navy-100 rounded w-1/2 mb-4" />
-                  <div className="flex justify-between">
-                    <div className="h-4 bg-navy-100 rounded w-12" />
-                    <div className="h-4 bg-navy-100 rounded w-16" />
+            {topCompanies.map((company, i) => (
+              <Reveal key={company.id} delay={i * 0.08}>
+                <Link
+                  to={`/companies/${company.id}`}
+                  className="group block p-6 rounded-2xl bg-white border border-navy-100/50 hover:border-navy-200 hover:shadow-lg hover:shadow-navy-900/4 transition-all duration-300"
+                >
+                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${pickGradient(company.name)} flex items-center justify-center mb-5`}>
+                    <Building2 size={22} className="text-white" strokeWidth={1.5} />
                   </div>
-                </div>
-              ))
-            ) : (
-              topCompanies.slice(0, 4).map((company, i) => (
-                <Reveal key={company.id} delay={i * 0.08}>
-                  <Link
-                    to={`/companies/${company.id}`}
-                    className="group block p-6 rounded-2xl bg-white border border-navy-100/50 hover:border-navy-200 hover:shadow-lg hover:shadow-navy-900/4 transition-all duration-300"
-                  >
-                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${gradients[i % gradients.length]} flex items-center justify-center mb-5`}>
-                      <Building2 size={22} className="text-white" strokeWidth={1.5} />
+                  <h3 className="font-semibold text-navy-900 text-lg group-hover:text-navy-700 transition-colors">
+                    {company.name}
+                  </h3>
+                  <p className="text-xs text-navy-400 mt-0.5">{company.industry}</p>
+                  <div className="mt-4 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Star size={14} className="fill-amber-400 text-amber-400" />
+                      <span className="text-sm font-semibold text-navy-900">{Number(company.overall_rating).toFixed(1)}</span>
                     </div>
-                    <h3 className="font-semibold text-navy-900 text-lg group-hover:text-navy-700 transition-colors">
-                      {company.name}
-                    </h3>
-                    <p className="text-xs text-navy-400 mt-0.5">{company.industry || 'Technology'}</p>
-                    <div className="mt-4 flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <Star size={14} className="fill-amber-400 text-amber-400" />
-                        <span className="text-sm font-semibold text-navy-900">
-                          {company.average_rating ? Number(company.average_rating).toFixed(1) : 'N/A'}
-                        </span>
-                      </div>
-                      <span className="text-xs text-navy-400">{company.total_reviews || 0} reviews</span>
-                    </div>
-                  </Link>
-                </Reveal>
-              ))
-            )}
+                    <span className="text-xs text-navy-400">{company.total_reviews} reviews</span>
+                  </div>
+                </Link>
+              </Reveal>
+            ))}
           </div>
         </div>
       </section>

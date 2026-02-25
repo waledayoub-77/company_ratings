@@ -1,0 +1,670 @@
+{
+  "info": {
+    "name": "Phase 2 – Public Pages API Tests (Walid)",
+    "description": "Tests for CompaniesPage, CompanyProfilePage, LandingPage endpoints.\nCovers: GET /companies (filters/sort/pagination), GET /companies/:id, GET /companies/:id/reviews, GET /companies/:id/analytics, POST /reports.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url",          "value": "http://localhost:5000/api" },
+    { "key": "employee_token",    "value": "" },
+    { "key": "employee_email",    "value": "your_employee@email.com" },
+    { "key": "employee_password", "value": "your_password" },
+    { "key": "company_id",        "value": "" },
+    { "key": "review_id",         "value": "" }
+  ],
+  "item": [
+    {
+      "name": "━━━ SETUP ━━━",
+      "item": [
+        {
+          "name": "01 Login as employee",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{employee_email}}\",\n  \"password\": \"{{employee_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Login returns 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Has accessToken', () => pm.expect(json.data.accessToken).to.be.a('string'));",
+                  "pm.collectionVariables.set('employee_token', json.data.accessToken);",
+                  "console.log('✅ Employee token saved');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "━━━ 2. COMPANIES BROWSE (CompaniesPage) ━━━",
+      "item": [
+        {
+          "name": "02 GET /companies — default (page 1)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/companies",
+              "host": ["{{base_url}}"],
+              "path": ["companies"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('success is true', () => pm.expect(json.success).to.be.true);",
+                  "pm.test('data is array', () => pm.expect(json.data).to.be.an('array'));",
+                  "pm.test('pagination exists', () => {",
+                  "  pm.expect(json.pagination).to.have.property('total');",
+                  "  pm.expect(json.pagination).to.have.property('page');",
+                  "  pm.expect(json.pagination).to.have.property('totalPages');",
+                  "});",
+                  "if (json.data.length > 0) {",
+                  "  pm.collectionVariables.set('company_id', json.data[0].id);",
+                  "  console.log('✅ Saved company_id:', json.data[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 GET /companies — sorted by highest rated",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/companies?sortBy=overall_rating&sortOrder=desc&limit=4",
+              "host": ["{{base_url}}"],
+              "path": ["companies"],
+              "query": [
+                { "key": "sortBy",    "value": "overall_rating" },
+                { "key": "sortOrder", "value": "desc" },
+                { "key": "limit",     "value": "4" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Limit respected', () => pm.expect(json.data.length).to.be.at.most(4));",
+                  "pm.test('Sorted desc by rating', () => {",
+                  "  for (let i = 1; i < json.data.length; i++) {",
+                  "    pm.expect(Number(json.data[i-1].overall_rating)).to.be.at.least(Number(json.data[i].overall_rating));",
+                  "  }",
+                  "});",
+                  "console.log('✅ Top rated companies:', json.data.map(c => c.name + ' (' + c.overall_rating + ')').join(', '));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 GET /companies — search by name",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/companies?search=a",
+              "host": ["{{base_url}}"],
+              "path": ["companies"],
+              "query": [
+                { "key": "search", "value": "a" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Returns array', () => pm.expect(json.data).to.be.an('array'));",
+                  "console.log('✅ Search results:', json.data.length, 'companies');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 GET /companies — filter by industry",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/companies?industry=Technology",
+              "host": ["{{base_url}}"],
+              "path": ["companies"],
+              "query": [
+                { "key": "industry", "value": "Technology" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('All results match industry', () => {",
+                  "  json.data.forEach(c => pm.expect(c.industry).to.eql('Technology'));",
+                  "});",
+                  "console.log('✅ Technology companies:', json.data.length);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 GET /companies — filter by minRating",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/companies?minRating=4",
+              "host": ["{{base_url}}"],
+              "path": ["companies"],
+              "query": [
+                { "key": "minRating", "value": "4" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('All ratings >= 4', () => {",
+                  "  json.data.forEach(c => pm.expect(Number(c.overall_rating)).to.be.at.least(4));",
+                  "});",
+                  "console.log('✅ Companies with 4+ rating:', json.data.length);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07 GET /companies — filter by location",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/companies?location=San",
+              "host": ["{{base_url}}"],
+              "path": ["companies"],
+              "query": [
+                { "key": "location", "value": "San" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Returns array', () => pm.expect(json.data).to.be.an('array'));",
+                  "console.log('✅ Location search results:', json.data.length);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "08 GET /companies — pagination page 2",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/companies?page=2&limit=3",
+              "host": ["{{base_url}}"],
+              "path": ["companies"],
+              "query": [
+                { "key": "page",  "value": "2" },
+                { "key": "limit", "value": "3" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Page is 2', () => pm.expect(json.pagination.page).to.eql(2));",
+                  "pm.test('Limit is 3', () => pm.expect(json.pagination.limit).to.eql(3));",
+                  "console.log('✅ Page 2 returned', json.data.length, 'items');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09 GET /companies — page beyond total (edge case)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/companies?page=9999&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["companies"],
+              "query": [
+                { "key": "page",  "value": "9999" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Returns empty array', () => pm.expect(json.data).to.be.an('array').that.is.empty);",
+                  "console.log('✅ Page overflow handled gracefully');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10 GET /companies — sorted alphabetical",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/companies?sortBy=name&sortOrder=asc&limit=5",
+              "host": ["{{base_url}}"],
+              "path": ["companies"],
+              "query": [
+                { "key": "sortBy",    "value": "name" },
+                { "key": "sortOrder", "value": "asc" },
+                { "key": "limit",     "value": "5" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Sorted alphabetically', () => {",
+                  "  for (let i = 1; i < json.data.length; i++) {",
+                  "    pm.expect(json.data[i-1].name.localeCompare(json.data[i].name)).to.be.at.most(0);",
+                  "  }",
+                  "});",
+                  "console.log('✅ Alphabetical order:', json.data.map(c => c.name).join(', '));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "━━━ 3. COMPANY PROFILE (CompanyProfilePage) ━━━",
+      "item": [
+        {
+          "name": "11 GET /companies/:id — single company",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/companies/{{company_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["companies", "{{company_id}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Has company name', () => pm.expect(json.data.name).to.be.a('string'));",
+                  "pm.test('Has industry', () => pm.expect(json.data.industry).to.be.a('string'));",
+                  "pm.test('Has location', () => pm.expect(json.data.location).to.be.a('string'));",
+                  "pm.test('Has overall_rating', () => pm.expect(json.data).to.have.property('overall_rating'));",
+                  "pm.test('Has total_reviews', () => pm.expect(json.data).to.have.property('total_reviews'));",
+                  "console.log('✅ Company:', json.data.name, '|', json.data.industry, '|', json.data.overall_rating + '★');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12 GET /companies/:id — invalid UUID → 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/companies/00000000-0000-0000-0000-000000000000",
+              "host": ["{{base_url}}"],
+              "path": ["companies", "00000000-0000-0000-0000-000000000000"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "console.log('✅ 404 for non-existent company');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "13 GET /companies/:id/analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/companies/{{company_id}}/analytics",
+              "host": ["{{base_url}}"],
+              "path": ["companies", "{{company_id}}", "analytics"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Has ratingDistribution', () => {",
+                  "  const dist = json.data.ratingDistribution;",
+                  "  pm.expect(dist).to.have.property('1');",
+                  "  pm.expect(dist).to.have.property('2');",
+                  "  pm.expect(dist).to.have.property('3');",
+                  "  pm.expect(dist).to.have.property('4');",
+                  "  pm.expect(dist).to.have.property('5');",
+                  "});",
+                  "pm.test('Has reviewsOverTime', () => pm.expect(json.data).to.have.property('reviewsOverTime'));",
+                  "pm.test('Has totalReviews', () => pm.expect(json.data.totalReviews).to.be.a('number'));",
+                  "console.log('✅ Analytics — total reviews:', json.data.totalReviews, '| Distribution:', JSON.stringify(json.data.ratingDistribution));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14 GET /companies/:id/reviews — default",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/companies/{{company_id}}/reviews",
+              "host": ["{{base_url}}"],
+              "path": ["companies", "{{company_id}}", "reviews"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('data is array', () => pm.expect(json.data).to.be.an('array'));",
+                  "pm.test('pagination present', () => pm.expect(json.pagination).to.have.property('totalPages'));",
+                  "if (json.data.length > 0) {",
+                  "  const r = json.data[0];",
+                  "  pm.test('Review has content', () => pm.expect(r.content).to.be.a('string'));",
+                  "  pm.test('Review has overall_rating', () => pm.expect(r.overall_rating).to.be.a('number'));",
+                  "  pm.test('Review has is_anonymous', () => pm.expect(r).to.have.property('is_anonymous'));",
+                  "  pm.collectionVariables.set('review_id', r.id);",
+                  "  console.log('✅ First review:', r.is_anonymous ? 'Anonymous' : r.reviewer_name, '|', r.overall_rating + '★');",
+                  "} else {",
+                  "  console.log('ℹ️ No reviews for this company yet');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "15 GET /companies/:id/reviews — sorted highest",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/companies/{{company_id}}/reviews?sortBy=overall_rating&sortOrder=desc",
+              "host": ["{{base_url}}"],
+              "path": ["companies", "{{company_id}}", "reviews"],
+              "query": [
+                { "key": "sortBy",    "value": "overall_rating" },
+                { "key": "sortOrder", "value": "desc" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Sorted desc by rating', () => {",
+                  "  for (let i = 1; i < json.data.length; i++) {",
+                  "    pm.expect(json.data[i-1].overall_rating).to.be.at.least(json.data[i].overall_rating);",
+                  "  }",
+                  "});",
+                  "console.log('✅ Reviews sorted highest→lowest');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16 GET /companies/:id/reviews — sorted lowest",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/companies/{{company_id}}/reviews?sortBy=overall_rating&sortOrder=asc",
+              "host": ["{{base_url}}"],
+              "path": ["companies", "{{company_id}}", "reviews"],
+              "query": [
+                { "key": "sortBy",    "value": "overall_rating" },
+                { "key": "sortOrder", "value": "asc" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Sorted asc by rating', () => {",
+                  "  for (let i = 1; i < json.data.length; i++) {",
+                  "    pm.expect(json.data[i-1].overall_rating).to.be.at.most(json.data[i].overall_rating);",
+                  "  }",
+                  "});",
+                  "console.log('✅ Reviews sorted lowest→highest');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17 GET /companies/:id/reviews — pagination",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/companies/{{company_id}}/reviews?page=1&limit=2",
+              "host": ["{{base_url}}"],
+              "path": ["companies", "{{company_id}}", "reviews"],
+              "query": [
+                { "key": "page",  "value": "1" },
+                { "key": "limit", "value": "2" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('At most 2 results', () => pm.expect(json.data.length).to.be.at.most(2));",
+                  "pm.test('Page is 1', () => pm.expect(json.pagination.page).to.eql(1));",
+                  "console.log('✅ Paginated reviews — page 1, limit 2, got', json.data.length, 'of', json.pagination.total);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "━━━ 4. REPORT REVIEW (CompanyProfilePage) ━━━",
+      "item": [
+        {
+          "name": "18 POST /reports — no auth → 401",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reviewId\": \"{{review_id}}\",\n  \"reason\": \"spam\",\n  \"description\": \"Test report without auth\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/reports",
+              "host": ["{{base_url}}"],
+              "path": ["reports"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401 without token', () => pm.response.to.have.status(401));",
+                  "console.log('✅ Unauthenticated report blocked with 401');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "19 POST /reports — authenticated submit",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{employee_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reviewId\": \"{{review_id}}\",\n  \"reason\": \"false_information\",\n  \"description\": \"This review contains inaccurate claims about the company.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/reports",
+              "host": ["{{base_url}}"],
+              "path": ["reports"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const code = pm.response.code;",
+                  "pm.test('Status 201 or 400 (duplicate)', () => pm.expect([201, 400, 409]).to.include(code));",
+                  "if (code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  pm.test('success is true', () => pm.expect(json.success).to.be.true);",
+                  "  console.log('✅ Report submitted successfully');",
+                  "} else {",
+                  "  console.log('ℹ️ Report already exists or invalid — expected on re-run');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "━━━ 5. LANDING PAGE (Top Companies) ━━━",
+      "item": [
+        {
+          "name": "20 GET /companies — top 4 for landing page",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/companies?sortBy=overall_rating&sortOrder=desc&limit=4",
+              "host": ["{{base_url}}"],
+              "path": ["companies"],
+              "query": [
+                { "key": "sortBy",    "value": "overall_rating" },
+                { "key": "sortOrder", "value": "desc" },
+                { "key": "limit",     "value": "4" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('At most 4 companies', () => pm.expect(json.data.length).to.be.at.most(4));",
+                  "pm.test('Each has required fields', () => {",
+                  "  json.data.forEach(c => {",
+                  "    pm.expect(c).to.have.property('id');",
+                  "    pm.expect(c).to.have.property('name');",
+                  "    pm.expect(c).to.have.property('industry');",
+                  "    pm.expect(c).to.have.property('overall_rating');",
+                  "    pm.expect(c).to.have.property('total_reviews');",
+                  "  });",
+                  "});",
+                  "console.log('✅ Landing page top companies:', json.data.map(c => c.name + ' (' + c.overall_rating + '★)').join(', '));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

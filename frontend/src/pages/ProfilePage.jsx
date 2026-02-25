@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   User,
@@ -22,51 +22,73 @@ import Badge from '../components/ui/Badge.jsx'
 import Reveal from '../components/ui/Reveal.jsx'
 import Button from '../components/ui/Button.jsx'
 import Input from '../components/ui/Input.jsx'
-
-/* ─── Mock profile data ─── */
-const profile = {
-  name: 'Jane Cooper',
-  email: 'jane.cooper@email.com',
-  phone: '+1 (555) 012-3456',
-  location: 'San Francisco, CA',
-  title: 'Senior Product Designer',
-  bio: 'Passionate about creating meaningful user experiences. 8+ years in product design across fintech and SaaS companies.',
-  joined: '2024-03-15',
-  avatar: null,
-}
-
-const employmentHistory = [
-  {
-    company: 'Stripe',
-    role: 'Senior Product Designer',
-    period: 'Mar 2023 — Present',
-    verified: true,
-  },
-  {
-    company: 'Notion',
-    role: 'Product Designer',
-    period: 'Jul 2021 — Feb 2023',
-    verified: true,
-  },
-  {
-    company: 'Figma',
-    role: 'Junior Designer',
-    period: 'Jan 2019 — Jun 2021',
-    verified: false,
-  },
-]
-
-const activityStats = {
-  totalReviews: 5,
-  feedbackGiven: 8,
-  feedbackReceived: 12,
-  avgRating: 4.2,
-}
+import { useAuth } from '../context/AuthContext'
+import { getEmployeeProfile, updateEmployeeProfile } from '../api/employees'
+import { getMyEmployments } from '../api/employments'
+import { getMyReviews } from '../api/reviews'
+import { getFeedbackGiven, getFeedbackReceived } from '../api/feedback'
 
 export default function ProfilePage() {
+  const { user } = useAuth()
+  const employeeId = user?.employeeId
+
   const [editing, setEditing] = useState(false)
   const [activeSection, setActiveSection] = useState('profile')
-  const [form, setForm] = useState(profile)
+  const [form, setForm] = useState({ name: '', email: '', phone: '', location: '', title: '', bio: '', joined: '' })
+  const [employments, setEmployments] = useState([])
+  const [activityStats, setActivityStats] = useState({ totalReviews: 0, feedbackGiven: 0, feedbackReceived: 0, avgRating: '–' })
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (!employeeId) return
+
+    /* Load profile */
+    getEmployeeProfile(employeeId).then(res => {
+      const e = res?.data?.employee ?? res?.data ?? {}
+      setForm({
+        name:     e.user?.fullName  ?? e.fullName  ?? '',
+        email:    e.user?.email     ?? e.email     ?? '',
+        phone:    e.phone    ?? '',
+        location: e.location ?? '',
+        title:    e.title    ?? '',
+        bio:      e.bio      ?? '',
+        joined:   e.createdAt ?? e.user?.createdAt ?? '',
+      })
+    }).catch(() => {})
+
+    /* Load employments */
+    getMyEmployments().then(res => {
+      setEmployments(res?.data?.employments ?? [])
+    }).catch(() => {})
+
+    /* Load activity stats */
+    Promise.allSettled([getMyReviews(), getFeedbackGiven(), getFeedbackReceived()])
+      .then(([reviewsRes, givenRes, receivedRes]) => {
+        const reviews  = reviewsRes.status  === 'fulfilled' ? (reviewsRes.value?.data?.reviews  ?? []) : []
+        const given    = givenRes.status    === 'fulfilled' ? (givenRes.value?.data?.feedback   ?? []) : []
+        const received = receivedRes.status === 'fulfilled' ? (receivedRes.value?.data?.feedback ?? []) : []
+        const avgRating = reviews.length > 0
+          ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)
+          : '–'
+        setActivityStats({ totalReviews: reviews.length, feedbackGiven: given.length, feedbackReceived: received.length, avgRating })
+      })
+  }, [employeeId])
+
+  const handleSave = async () => {
+    if (!employeeId) return
+    setSaving(true)
+    try {
+      await updateEmployeeProfile(employeeId, {
+        phone:    form.phone,
+        location: form.location,
+        title:    form.title,
+        bio:      form.bio,
+      })
+      setEditing(false)
+    } catch { /* silent */ } finally {
+      setSaving(false)
+    }
+  }
 
   const sections = [
     { id: 'profile', label: 'Profile', icon: User },
@@ -94,7 +116,7 @@ export default function ProfilePage() {
                   <div className="relative inline-block mb-4">
                     <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-navy-400 to-navy-700 flex items-center justify-center">
                       <span className="text-white text-2xl font-semibold">
-                        {form.name.split(' ').map(n => n[0]).join('')}
+                        {form.name ? form.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?'}
                       </span>
                     </div>
                     <button className="absolute -bottom-1 -right-1 w-7 h-7 rounded-lg bg-white border border-navy-200 shadow-sm flex items-center justify-center hover:bg-navy-50 transition-colors">
@@ -143,6 +165,8 @@ export default function ProfilePage() {
                     setForm={setForm}
                     editing={editing}
                     setEditing={setEditing}
+                    onSave={handleSave}
+                    saving={saving}
                   />
                 </motion.div>
               )}
@@ -155,7 +179,7 @@ export default function ProfilePage() {
                   exit={{ opacity: 0, y: -12 }}
                   transition={{ duration: 0.25 }}
                 >
-                  <EmploymentSection />
+                  <EmploymentSection employments={employments} />
                 </motion.div>
               )}
 
@@ -167,7 +191,7 @@ export default function ProfilePage() {
                   exit={{ opacity: 0, y: -12 }}
                   transition={{ duration: 0.25 }}
                 >
-                  <ActivitySection />
+                  <ActivitySection stats={activityStats} />
                 </motion.div>
               )}
 
@@ -191,7 +215,7 @@ export default function ProfilePage() {
 }
 
 /* ─── Profile Section ─── */
-function ProfileSection({ form, setForm, editing, setEditing }) {
+function ProfileSection({ form, setForm, editing, setEditing, onSave, saving }) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -252,9 +276,9 @@ function ProfileSection({ form, setForm, editing, setEditing }) {
               />
             </div>
             <div className="flex justify-end">
-              <Button onClick={() => setEditing(false)} size="sm">
+              <Button onClick={onSave} size="sm" disabled={saving}>
                 <Save size={14} className="mr-1.5" />
-                Save Changes
+                {saving ? 'Saving…' : 'Save Changes'}
               </Button>
             </div>
           </div>
@@ -265,7 +289,7 @@ function ProfileSection({ form, setForm, editing, setEditing }) {
               <InfoRow icon={Mail} label="Email" value={form.email} />
               <InfoRow icon={MapPin} label="Location" value={form.location} />
               <InfoRow icon={Briefcase} label="Title" value={form.title} />
-              <InfoRow icon={Calendar} label="Member Since" value={new Date(form.joined).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} />
+              <InfoRow icon={Calendar} label="Member Since" value={form.joined ? new Date(form.joined).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '–'} />
             </div>
             <div className="pt-4 border-t border-navy-50">
               <p className="text-xs font-medium text-navy-400 mb-1">Bio</p>
@@ -293,7 +317,16 @@ function InfoRow({ icon: Icon, label, value }) {
 }
 
 /* ─── Employment Section ─── */
-function EmploymentSection() {
+function EmploymentSection({ employments }) {
+  if (!employments.length) return (
+    <div className="space-y-6">
+      <h2 className="text-lg font-semibold text-navy-900">Employment History</h2>
+      <div className="bg-white rounded-2xl border border-navy-100/50 p-12 text-center">
+        <p className="text-sm text-navy-500">No employment records yet.</p>
+      </div>
+    </div>
+  )
+
   return (
     <div className="space-y-6">
       <h2 className="text-lg font-semibold text-navy-900">Employment History</h2>
@@ -302,50 +335,62 @@ function EmploymentSection() {
         {/* Vertical line */}
         <div className="absolute left-[13px] top-3 bottom-3 w-[2px] bg-navy-100" />
 
-        {employmentHistory.map((job, i) => (
-          <Reveal key={i} delay={i * 0.1}>
-            <div className="relative mb-6 last:mb-0">
-              {/* Dot */}
-              <div className={`absolute -left-8 top-5 w-[10px] h-[10px] rounded-full border-2 ${
-                job.verified ? 'bg-emerald-500 border-emerald-300' : 'bg-white border-navy-300'
-              }`} />
+        {employments.map((job, i) => {
+          const company  = job.company?.name ?? '–'
+          const period   = job.startDate
+            ? `${new Date(job.startDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} — ${
+                job.endDate
+                  ? new Date(job.endDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                  : 'Present'
+              }`
+            : '–'
+          const verified = job.status === 'approved'
 
-              <div className="bg-white rounded-2xl border border-navy-100/50 p-6 hover:border-navy-200 transition-all">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-navy-50 flex items-center justify-center">
-                      <Building2 size={18} className="text-navy-400" />
+          return (
+            <Reveal key={job.id} delay={i * 0.1}>
+              <div className="relative mb-6 last:mb-0">
+                {/* Dot */}
+                <div className={`absolute -left-8 top-5 w-[10px] h-[10px] rounded-full border-2 ${
+                  verified ? 'bg-emerald-500 border-emerald-300' : 'bg-white border-navy-300'
+                }`} />
+
+                <div className="bg-white rounded-2xl border border-navy-100/50 p-6 hover:border-navy-200 transition-all">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-navy-50 flex items-center justify-center">
+                        <Building2 size={18} className="text-navy-400" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-navy-900">{company}</h3>
+                        <p className="text-sm text-navy-500">{job.position ?? '–'}</p>
+                        <p className="text-xs text-navy-400 mt-0.5">{period}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-navy-900">{job.company}</h3>
-                      <p className="text-sm text-navy-500">{job.role}</p>
-                      <p className="text-xs text-navy-400 mt-0.5">{job.period}</p>
-                    </div>
+                    {verified ? (
+                      <Badge variant="success">
+                        <CheckCircle2 size={12} className="mr-1" /> Verified
+                      </Badge>
+                    ) : (
+                      <Badge variant="warning">Pending</Badge>
+                    )}
                   </div>
-                  {job.verified ? (
-                    <Badge variant="success">
-                      <CheckCircle2 size={12} className="mr-1" /> Verified
-                    </Badge>
-                  ) : (
-                    <Badge variant="warning">Pending</Badge>
-                  )}
                 </div>
               </div>
-            </div>
-          </Reveal>
-        ))}
+            </Reveal>
+          )
+        })}
       </div>
     </div>
   )
 }
 
 /* ─── Activity Section ─── */
-function ActivitySection() {
-  const stats = [
-    { label: 'Reviews Written', value: activityStats.totalReviews, icon: FileText },
-    { label: 'Feedback Given', value: activityStats.feedbackGiven, icon: Star },
-    { label: 'Feedback Received', value: activityStats.feedbackReceived, icon: Star },
-    { label: 'Average Rating', value: activityStats.avgRating, icon: Star },
+function ActivitySection({ stats }) {
+  const statItems = [
+    { label: 'Reviews Written',   value: stats.totalReviews,    icon: FileText },
+    { label: 'Feedback Given',    value: stats.feedbackGiven,   icon: Star     },
+    { label: 'Feedback Received', value: stats.feedbackReceived,icon: Star     },
+    { label: 'Average Rating',    value: stats.avgRating,       icon: Star     },
   ]
 
   return (
@@ -353,7 +398,7 @@ function ActivitySection() {
       <h2 className="text-lg font-semibold text-navy-900">Activity Overview</h2>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, i) => (
+        {statItems.map((stat, i) => (
           <Reveal key={stat.label} delay={i * 0.08}>
             <div className="bg-white rounded-2xl border border-navy-100/50 p-5 text-center">
               <stat.icon size={18} className="text-navy-500 mx-auto mb-2" strokeWidth={1.8} />

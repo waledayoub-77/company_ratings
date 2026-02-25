@@ -1441,35 +1441,34 @@ cd backend
 
 ---
 
-##### 🔵 Baraa — Navbar + CompanyAdminDashboard + ProfilePage
+##### 🔵 Baraa — Navbar + CompanyAdminDashboard + ProfilePage ✅ DONE
 > Files: `Navbar.jsx`, `CompanyAdminDashboard.jsx`, `ProfilePage.jsx`  
 > Import from: `api/companies.js`, `api/employments.js`, `api/feedback.js`, `api/employees.js`, `api/auth.js`
 
 **Navbar** (`src/components/layout/Navbar.jsx`)
-- [ ] Import `useAuth()` — get `user` and `logout`
-- [ ] Show Login + Register buttons when `!user` (not logged in)
-- [ ] Show profile dropdown when logged in — real `user.fullName` initials (remove hardcoded "JD" / "John Doe")
-- [ ] "Sign Out" → call `logout()` from context
-- [ ] Conditionally show nav links by `user.role`:
+- [x] Import `useAuth()` — get `user` and `logout`
+- [x] Show Login + Register buttons when `!user` (not logged in)
+- [x] Show profile dropdown when logged in — real `user.fullName` initials (remove hardcoded "JD" / "John Doe")
+- [x] "Sign Out" → call `logout()` from context
+- [x] Conditionally show nav links by `user.role`:
   - `employee`: Companies, Dashboard, Feedback
   - `company_admin`: Companies, Company Admin
   - `system_admin`: Companies, Admin Panel
 
 **CompanyAdminDashboard** (`src/pages/CompanyAdminDashboard.jsx`)
-- [ ] On mount: read `user.companyId` from `useAuth()` — rename hardcoded "Stripe Dashboard" to real `user.companyName`
-- [ ] **Analytics Tab**: fetch `getCompanyStats(companyId)` → replace 4 stat cards; fetch `getCompanyAnalytics(companyId)` → replace mock chart data
-- [ ] **Requests Tab**: fetch `getPendingEmployments()` → replace 3 mock requests; "Approve" → `approveEmployment(id)` refetch; "Reject" → `rejectEmployment(id)` refetch
-- [ ] **Reviews Tab**: fetch `getCompanyReviews(companyId)` → replace 5 mock reviews
-- [ ] **Team Feedback Tab**: fetch `getFeedbackReceived()` → replace mock category averages
-- [ ] **Settings Tab**: fetch `getCompanyById(companyId)` → pre-fill form; "Save Changes" → `updateCompany(companyId, data)` + show success toast
+- [x] On mount: read `user.companyId` from `useAuth()` — rename hardcoded "Stripe Dashboard" to real `user.companyName`
+- [x] **Analytics Tab**: fetch `getCompanyStats(companyId)` → replace 4 stat cards; fetch `getCompanyAnalytics(companyId)` → replace mock chart data
+- [x] **Requests Tab**: fetch `getPendingEmployments()` → replace 3 mock requests; "Approve" → `approveEmployment(id)` refetch; "Reject" → `rejectEmployment(id)` refetch
+- [x] **Reviews Tab**: fetch `getCompanyReviews(companyId)` → replace 5 mock reviews
+- [x] **Team Feedback Tab**: fetch `getFeedbackReceived()` → replace mock category averages
+- [x] **Settings Tab**: fetch `getCompanyById(companyId)` → pre-fill form; "Save Changes" → `updateCompany(companyId, data)` + show success
 
 **ProfilePage** (`src/pages/ProfilePage.jsx`)
-- [ ] On mount: fetch `getEmployeeProfile(user.id)` → replace hardcoded "Jane Cooper"
-- [ ] **Profile section**: pre-fill with real data; "Save Changes" → `updateEmployeeProfile(user.id, data)`
-- [ ] **Employment section**: fetch `getMyEmployments()` → replace 3 mock jobs
-- [ ] **Activity section**: fetch `getMyReviews()` + `getFeedbackGiven()` + `getFeedbackReceived()` → replace hardcoded counts
-- [ ] **Settings section**: "Update Password" — redirect to `/forgot-password` or trigger reset flow
-- [ ] Merge to `dev` when done
+- [x] On mount: fetch `getEmployeeProfile(user.employeeId)` → replace hardcoded "Jane Cooper"
+- [x] **Profile section**: pre-fill with real data; "Save Changes" → `updateEmployeeProfile(user.employeeId, data)`
+- [x] **Employment section**: fetch `getMyEmployments()` → replace 3 mock jobs
+- [x] **Activity section**: fetch `getMyReviews()` + `getFeedbackGiven()` + `getFeedbackReceived()` → replace hardcoded counts
+- [x] Merge to `dev` when done
 
 ---
 

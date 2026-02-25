@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Menu,
@@ -13,18 +13,47 @@ import {
   Shield,
   Bell,
 } from 'lucide-react'
-
-const navLinks = [
-  { label: 'Companies', href: '/companies' },
-  { label: 'Dashboard', href: '/dashboard' },
-  { label: 'Feedback', href: '/dashboard/feedback' },
-]
+import { useAuth } from '../../context/AuthContext'
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const location = useLocation()
+  const navigate = useNavigate()
+  const { user, logout } = useAuth()
+
+  /* Role-based nav links */
+  const navLinks =
+    user?.role === 'company_admin'
+      ? [
+          { label: 'Companies', href: '/companies' },
+          { label: 'Company Admin', href: '/company-admin' },
+        ]
+      : user?.role === 'system_admin'
+      ? [
+          { label: 'Companies', href: '/companies' },
+          { label: 'Admin Panel', href: '/admin' },
+        ]
+      : [
+          { label: 'Companies', href: '/companies' },
+          { label: 'Dashboard', href: '/dashboard' },
+          { label: 'Feedback', href: '/dashboard/feedback' },
+        ]
+
+  /* Derive initials and short name from fullName */
+  const nameParts = user?.fullName?.trim().split(/\s+/) ?? []
+  const initials = nameParts.length >= 2
+    ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
+    : (nameParts[0]?.[0] ?? 'U').toUpperCase()
+  const shortName = nameParts.length >= 2
+    ? `${nameParts[0]} ${nameParts[nameParts.length - 1][0]}.`
+    : (nameParts[0] ?? 'User')
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/')
+  }
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
@@ -86,60 +115,90 @@ export default function Navbar() {
 
           {/* Right side */}
           <div className="flex items-center gap-2">
-            {/* Notification bell */}
-            <button className="hidden md:flex relative w-10 h-10 items-center justify-center rounded-xl text-navy-600 hover:bg-navy-50 hover:text-navy-900 transition-colors">
-              <Bell size={18} strokeWidth={1.8} />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
-            </button>
+            {user ? (
+              <>
+                {/* Notification bell */}
+                <button className="hidden md:flex relative w-10 h-10 items-center justify-center rounded-xl text-navy-600 hover:bg-navy-50 hover:text-navy-900 transition-colors">
+                  <Bell size={18} strokeWidth={1.8} />
+                  <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
+                </button>
 
-            {/* Profile dropdown */}
-            <div className="relative hidden md:block">
-              <button
-                onClick={() => setProfileOpen(!profileOpen)}
-                className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-xl hover:bg-navy-50 transition-colors"
-              >
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-navy-500 to-navy-700 flex items-center justify-center">
-                  <span className="text-white text-xs font-semibold">JD</span>
-                </div>
-                <span className="text-sm font-medium text-navy-800">John D.</span>
-                <ChevronDown
-                  size={14}
-                  className={`text-navy-400 transition-transform duration-200 ${
-                    profileOpen ? 'rotate-180' : ''
-                  }`}
-                />
-              </button>
-
-              <AnimatePresence>
-                {profileOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg shadow-navy-900/8 border border-navy-100/60 py-1.5 overflow-hidden"
+                {/* Profile dropdown */}
+                <div className="relative hidden md:block">
+                  <button
+                    onClick={() => setProfileOpen(!profileOpen)}
+                    className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-xl hover:bg-navy-50 transition-colors"
                   >
-                    <div className="px-4 py-3 border-b border-navy-100/60">
-                      <p className="text-sm font-semibold text-navy-900">John Doe</p>
-                      <p className="text-xs text-navy-500 mt-0.5">john@company.com</p>
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-navy-500 to-navy-700 flex items-center justify-center">
+                      <span className="text-white text-xs font-semibold">{initials}</span>
                     </div>
-                    <div className="py-1">
-                      <DropdownLink icon={User} label="My Profile" href="/profile" />
-                      <DropdownLink icon={LayoutDashboard} label="Dashboard" href="/dashboard" />
-                      <DropdownLink icon={MessageSquare} label="Feedback" href="/dashboard/feedback" />
-                      <DropdownLink icon={Building2} label="Company Admin" href="/company-admin" />
-                      <DropdownLink icon={Shield} label="System Admin" href="/admin" />
-                    </div>
-                    <div className="border-t border-navy-100/60 pt-1">
-                      <button className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
-                        <LogOut size={16} strokeWidth={1.8} />
-                        Sign Out
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+                    <span className="text-sm font-medium text-navy-800">{shortName}</span>
+                    <ChevronDown
+                      size={14}
+                      className={`text-navy-400 transition-transform duration-200 ${
+                        profileOpen ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+
+                  <AnimatePresence>
+                    {profileOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg shadow-navy-900/8 border border-navy-100/60 py-1.5 overflow-hidden"
+                      >
+                        <div className="px-4 py-3 border-b border-navy-100/60">
+                          <p className="text-sm font-semibold text-navy-900">{user.fullName}</p>
+                          <p className="text-xs text-navy-500 mt-0.5">{user.email}</p>
+                        </div>
+                        <div className="py-1">
+                          <DropdownLink icon={User} label="My Profile" href="/profile" />
+                          {user.role === 'employee' && (
+                            <>
+                              <DropdownLink icon={LayoutDashboard} label="Dashboard" href="/dashboard" />
+                              <DropdownLink icon={MessageSquare} label="Feedback" href="/dashboard/feedback" />
+                            </>
+                          )}
+                          {user.role === 'company_admin' && (
+                            <DropdownLink icon={Building2} label="Company Admin" href="/company-admin" />
+                          )}
+                          {user.role === 'system_admin' && (
+                            <DropdownLink icon={Shield} label="Admin Panel" href="/admin" />
+                          )}
+                        </div>
+                        <div className="border-t border-navy-100/60 pt-1">
+                          <button
+                            onClick={handleLogout}
+                            className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                          >
+                            <LogOut size={16} strokeWidth={1.8} />
+                            Sign Out
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </>
+            ) : (
+              <div className="hidden md:flex items-center gap-2">
+                <Link
+                  to="/login"
+                  className="px-4 py-2 text-sm font-medium text-navy-700 hover:text-navy-900 transition-colors"
+                >
+                  Login
+                </Link>
+                <Link
+                  to="/register"
+                  className="px-4 py-2 text-sm font-medium bg-navy-900 text-white rounded-lg hover:bg-navy-700 transition-colors"
+                >
+                  Register
+                </Link>
+              </div>
+            )}
 
             {/* Mobile menu toggle */}
             <button
@@ -177,18 +236,38 @@ export default function Navbar() {
                 </Link>
               ))}
               <div className="pt-2 border-t border-navy-100/40 mt-2">
-                <Link to="/profile" className="block px-4 py-3 rounded-xl text-sm font-medium text-navy-600 hover:bg-navy-50">
-                  My Profile
-                </Link>
-                <Link to="/company-admin" className="block px-4 py-3 rounded-xl text-sm font-medium text-navy-600 hover:bg-navy-50">
-                  Company Admin
-                </Link>
-                <Link to="/admin" className="block px-4 py-3 rounded-xl text-sm font-medium text-navy-600 hover:bg-navy-50">
-                  System Admin
-                </Link>
-                <button className="block w-full text-left px-4 py-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50">
-                  Sign Out
-                </button>
+                {user ? (
+                  <>
+                    <Link to="/profile" className="block px-4 py-3 rounded-xl text-sm font-medium text-navy-600 hover:bg-navy-50">
+                      My Profile
+                    </Link>
+                    {user.role === 'company_admin' && (
+                      <Link to="/company-admin" className="block px-4 py-3 rounded-xl text-sm font-medium text-navy-600 hover:bg-navy-50">
+                        Company Admin
+                      </Link>
+                    )}
+                    {user.role === 'system_admin' && (
+                      <Link to="/admin" className="block px-4 py-3 rounded-xl text-sm font-medium text-navy-600 hover:bg-navy-50">
+                        Admin Panel
+                      </Link>
+                    )}
+                    <button
+                      onClick={handleLogout}
+                      className="block w-full text-left px-4 py-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50"
+                    >
+                      Sign Out
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link to="/login" className="block px-4 py-3 rounded-xl text-sm font-medium text-navy-600 hover:bg-navy-50">
+                      Login
+                    </Link>
+                    <Link to="/register" className="block px-4 py-3 rounded-xl text-sm font-medium text-navy-600 hover:bg-navy-50">
+                      Register
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
           </motion.div>

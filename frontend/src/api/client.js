@@ -34,9 +34,10 @@ async function tryRefresh() {
   })
   if (!res.ok) throw new Error('Refresh failed')
 
-  const data = await res.json()
-  saveTokens(data.accessToken, data.refreshToken)
-  return data.accessToken
+  const json = await res.json()
+  const tokens = json.data ?? json
+  saveTokens(tokens.accessToken, tokens.refreshToken)
+  return tokens.accessToken
 }
 
 function extractError(data) {

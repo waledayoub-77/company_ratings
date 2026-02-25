@@ -26,7 +26,8 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     try {
-      const data = await apiLogin({ email, password })
+      const res = await apiLogin({ email, password })
+      const data = res.data
       saveSession({
         user:         data.user,
         accessToken:  data.accessToken,

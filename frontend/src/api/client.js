@@ -4,6 +4,9 @@ const ACCESS_KEY  = 'rh_access'
 const REFRESH_KEY = 'rh_refresh'
 const USER_KEY    = 'rh_user'
 
+// ─── Session-expired event (listened by ToastProvider) ────────────────────────
+export const SESSION_EXPIRED_EVENT = 'rh:session-expired'
+
 function getAccessToken() {
   return localStorage.getItem(ACCESS_KEY)
 }
@@ -80,6 +83,7 @@ export async function authRequest(path, options = {}, _isRetry = false) {
       return authRequest(path, options, true)
     } catch {
       clearAll()
+      window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT))
       window.location.href = '/login'
       throw new Error('Session expired. Please sign in again.')
     }

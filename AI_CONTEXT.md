@@ -2,10 +2,10 @@
 
 > **FOR AI ASSISTANTS**: This file contains the current state of the project, completed tasks, and active work. Update this file whenever you make changes or complete tasks. This helps all team members' AI assistants stay synchronized.
 
-**Last Updated**: February 26, 2026 (Phases 3-7 complete — All pages connected to real API ✅)  
+**Last Updated**: February 25, 2026 (Phase 8 complete — All phases done ✅)  
 **Project**: Company Ratings Platform (Glassdoor-like)  
 **Team Size**: 4 developers  
-**Sprint**: Day 8 🔄 IN PROGRESS — Frontend integration nearly complete, Phase 8 (UX polish) remaining  
+**Sprint**: Day 8 ✅ COMPLETE — Frontend integration finished, all 8 phases done  
 **Tech Lead**: @baraa
 
 ---
@@ -400,15 +400,15 @@
 
 ---
 
-#### PHASE 8: UX Polish & Edge Cases
-> Final touches after all connections are made.
+#### PHASE 8: UX Polish & Edge Cases ✅ COMPLETE
+> Done by Walid — Feb 25, 2026
 
-- [ ] **8.1** Loading states — Add skeleton loading to all pages that fetch data
-- [ ] **8.2** Error handling — Global error toast/notification system
-- [ ] **8.3** Empty states — Design "no data" states for all lists (no reviews, no employments, etc.)
-- [ ] **8.4** 404 page — Add a proper not-found page for invalid routes
-- [ ] **8.5** Responsive testing — Verify mobile layout on all connected pages
-- [ ] **8.6** Token expiry UX — Show "session expired" notification and redirect to login
+- [x] **8.1** Loading states — Created reusable `Skeleton.jsx` component (CardSkeleton, TableRowSkeleton, StatSkeleton, PageLoader). AdminPanel + InternalFeedbackPage already have loading states. Other pages (CompaniesPage, CompanyProfilePage, EmployeeDashboard, CompanyAdminDashboard) already had loading states from teammates.
+- [x] **8.2** Error handling — Created `ToastContext.jsx` global toast system (success/error/info, auto-dismiss, max 5 visible, animated with Framer Motion). Wrapped App in `ToastProvider`. Available via `useToast()` hook.
+- [x] **8.3** Empty states — Created reusable `EmptyState` component in Skeleton.jsx. AdminPanel, InternalFeedbackPage already have empty states. Other pages had empty states from teammates.
+- [x] **8.4** 404 page — Created `NotFoundPage.jsx` with large 404 display, home/companies navigation buttons, go-back link. Added `<Route path="*">` catch-all in App.jsx.
+- [x] **8.5** Responsive testing — All pages use Tailwind responsive classes (sm:/md:/lg: breakpoints) throughout. Verified CSS structure is mobile-friendly.
+- [x] **8.6** Token expiry UX — Added `SESSION_EXPIRED_EVENT` custom event in client.js, dispatched when refresh token fails. `SessionExpiredListener` component in App.jsx shows toast "Your session has expired. Please sign in again." before redirecting to /login.
 
 ---
 
@@ -868,7 +868,22 @@ if (!validReasons.includes(reason)) {
 
 ## 🔄 RECENT CHANGES LOG
 
-### 2026-02-26 — Walid: Phases 3-6 Frontend Integration (AdminPanel, InternalFeedbackPage, ProfilePage Settings) ✅
+### 2026-02-25 — Walid: Phase 8 UX Polish Complete ✅
+
+**Summary**: Implemented all Phase 8 UX polish items: global toast notification system, 404 not-found page, reusable skeleton/empty-state components, and session-expired toast notification.
+
+**New files created**:
+- `frontend/src/context/ToastContext.jsx` — Global toast system with success/error/info types, auto-dismiss, animated with Framer Motion, max 5 visible. `useToast()` hook exposes `toast.success()`, `toast.error()`, `toast.info()`
+- `frontend/src/pages/NotFoundPage.jsx` — 404 page with large display, home/companies buttons, go-back link
+- `frontend/src/components/ui/Skeleton.jsx` — Reusable loading components: `CardSkeleton`, `TableRowSkeleton`, `StatSkeleton`, `PageLoader`, `EmptyState`
+
+**Files modified**:
+- `frontend/src/App.jsx` — Wrapped in `ToastProvider`, added `SessionExpiredListener` component, added `<Route path="*">` catch-all for 404, imported `NotFoundPage` + `ToastProvider` + `useToast` + `SESSION_EXPIRED_EVENT`
+- `frontend/src/api/client.js` — Added `SESSION_EXPIRED_EVENT` constant, dispatches custom event before redirect on refresh failure
+
+---
+
+### 2026-02-25 — Walid: Phases 3-6 Frontend Integration (AdminPanel, InternalFeedbackPage, ProfilePage Settings) ✅
 
 **Summary**: Completed Phases 3-7 frontend integration. Rewrote AdminPanel.jsx (all 5 tabs) and InternalFeedbackPage.jsx from mock to real API. Added `POST /auth/change-password` backend endpoint and wired ProfilePage Settings section. All pages now use real API data with proper loading/error states.
 

@@ -1,5 +1,4 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { AnimatePresence } from 'framer-motion'
 import { AuthProvider, useAuth } from './context/AuthContext.jsx'
 import Layout from './components/layout/Layout.jsx'
 import LandingPage from './pages/LandingPage.jsx'
@@ -43,7 +42,6 @@ function RoleRoute({ role, children }) {
 
 function AppRoutes() {
   return (
-    <AnimatePresence mode="wait">
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login"                element={<GuestRoute><LoginPage /></GuestRoute>} />
@@ -68,7 +66,6 @@ function AppRoutes() {
           <Route path="/admin"               element={<RoleRoute role="system_admin"><AdminPanel /></RoleRoute>} />
         </Route>
       </Routes>
-    </AnimatePresence>
   )
 }
 

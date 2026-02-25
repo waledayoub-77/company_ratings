@@ -111,7 +111,6 @@ export default function CompanyAdminDashboard() {
     </div>
   )
 }
-              <tab.icon size={15} />
 
 /* ─── Analytics Tab ─── */
 function AnalyticsTab({ companyId }) {

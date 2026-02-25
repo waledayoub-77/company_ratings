@@ -19,12 +19,9 @@ const registerUser = async ({ email, password, role = 'employee', fullName, full
   }
   const password_hash = await bcrypt.hash(password, 12);
 
-  // In development, auto-verify email so integration tests work end-to-end
-  const autoVerify = process.env.NODE_ENV === 'development';
-
   const { data: user, error } = await supabase
     .from('users')
-    .insert({ email, password_hash, role, email_verified: autoVerify })
+    .insert({ email, password_hash, role, email_verified: false })
     .select()
     .single();
 
@@ -93,8 +90,7 @@ const loginUser = async ({ email, password }) => {
     throw new AppError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
   }
 
-  // Skip email verification check in development for testing convenience
-  if (process.env.NODE_ENV !== 'development' && !user.email_verified) {
+  if (!user.email_verified) {
     throw new AppError('Please verify your email before logging in', 403, 'EMAIL_NOT_VERIFIED');
   }
 
@@ -298,6 +294,29 @@ const resetPassword = async (token, newPassword) => {
     .eq('user_id', record.user_id);
 };
 
-module.exports = { registerUser, loginUser, refreshToken, logout, getMe, verifyEmail, forgotPassword, resetPassword };
+// ─── CHANGE PASSWORD (authenticated) ──────────────────────────────────────────
+const changePassword = async (userId, currentPassword, newPassword) => {
+  const { data: user } = await supabase
+    .from('users')
+    .select('id, password_hash')
+    .eq('id', userId)
+    .single();
+
+  if (!user) throw new AppError('User not found', 404);
+
+  const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
+  if (!isMatch) throw new AppError('Current password is incorrect', 400, 'WRONG_PASSWORD');
+
+  const password_hash = await bcrypt.hash(newPassword, 12);
+  await supabase.from('users').update({ password_hash }).eq('id', userId);
+
+  // Revoke all refresh tokens (force re-login on other devices)
+  await supabase
+    .from('refresh_tokens')
+    .update({ is_revoked: true })
+    .eq('user_id', userId);
+};
+
+module.exports = { registerUser, loginUser, refreshToken, logout, getMe, verifyEmail, forgotPassword, resetPassword, changePassword };
 
 //baraa

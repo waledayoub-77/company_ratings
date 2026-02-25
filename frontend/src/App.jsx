@@ -1,5 +1,8 @@
+import { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext.jsx'
+import { ToastProvider, useToast } from './context/ToastContext.jsx'
+import { SESSION_EXPIRED_EVENT } from './api/client.js'
 import Layout from './components/layout/Layout.jsx'
 import LandingPage from './pages/LandingPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
@@ -15,6 +18,7 @@ import AdminPanel from './pages/AdminPanel.jsx'
 import WriteReviewPage from './pages/WriteReviewPage.jsx'
 import InternalFeedbackPage from './pages/InternalFeedbackPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
+import NotFoundPage from './pages/NotFoundPage.jsx'
 
 const ROLE_HOME = { employee: '/dashboard', company_admin: '/company-admin', system_admin: '/admin' }
 
@@ -65,14 +69,31 @@ function AppRoutes() {
           <Route path="/company-admin"       element={<RoleRoute role="company_admin"><CompanyAdminDashboard /></RoleRoute>} />
           <Route path="/admin"               element={<RoleRoute role="system_admin"><AdminPanel /></RoleRoute>} />
         </Route>
+
+        {/* 404 catch-all */}
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
   )
+}
+
+// Listen for session-expired events from the API client and show a toast
+function SessionExpiredListener() {
+  const toast = useToast()
+  useEffect(() => {
+    const handler = () => toast.error('Your session has expired. Please sign in again.')
+    window.addEventListener(SESSION_EXPIRED_EVENT, handler)
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handler)
+  }, [toast])
+  return null
 }
 
 export default function App() {
   return (
     <AuthProvider>
-      <AppRoutes />
+      <ToastProvider>
+        <SessionExpiredListener />
+        <AppRoutes />
+      </ToastProvider>
     </AuthProvider>
   )
 }

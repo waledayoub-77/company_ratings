@@ -60,3 +60,11 @@ export async function apiLogout() {
 export async function apiGetMe() {
   return authRequest('/auth/me')
 }
+
+/** POST /auth/change-password */
+export async function apiChangePassword(currentPassword, newPassword) {
+  return authRequest('/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify({ currentPassword, newPassword }),
+  })
+}

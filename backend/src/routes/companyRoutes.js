@@ -33,6 +33,13 @@ router.get(
   companyController.getCompanyAnalytics
 );
 
+// GET /companies/:id/employees - List approved employees at a company (for feedback)
+router.get(
+  '/:id/employees',
+  requireAuth,
+  companyController.getCompanyEmployees
+);
+
 // GET /companies/:id/stats - Get company statistics
 router.get(
   '/:id/stats',

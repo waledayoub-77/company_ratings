@@ -75,3 +75,11 @@ export async function updateCompany(id, data) {
 export async function deleteCompany(id) {
   return authRequest(`/companies/${id}`, { method: 'DELETE' })
 }
+
+/**
+ * GET /companies/:id/employees
+ * List approved employees at a company (for feedback coworker picker)
+ */
+export async function getCompanyEmployees(id) {
+  return authRequest(`/companies/${id}/employees`)
+}

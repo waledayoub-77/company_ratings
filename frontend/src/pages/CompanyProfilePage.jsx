@@ -423,21 +423,21 @@ export default function CompanyProfilePage() {
                           className="w-full h-9 rounded-lg border border-red-200 bg-white px-3 text-xs text-navy-700 mb-2 focus:outline-none"
                         >
                           <option value="">Select reason...</option>
-                          <option value="false_information">False information</option>
+                          <option value="false_info">False information</option>
                           <option value="spam">Spam</option>
                           <option value="harassment">Harassment</option>
-                          <option value="inappropriate">Inappropriate content</option>
+                          <option value="other">Other</option>
                         </select>
                         <textarea
                           value={reportDescription}
                           onChange={e => setReportDescription(e.target.value)}
-                          placeholder="Additional details (optional)"
+                          placeholder="Describe the issue (minimum 10 characters)"
                           className="w-full h-16 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs text-navy-700 resize-none mb-2 focus:outline-none"
                         />
                         <div className="flex gap-2">
                           <button
                             onClick={() => handleReport(review.id)}
-                            disabled={!reportReason || reportSubmitting}
+                            disabled={!reportReason || reportDescription.trim().length < 10 || reportSubmitting}
                             className="h-8 px-4 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
                           >
                             {reportSubmitting ? 'Submitting...' : 'Submit Report'}

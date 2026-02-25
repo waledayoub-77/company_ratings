@@ -1,4 +1,6 @@
 const feedbackService = require("../services/feedbackService");
+const { createNotification } = require('../services/notificationService');
+const supabase = require('../config/database');
 
 // UUID v4 validation helper
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -171,6 +173,29 @@ exports.createFeedback = async (req, res) => {
       return res.status(400).json({ success: false, error: { message: createRes.error, code: "BAD_REQUEST" } });
     }
 
+    // ── Notify rated employee (non-blocking) ───────────────────────────────────
+    try {
+      const { data: reviewerEmp } = await supabase
+        .from('employees')
+        .select('full_name')
+        .eq('id', reviewerEmployeeId)
+        .single();
+      const { data: ratedEmp } = await supabase
+        .from('employees')
+        .select('user_id')
+        .eq('id', ratedEmployeeId)
+        .single();
+      if (ratedEmp?.user_id) {
+        await createNotification({
+          userId: ratedEmp.user_id,
+          type: 'feedback_received',
+          title: 'New Peer Feedback',
+          message: `${reviewerEmp?.full_name || 'A coworker'} submitted feedback for you (Q${quarter} ${year}).`,
+          link: '/profile',
+        });
+      }
+    } catch (_) {}
+
     return res.status(201).json({ success: true, data: createRes.data });
   } catch (err) {
     console.error("createFeedback error:", err);
@@ -238,6 +263,28 @@ exports.getFeedbackReceived = async (req, res) => {
  * Employees see only feedback they submitted.
  * System admins see all given feedback (optionally filter by ?employeeId=).
  */
+/**
+ * GET /api/feedback/coworkers
+ * Returns coworkers who share an approved, current employment with the logged-in employee.
+ * Accepts optional ?quarter= and ?year= to flag already-rated coworkers.
+ */
+exports.getCoworkers = async (req, res) => {
+  try {
+    const userId = req.user?.userId;
+    const quarter = req.query.quarter ? parseInt(req.query.quarter, 10) : null;
+    const year    = req.query.year    ? parseInt(req.query.year, 10)    : null;
+
+    const result = await feedbackService.getCoworkers({ userId, quarter, year });
+    if (result.error) {
+      return res.status(404).json({ success: false, error: { message: result.error, code: 'NOT_FOUND' } });
+    }
+    return res.status(200).json({ success: true, data: result.data });
+  } catch (err) {
+    console.error('getCoworkers error:', err);
+    return res.status(500).json({ success: false, error: { message: 'Server error', code: 'SERVER_ERROR' } });
+  }
+};
+
 exports.getFeedbackGiven = async (req, res) => {
   try {
     const userId = req.user?.userId;

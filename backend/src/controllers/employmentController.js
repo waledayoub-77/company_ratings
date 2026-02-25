@@ -1,10 +1,11 @@
-const supabase = require("../config/database");
-const employmentService = require("../services/employmentService");
+const supabase = require('../config/database');
+const employmentService = require('../services/employmentService');
 const {
   sendEmploymentRequestEmail,
   sendEmploymentApprovedEmail,
   sendEmploymentRejectedEmail
-} = require("../services/emailService");
+} = require('../services/emailService');
+const { createNotification } = require('../services/notificationService');
 
 // POST /api/employments/request
 exports.requestEmployment = async (req, res) => {
@@ -38,22 +39,29 @@ exports.requestEmployment = async (req, res) => {
 
     if (result.error) return res.status(400).json({ message: result.error });
 
-    // Send email notification to company admin (non-blocking)
+    // Notify company admin that a new employment request was submitted (non-blocking)
     try {
       const [{ data: empProfile }, { data: companyData }] = await Promise.all([
-        supabase.from("employees").select("full_name").eq("id", employee.id).single(),
-        supabase.from("companies").select("name, user_id").eq("id", companyId).single()
+        supabase.from('employees').select('full_name').eq('id', employee.id).single(),
+        supabase.from('companies').select('name, user_id').eq('id', companyId).single()
       ]);
       if (companyData?.user_id) {
-        const { data: adminUser } = await supabase.from("users").select("email, full_name").eq("id", companyData.user_id).single();
+        const { data: adminUser } = await supabase.from('users').select('email, full_name').eq('id', companyData.user_id).single();
         if (adminUser) {
           await sendEmploymentRequestEmail({
             to: adminUser.email,
             adminName: adminUser.full_name,
-            employeeName: empProfile?.full_name || "An employee",
+            employeeName: empProfile?.full_name || 'An employee',
             companyName: companyData.name
           });
         }
+        await createNotification({
+          userId: companyData.user_id,
+          type: 'employment_request',
+          title: 'New Employment Request',
+          message: `${empProfile?.full_name || 'An employee'} requested to join ${companyData.name}.`,
+          link: '/company-admin',
+        });
       }
     } catch (_) {}
 
@@ -190,7 +198,7 @@ exports.approveEmployment = async (req, res) => {
 
     if (result.error) return res.status(400).json({ message: result.error });
 
-    // Send approval email to employee (non-blocking)
+    // Send approval email + notification to employee (non-blocking)
     try {
       const { data: empData } = await supabase.from("employees").select("full_name, user_id").eq("id", result.data.employee_id).single();
       if (empData?.user_id) {
@@ -202,6 +210,13 @@ exports.approveEmployment = async (req, res) => {
             companyName: company.name
           });
         }
+        await createNotification({
+          userId: empData.user_id,
+          type: 'employment_approved',
+          title: 'Employment Approved',
+          message: `Your employment at ${company.name} has been approved.`,
+          link: '/dashboard',
+        });
       }
     } catch (_) {}
 
@@ -302,7 +317,7 @@ exports.rejectEmployment = async (req, res) => {
 
     if (result.error) return res.status(400).json({ message: result.error });
 
-    // Send rejection email to employee (non-blocking)
+    // Send rejection email + notification to employee (non-blocking)
     try {
       const { data: empData } = await supabase.from("employees").select("full_name, user_id").eq("id", result.data.employee_id).single();
       if (empData?.user_id) {
@@ -315,6 +330,13 @@ exports.rejectEmployment = async (req, res) => {
             reason: rejectionNote || null
           });
         }
+        await createNotification({
+          userId: empData.user_id,
+          type: 'employment_rejected',
+          title: 'Employment Request Declined',
+          message: `Your employment request at ${company.name} was declined.${rejectionNote ? ` Reason: ${rejectionNote}` : ''}`,
+          link: '/dashboard',
+        });
       }
     } catch (_) {}
 

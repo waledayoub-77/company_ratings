@@ -55,7 +55,7 @@ export default function EmployeeDashboard() {
     Promise.all([getMyEmployments(), getMyReviews(), getFeedbackReceived()])
       .then(([empRes, revRes, fbRes]) => {
         setEmployments(empRes?.data ?? [])
-        setReviews(revRes?.data ?? [])
+        setReviews(revRes?.reviews ?? revRes?.data ?? [])
         setFeedback(fbRes?.data ?? [])
       })
       .catch(console.error)
@@ -69,7 +69,7 @@ export default function EmployeeDashboard() {
 
   const refetchReviews = useCallback(async () => {
     const res = await getMyReviews()
-    setReviews(res?.data ?? [])
+    setReviews(res?.reviews ?? res?.data ?? [])
   }, [])
 
   const firstName = user?.full_name?.split(' ')[0] ?? user?.fullName?.split(' ')[0] ?? 'there'
@@ -211,7 +211,7 @@ function OverviewTab({ user, employments, reviews, feedback }) {
                 <div key={`rev-${i}`} className="flex items-start gap-3 py-1">
                   <CheckCircle2 size={16} className="text-emerald-500 mt-0.5 shrink-0" />
                   <div>
-                    <p className="text-sm text-navy-700">You reviewed {r.company_name ?? r.companyName ?? 'a company'}</p>
+                    <p className="text-sm text-navy-700">You reviewed {r.companies?.name ?? r.company_name ?? r.companyName ?? 'a company'}</p>
                     <p className="text-xs text-navy-400 mt-0.5">
                       {new Date(r.created_at ?? r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </p>
@@ -234,7 +234,7 @@ function OverviewTab({ user, employments, reviews, feedback }) {
                   <Building2 size={16} className="text-navy-500 mt-0.5 shrink-0" />
                   <div>
                     <p className="text-sm text-navy-700">
-                      Employment at {emp.company_name ?? emp.companyName ?? 'a company'} — {emp.status}
+                      Employment at {emp.companies?.name ?? emp.company_name ?? emp.companyName ?? 'a company'} — {emp.status}
                     </p>
                     <p className="text-xs text-navy-400 mt-0.5">
                       {new Date(emp.created_at ?? emp.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -443,7 +443,7 @@ function EmploymentTab({ employments, refetch }) {
           {employments.map((emp, i) => {
             const config    = statusConfig[emp.status] ?? statusConfig.pending
             const gradient  = gradients[i % gradients.length]
-            const name      = emp.company_name ?? emp.companyName ?? 'Company'
+            const name      = emp.companies?.name ?? emp.company_name ?? emp.companyName ?? 'Company'
             const dept      = emp.department ?? emp.dept ?? ''
             const startRaw  = emp.start_date ?? emp.startDate
             const endRaw    = emp.end_date   ?? emp.endDate
@@ -559,7 +559,7 @@ function ReviewsTab({ reviews, refetch }) {
         </div>
       )}
       {reviews.map((review, i) => {
-        const companyName  = review.company_name ?? review.companyName ?? 'Company'
+        const companyName  = review.companies?.name ?? review.company_name ?? review.companyName ?? 'Company'
         const reviewText   = review.review_text  ?? review.reviewText  ?? ''
         const isAnon       = review.is_anonymous ?? review.isAnonymous ?? false
         const createdAt    = review.created_at   ?? review.createdAt

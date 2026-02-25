@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -12,16 +12,81 @@ import {
   MessageSquare,
   Shield,
   Bell,
+  CheckCircle2,
+  XCircle,
+  Briefcase,
+  Check,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../../api/notifications'
+
+const NOTIF_ICONS = {
+  employment_approved: { Icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+  employment_rejected: { Icon: XCircle,      color: 'text-red-500',     bg: 'bg-red-50'     },
+  employment_request:  { Icon: Briefcase,    color: 'text-blue-500',    bg: 'bg-blue-50'    },
+  feedback_received:   { Icon: MessageSquare,color: 'text-purple-500',  bg: 'bg-purple-50'  },
+}
+
+function timeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins  = Math.floor(diff / 60000)
+  if (mins < 1)  return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24)  return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  return `${days}d ago`
+}
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [notifOpen, setNotifOpen] = useState(false)
+  const [notifications, setNotifications] = useState([])
+  const notifRef = useRef(null)
   const location = useLocation()
   const navigate = useNavigate()
   const { user, logout } = useAuth()
+
+  const unreadCount = notifications.filter(n => !n.is_read).length
+
+  /* Fetch notifications when logged in */
+  const fetchNotifs = () => {
+    if (!user) return
+    getNotifications()
+      .then(res => setNotifications(res?.data ?? []))
+      .catch(() => {})
+  }
+
+  useEffect(() => {
+    fetchNotifs()
+    const interval = setInterval(fetchNotifs, 60_000) // poll every 60s
+    return () => clearInterval(interval)
+  }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* Close notification dropdown on outside click */
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setNotifOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const handleMarkAllRead = async () => {
+    await markAllNotificationsRead().catch(() => {})
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+  }
+
+  const handleMarkOne = async (id, link) => {
+    await markNotificationRead(id).catch(() => {})
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
+    setNotifOpen(false)
+    if (link) navigate(link)
+  }
 
   /* Role-based nav links */
   const navLinks =
@@ -64,6 +129,7 @@ export default function Navbar() {
   useEffect(() => {
     setMobileOpen(false)
     setProfileOpen(false)
+    setNotifOpen(false)
   }, [location])
 
   return (
@@ -118,10 +184,74 @@ export default function Navbar() {
             {user ? (
               <>
                 {/* Notification bell */}
-                <button className="hidden md:flex relative w-10 h-10 items-center justify-center rounded-xl text-navy-600 hover:bg-navy-50 hover:text-navy-900 transition-colors">
-                  <Bell size={18} strokeWidth={1.8} />
-                  <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
-                </button>
+                <div ref={notifRef} className="relative hidden md:block">
+                  <button
+                    onClick={() => setNotifOpen(v => !v)}
+                    className="relative w-10 h-10 flex items-center justify-center rounded-xl text-navy-600 hover:bg-navy-50 hover:text-navy-900 transition-colors"
+                  >
+                    <Bell size={18} strokeWidth={1.8} />
+                    {unreadCount > 0 && (
+                      <span className="absolute top-1.5 right-1.5 min-w-[16px] h-4 px-1 bg-red-500 rounded-full text-white text-[10px] font-bold flex items-center justify-center leading-none">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </button>
+
+                  <AnimatePresence>
+                    {notifOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg shadow-navy-900/10 border border-navy-100/60 overflow-hidden z-50"
+                      >
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-4 py-3 border-b border-navy-100/60">
+                          <h3 className="text-sm font-semibold text-navy-900">Notifications</h3>
+                          {unreadCount > 0 && (
+                            <button
+                              onClick={handleMarkAllRead}
+                              className="text-xs text-navy-400 hover:text-navy-700 transition-colors flex items-center gap-1"
+                            >
+                              <Check size={11} /> Mark all read
+                            </button>
+                          )}
+                        </div>
+
+                        {/* List */}
+                        <div className="max-h-80 overflow-y-auto divide-y divide-navy-50">
+                          {notifications.length === 0 ? (
+                            <div className="py-10 text-center text-sm text-navy-400">
+                              <Bell size={22} className="mx-auto mb-2 text-navy-200" />
+                              No notifications yet
+                            </div>
+                          ) : notifications.map(n => {
+                            const meta = NOTIF_ICONS[n.type] ?? NOTIF_ICONS['feedback_received']
+                            const { Icon, color, bg } = meta
+                            return (
+                              <button
+                                key={n.id}
+                                onClick={() => handleMarkOne(n.id, n.link)}
+                                className={`w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-navy-50 ${!n.is_read ? 'bg-blue-50/40' : ''}`}
+                              >
+                                <div className={`w-8 h-8 rounded-lg ${bg} flex items-center justify-center shrink-0 mt-0.5`}>
+                                  <Icon size={15} className={color} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-semibold text-navy-900 truncate">{n.title}</p>
+                                  <p className="text-xs text-navy-500 mt-0.5 leading-relaxed line-clamp-2">{n.message}</p>
+                                  <p className="text-[10px] text-navy-300 mt-1">{timeAgo(n.created_at)}</p>
+                                </div>
+                                {!n.is_read && <div className="w-2 h-2 rounded-full bg-blue-500 shrink-0 mt-2" />}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
 
                 {/* Profile dropdown */}
                 <div className="relative hidden md:block">

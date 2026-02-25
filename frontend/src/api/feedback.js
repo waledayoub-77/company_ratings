@@ -32,3 +32,15 @@ export async function getFeedbackGiven(params = {}) {
   ).toString()
   return authRequest(`/feedback/given${qs ? `?${qs}` : ''}`)
 }
+
+/**
+ * GET /feedback/coworkers
+ * Returns coworkers who share an approved current employment with the logged-in employee.
+ * @param {Object} params — quarter (1-4, optional), year (optional)
+ */
+export async function getCoworkers(params = {}) {
+  const qs = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v !== '' && v != null)
+  ).toString()
+  return authRequest(`/feedback/coworkers${qs ? `?${qs}` : ''}`)
+}

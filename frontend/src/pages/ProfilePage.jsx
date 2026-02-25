@@ -1,14 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   User,
   Mail,
-  MapPin,
   Briefcase,
   Calendar,
   Building2,
   Edit3,
-  Camera,
   Save,
   X,
   Shield,
@@ -16,6 +14,10 @@ import {
   FileText,
   CheckCircle2,
   ChevronRight,
+  Tag,
+  Plus,
+  Eye,
+  EyeOff,
 } from 'lucide-react'
 import PageHeader from '../components/ui/PageHeader.jsx'
 import Badge from '../components/ui/Badge.jsx'
@@ -23,6 +25,7 @@ import Reveal from '../components/ui/Reveal.jsx'
 import Button from '../components/ui/Button.jsx'
 import Input from '../components/ui/Input.jsx'
 import { useAuth } from '../context/AuthContext'
+import { apiGetMe } from '../api/auth'
 import { getEmployeeProfile, updateEmployeeProfile } from '../api/employees'
 import { getMyEmployments } from '../api/employments'
 import { getMyReviews } from '../api/reviews'
@@ -34,78 +37,166 @@ export default function ProfilePage() {
 
   const [editing, setEditing] = useState(false)
   const [activeSection, setActiveSection] = useState('profile')
-  const [form, setForm] = useState({ name: '', email: '', phone: '', location: '', title: '', bio: '', joined: '' })
+  const [form, setForm] = useState({
+    fullName:          '',
+    email:             '',
+    currentPosition:   '',
+    bio:               '',
+    skills:            [],
+    profileVisibility: 'public',
+    joined:            '',
+  })
   const [employments, setEmployments] = useState([])
   const [activityStats, setActivityStats] = useState({ totalReviews: 0, feedbackGiven: 0, feedbackReceived: 0, avgRating: '–' })
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const [saveSuccess, setSaveSuccess] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [resolvedEmployeeId, setResolvedEmployeeId] = useState(employeeId ?? null)
+
+  /* Resolve employeeId — login response doesn't include it, only /auth/me does */
+  useEffect(() => {
+    if (employeeId) {
+      setResolvedEmployeeId(employeeId)
+      return
+    }
+    if (!user?.id) {
+      setLoading(false)
+      return
+    }
+    apiGetMe()
+      .then(res => {
+        const me = res?.data?.user ?? res?.data ?? res
+        const eid = me?.employeeId ?? null
+        setResolvedEmployeeId(eid)
+        // For non-employee users (system_admin, company_admin) there is no employee profile.
+        // Populate what we can from the /auth/me response so the page is not blank.
+        if (!eid) {
+          setForm(f => ({
+            ...f,
+            fullName: me?.fullName ?? me?.full_name ?? user?.email ?? '',
+            email:    me?.email    ?? user?.email    ?? '',
+            joined:   me?.createdAt ?? me?.created_at ?? '',
+          }))
+          setLoading(false)
+        }
+      })
+      .catch(() => setLoading(false))
+  }, [user?.id, employeeId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!employeeId) return
+    if (!resolvedEmployeeId) {
+      if (!user?.id) return          // still waiting for user
+      setLoading(false)              // user has no employee profile
+      return
+    }
 
-    /* Load profile */
-    getEmployeeProfile(employeeId).then(res => {
-      const e = res?.data?.employee ?? res?.data ?? {}
-      setForm({
-        name:     e.user?.fullName  ?? e.fullName  ?? '',
-        email:    e.user?.email     ?? e.email     ?? '',
-        phone:    e.phone    ?? '',
-        location: e.location ?? '',
-        title:    e.title    ?? '',
-        bio:      e.bio      ?? '',
-        joined:   e.createdAt ?? e.user?.createdAt ?? '',
+    setLoading(true)
+
+    /* Load employee profile */
+    getEmployeeProfile(resolvedEmployeeId)
+      .then(res => {
+        const e = res?.data ?? {}
+        setForm({
+          fullName:          e.full_name          ?? '',
+          email:             user?.email          ?? '',
+          currentPosition:   e.current_position   ?? '',
+          bio:               e.bio                ?? '',
+          skills:            Array.isArray(e.skills) ? e.skills : [],
+          profileVisibility: e.profile_visibility ?? 'public',
+          joined:            e.created_at         ?? '',
+        })
       })
-    }).catch(() => {})
+      .catch(() => {
+        setForm(f => ({ ...f, email: user?.email ?? '' }))
+      })
+      .finally(() => setLoading(false))
 
     /* Load employments */
-    getMyEmployments().then(res => {
-      setEmployments(res?.data?.employments ?? [])
-    }).catch(() => {})
+    getMyEmployments()
+      .then(res => setEmployments(res?.data ?? []))
+      .catch(() => {})
 
     /* Load activity stats */
     Promise.allSettled([getMyReviews(), getFeedbackGiven(), getFeedbackReceived()])
       .then(([reviewsRes, givenRes, receivedRes]) => {
-        const reviews  = reviewsRes.status  === 'fulfilled' ? (reviewsRes.value?.data?.reviews  ?? []) : []
-        const given    = givenRes.status    === 'fulfilled' ? (givenRes.value?.data?.feedback   ?? []) : []
-        const received = receivedRes.status === 'fulfilled' ? (receivedRes.value?.data?.feedback ?? []) : []
+        const reviews  = reviewsRes.status  === 'fulfilled' ? (reviewsRes.value?.reviews ?? reviewsRes.value?.data  ?? []) : []
+        const given    = givenRes.status    === 'fulfilled' ? (givenRes.value?.data    ?? []) : []
+        const received = receivedRes.status === 'fulfilled' ? (receivedRes.value?.data ?? []) : []
         const avgRating = reviews.length > 0
-          ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)
+          ? (reviews.reduce((s, r) => s + (r.overall_rating ?? 0), 0) / reviews.length).toFixed(1)
           : '–'
-        setActivityStats({ totalReviews: reviews.length, feedbackGiven: given.length, feedbackReceived: received.length, avgRating })
+        setActivityStats({
+          totalReviews:     reviews.length,
+          feedbackGiven:    Array.isArray(given)    ? given.length    : 0,
+          feedbackReceived: Array.isArray(received) ? received.length : 0,
+          avgRating,
+        })
       })
-  }, [employeeId])
+  }, [resolvedEmployeeId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = async () => {
-    if (!employeeId) return
+    if (!resolvedEmployeeId) return
     setSaving(true)
+    setSaveError('')
+    setSaveSuccess(false)
     try {
-      await updateEmployeeProfile(employeeId, {
-        phone:    form.phone,
-        location: form.location,
-        title:    form.title,
-        bio:      form.bio,
+      await updateEmployeeProfile(resolvedEmployeeId, {
+        fullName:          form.fullName.trim(),
+        currentPosition:   form.currentPosition.trim(),
+        bio:               form.bio,
+        skills:            form.skills,
+        profileVisibility: form.profileVisibility,
       })
+      setSaveSuccess(true)
       setEditing(false)
-    } catch { /* silent */ } finally {
+      setTimeout(() => setSaveSuccess(false), 3000)
+    } catch (err) {
+      setSaveError(err?.message || 'Failed to save changes.')
+    } finally {
       setSaving(false)
     }
   }
 
+  const handleCancelEdit = () => {
+    setEditing(false)
+    setSaveError('')
+    /* Re-fetch to restore any unsaved changes */
+    if (resolvedEmployeeId) {
+      getEmployeeProfile(resolvedEmployeeId).then(res => {
+        const e = res?.data ?? {}
+        setForm(f => ({
+          ...f,
+          fullName:          e.full_name          ?? f.fullName,
+          currentPosition:   e.current_position   ?? f.currentPosition,
+          bio:               e.bio                ?? f.bio,
+          skills:            Array.isArray(e.skills) ? e.skills : f.skills,
+          profileVisibility: e.profile_visibility ?? f.profileVisibility,
+        }))
+      }).catch(() => {})
+    }
+  }
+
+  const isAdmin = user?.role === 'system_admin'
+  const isCompanyAdmin = user?.role === 'company_admin'
+
   const sections = [
-    { id: 'profile', label: 'Profile', icon: User },
-    { id: 'employment', label: 'Employment', icon: Briefcase },
-    { id: 'activity', label: 'Activity', icon: FileText },
-    { id: 'settings', label: 'Settings', icon: Shield },
+    { id: 'profile',    label: 'Profile',    icon: User      },
+    ...(!isAdmin ? [{ id: 'employment', label: 'Employment', icon: Briefcase }] : []),
+    ...(!isAdmin ? [{ id: 'activity',   label: 'Activity',   icon: FileText  }] : []),
+    { id: 'settings',   label: 'Settings',   icon: Shield    },
   ]
 
   return (
-    <div className="min-h-screen bg-ice-50">
+    <div className="h-full flex flex-col overflow-hidden bg-ice-50">
       <PageHeader
         tag="My Account"
         title="Profile"
         subtitle="Manage your personal information, employment history, and account settings."
       />
 
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 pb-20">
+      <div className="flex-1 overflow-y-auto">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-8">
         <div className="grid lg:grid-cols-[260px_1fr] gap-8">
           {/* Sidebar */}
           <aside>
@@ -116,15 +207,19 @@ export default function ProfilePage() {
                   <div className="relative inline-block mb-4">
                     <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-navy-400 to-navy-700 flex items-center justify-center">
                       <span className="text-white text-2xl font-semibold">
-                        {form.name ? form.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?'}
+                        {form.fullName ? form.fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : (user?.email?.[0]?.toUpperCase() ?? '?')}
                       </span>
                     </div>
-                    <button className="absolute -bottom-1 -right-1 w-7 h-7 rounded-lg bg-white border border-navy-200 shadow-sm flex items-center justify-center hover:bg-navy-50 transition-colors">
-                      <Camera size={13} className="text-navy-600" />
-                    </button>
                   </div>
-                  <h3 className="font-semibold text-navy-900">{form.name}</h3>
-                  <p className="text-xs text-navy-400 mt-0.5">{form.title}</p>
+                  <h3 className="font-semibold text-navy-900">{form.fullName || user?.email}</h3>
+                  <p className="text-xs text-navy-400 mt-0.5">
+                    {isAdmin ? 'System Administrator' : isCompanyAdmin ? 'Company Admin' : (form.currentPosition || 'No position set')}
+                  </p>
+                  {isAdmin && (
+                    <span className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-100 text-violet-700">
+                      <Shield size={9} /> Admin
+                    </span>
+                  )}
                 </div>
 
                 {/* Nav links */}
@@ -166,7 +261,12 @@ export default function ProfilePage() {
                     editing={editing}
                     setEditing={setEditing}
                     onSave={handleSave}
+                    onCancel={handleCancelEdit}
                     saving={saving}
+                    saveError={saveError}
+                    saveSuccess={saveSuccess}
+                    loading={loading}
+                    isAdmin={isAdmin}
                   />
                 </motion.div>
               )}
@@ -210,28 +310,67 @@ export default function ProfilePage() {
           </main>
         </div>
       </div>
+      </div>
     </div>
   )
 }
 
 /* ─── Profile Section ─── */
-function ProfileSection({ form, setForm, editing, setEditing, onSave, saving }) {
+function ProfileSection({ form, setForm, editing, setEditing, onSave, onCancel, saving, saveError, saveSuccess, loading, isAdmin }) {
+  const [skillInput, setSkillInput] = useState('')
+  const skillInputRef = useRef(null)
+
+  const addSkill = () => {
+    const s = skillInput.trim()
+    if (s && !form.skills.includes(s)) {
+      setForm(f => ({ ...f, skills: [...f.skills, s] }))
+    }
+    setSkillInput('')
+  }
+
+  const removeSkill = (skill) => {
+    setForm(f => ({ ...f, skills: f.skills.filter(s => s !== skill) }))
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <h2 className="text-lg font-semibold text-navy-900">Personal Information</h2>
+        <div className="bg-white rounded-2xl border border-navy-100/50 p-12 flex items-center justify-center">
+          <svg className="animate-spin h-6 w-6 text-navy-400" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-navy-900">Personal Information</h2>
-        <button
-          onClick={() => setEditing(!editing)}
-          className={`flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-lg transition-all ${
-            editing
-              ? 'bg-navy-100 text-navy-700'
-              : 'border border-navy-200 text-navy-600 hover:bg-navy-50'
-          }`}
-        >
-          {editing ? <X size={13} /> : <Edit3 size={13} />}
-          {editing ? 'Cancel' : 'Edit'}
-        </button>
+        {!isAdmin && (
+          <button
+            onClick={() => editing ? onCancel() : setEditing(true)}
+            className={`flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-lg transition-all ${
+              editing
+                ? 'bg-navy-100 text-navy-700'
+                : 'border border-navy-200 text-navy-600 hover:bg-navy-50'
+            }`}
+          >
+            {editing ? <X size={13} /> : <Edit3 size={13} />}
+            {editing ? 'Cancel' : 'Edit'}
+          </button>
+        )}
       </div>
+
+      {saveSuccess && (
+        <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-xl px-4 py-3">
+          <CheckCircle2 size={15} />
+          Profile saved successfully.
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl border border-navy-100/50 p-6">
         {editing ? (
@@ -239,42 +378,92 @@ function ProfileSection({ form, setForm, editing, setEditing, onSave, saving }) 
             <div className="grid sm:grid-cols-2 gap-5">
               <Input
                 label="Full Name"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                value={form.fullName}
+                onChange={(e) => setForm(f => ({ ...f, fullName: e.target.value }))}
               />
               <Input
                 label="Email"
                 type="email"
                 value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-              />
-            </div>
-            <div className="grid sm:grid-cols-2 gap-5">
-              <Input
-                label="Phone"
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              />
-              <Input
-                label="Location"
-                value={form.location}
-                onChange={(e) => setForm({ ...form, location: e.target.value })}
+                disabled
+                className="opacity-60 cursor-not-allowed"
               />
             </div>
             <Input
-              label="Job Title"
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              label="Current Position / Job Title"
+              value={form.currentPosition}
+              onChange={(e) => setForm(f => ({ ...f, currentPosition: e.target.value }))}
+              placeholder="e.g. Senior Software Engineer"
             />
             <div>
               <label className="block text-sm font-medium text-navy-700 mb-1.5">Bio</label>
               <textarea
                 value={form.bio}
-                onChange={(e) => setForm({ ...form, bio: e.target.value })}
+                onChange={(e) => setForm(f => ({ ...f, bio: e.target.value }))}
                 rows={3}
+                placeholder="Tell others about yourself…"
                 className="w-full rounded-xl border border-navy-200 bg-white px-4 py-3 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all resize-none"
               />
             </div>
+
+            {/* Skills */}
+            <div>
+              <label className="block text-sm font-medium text-navy-700 mb-1.5">Skills</label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {form.skills.map(skill => (
+                  <span key={skill} className="inline-flex items-center gap-1.5 bg-navy-50 text-navy-700 text-xs font-medium px-3 py-1.5 rounded-full border border-navy-100">
+                    {skill}
+                    <button type="button" onClick={() => removeSkill(skill)} className="text-navy-400 hover:text-navy-700 transition-colors">
+                      <X size={11} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  ref={skillInputRef}
+                  value={skillInput}
+                  onChange={(e) => setSkillInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSkill() } }}
+                  placeholder="Add a skill and press Enter"
+                  className="flex-1 h-10 rounded-xl border border-navy-200 bg-white px-4 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={addSkill}
+                  className="h-10 px-3 rounded-xl border border-navy-200 text-navy-600 hover:bg-navy-50 transition-all"
+                >
+                  <Plus size={15} />
+                </button>
+              </div>
+            </div>
+
+            {/* Profile Visibility */}
+            <div>
+              <label className="block text-sm font-medium text-navy-700 mb-1.5">Profile Visibility</label>
+              <div className="flex gap-3">
+                {['public', 'private'].map(v => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, profileVisibility: v }))}
+                    className={`flex items-center gap-2 h-10 px-4 rounded-xl text-sm font-medium border transition-all ${
+                      form.profileVisibility === v
+                        ? 'bg-navy-900 text-white border-navy-900'
+                        : 'border-navy-200 text-navy-600 hover:bg-navy-50'
+                    }`}
+                  >
+                    {v === 'public' ? <Eye size={14} /> : <EyeOff size={14} />}
+                    {v.charAt(0).toUpperCase() + v.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {saveError && (
+              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{saveError}</p>
+            )}
+
             <div className="flex justify-end">
               <Button onClick={onSave} size="sm" disabled={saving}>
                 <Save size={14} className="mr-1.5" />
@@ -285,16 +474,34 @@ function ProfileSection({ form, setForm, editing, setEditing, onSave, saving }) 
         ) : (
           <div className="space-y-5">
             <div className="grid sm:grid-cols-2 gap-y-5 gap-x-8">
-              <InfoRow icon={User} label="Full Name" value={form.name} />
-              <InfoRow icon={Mail} label="Email" value={form.email} />
-              <InfoRow icon={MapPin} label="Location" value={form.location} />
-              <InfoRow icon={Briefcase} label="Title" value={form.title} />
-              <InfoRow icon={Calendar} label="Member Since" value={form.joined ? new Date(form.joined).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '–'} />
+              <InfoRow icon={User}      label="Full Name"      value={form.fullName        || '—'} />
+              <InfoRow icon={Mail}      label="Email"          value={form.email           || '—'} />
+              {isAdmin
+                ? <InfoRow icon={Shield}    label="Role"           value="System Administrator" />
+                : <InfoRow icon={Briefcase} label="Position"       value={form.currentPosition || '—'} />
+              }
+              <InfoRow icon={Calendar}  label="Member Since"   value={form.joined ? new Date(form.joined).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'} />
+              {!isAdmin && <InfoRow icon={Eye} label="Visibility" value={form.profileVisibility === 'private' ? 'Private' : 'Public'} />}
             </div>
-            <div className="pt-4 border-t border-navy-50">
-              <p className="text-xs font-medium text-navy-400 mb-1">Bio</p>
-              <p className="text-sm text-navy-600 leading-relaxed">{form.bio}</p>
-            </div>
+            {form.bio && (
+              <div className="pt-4 border-t border-navy-50">
+                <p className="text-xs font-medium text-navy-400 mb-1">Bio</p>
+                <p className="text-sm text-navy-600 leading-relaxed">{form.bio}</p>
+              </div>
+            )}
+            {!isAdmin && form.skills.length > 0 && (
+              <div className="pt-4 border-t border-navy-50">
+                <p className="text-xs font-medium text-navy-400 mb-2">Skills</p>
+                <div className="flex flex-wrap gap-2">
+                  {form.skills.map(skill => (
+                    <span key={skill} className="inline-flex items-center gap-1 bg-navy-50 text-navy-700 text-xs font-medium px-3 py-1.5 rounded-full border border-navy-100">
+                      <Tag size={10} />
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -322,6 +529,7 @@ function EmploymentSection({ employments }) {
     <div className="space-y-6">
       <h2 className="text-lg font-semibold text-navy-900">Employment History</h2>
       <div className="bg-white rounded-2xl border border-navy-100/50 p-12 text-center">
+        <Building2 size={28} className="text-navy-200 mx-auto mb-3" />
         <p className="text-sm text-navy-500">No employment records yet.</p>
       </div>
     </div>
@@ -336,15 +544,16 @@ function EmploymentSection({ employments }) {
         <div className="absolute left-[13px] top-3 bottom-3 w-[2px] bg-navy-100" />
 
         {employments.map((job, i) => {
-          const company  = job.company?.name ?? '–'
-          const period   = job.startDate
-            ? `${new Date(job.startDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} — ${
-                job.endDate
-                  ? new Date(job.endDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+          const company  = job.companies?.name ?? '—'
+          const period   = job.start_date
+            ? `${new Date(job.start_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} — ${
+                job.end_date
+                  ? new Date(job.end_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
                   : 'Present'
               }`
-            : '–'
-          const verified = job.status === 'approved'
+            : '—'
+          const status   = job.verification_status
+          const verified = status === 'approved'
 
           return (
             <Reveal key={job.id} delay={i * 0.1}>
@@ -362,7 +571,7 @@ function EmploymentSection({ employments }) {
                       </div>
                       <div>
                         <h3 className="font-semibold text-navy-900">{company}</h3>
-                        <p className="text-sm text-navy-500">{job.position ?? '–'}</p>
+                        <p className="text-sm text-navy-500">{job.position ?? '—'}{job.department ? ` · ${job.department}` : ''}</p>
                         <p className="text-xs text-navy-400 mt-0.5">{period}</p>
                       </div>
                     </div>
@@ -370,6 +579,8 @@ function EmploymentSection({ employments }) {
                       <Badge variant="success">
                         <CheckCircle2 size={12} className="mr-1" /> Verified
                       </Badge>
+                    ) : status === 'rejected' ? (
+                      <Badge variant="error">Rejected</Badge>
                     ) : (
                       <Badge variant="warning">Pending</Badge>
                     )}

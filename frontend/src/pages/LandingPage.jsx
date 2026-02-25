@@ -223,7 +223,7 @@ export default function LandingPage() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.9, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
             >
-              <div className="relative w-full max-w-md mx-auto lg:mx-0">
+              <div className="relative w-full max-w-md mx-auto lg:mx-0 sm:pb-14">
                 {/* Main review card */}
                 <motion.div
                   className="bg-white rounded-2xl p-6 shadow-xl shadow-navy-900/5 border border-navy-100/40"
@@ -262,16 +262,12 @@ export default function LandingPage() {
                     </span>
                   </div>
                 </motion.div>
-                {/* Stats mini card */}
-                <motion.div
-                  className="absolute -right-4 top-1/2 -translate-y-1/2 bg-navy-900 rounded-xl p-4 text-white shadow-xl w-32"
-                  animate={{ y: ['-50%', 'calc(-50% + 10px)', '-50%'] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
-                >
+                {/* Stats mini card — hidden on mobile to avoid overflow */}
+                <div className="hidden sm:block absolute -right-10 -bottom-1 bg-navy-900 rounded-xl p-4 text-white shadow-xl w-36">
                   <TrendingUp size={16} className="text-navy-400 mb-2" />
                   <p className="text-2xl font-bold">4.7</p>
-                  <p className="text-[10px] text-navy-400 mt-0.5">Avg. Company Rating</p>
-                </motion.div>
+                  <p className="text-[11px] text-navy-400 mt-0.5">Avg. Company Rating</p>
+                </div>
               </div>
             </motion.div>
           </div>
@@ -497,7 +493,7 @@ export default function LandingPage() {
                 ))}
               </div>
               <Link
-                to="/register"
+                to="/login"
                 className="inline-flex items-center gap-2 mt-10 text-sm font-medium text-navy-400 hover:text-white transition-colors group"
               >
                 Try Internal Feedback

@@ -1,8 +1,6 @@
-import { useEffect } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { AnimatePresence } from 'framer-motion'
 import { AuthProvider, useAuth } from './context/AuthContext.jsx'
-import { ToastProvider, useToast } from './context/ToastContext.jsx'
-import { SESSION_EXPIRED_EVENT } from './api/client.js'
 import Layout from './components/layout/Layout.jsx'
 import LandingPage from './pages/LandingPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
@@ -18,7 +16,6 @@ import AdminPanel from './pages/AdminPanel.jsx'
 import WriteReviewPage from './pages/WriteReviewPage.jsx'
 import InternalFeedbackPage from './pages/InternalFeedbackPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
-import NotFoundPage from './pages/NotFoundPage.jsx'
 
 const ROLE_HOME = { employee: '/dashboard', company_admin: '/company-admin', system_admin: '/admin' }
 
@@ -45,8 +42,10 @@ function RoleRoute({ role, children }) {
 }
 
 function AppRoutes() {
+  const location = useLocation()
   return (
-      <Routes>
+    <AnimatePresence mode="wait" initial={false}>
+      <Routes location={location} key={location.pathname}>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login"                element={<GuestRoute><LoginPage /></GuestRoute>} />
         <Route path="/register"             element={<GuestRoute><RegisterPage /></GuestRoute>} />
@@ -61,39 +60,29 @@ function AppRoutes() {
 
           {/* Any authenticated user */}
           <Route path="/companies/:id/review" element={<ProtectedRoute><WriteReviewPage /></ProtectedRoute>} />
-          <Route path="/profile"              element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+        </Route>
 
+        <Route element={<Layout showFooter={false} noScroll />}>
+          <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+        </Route>
+
+        <Route element={<Layout />}>
           {/* Role-specific */}
           <Route path="/dashboard"           element={<RoleRoute role="employee"><EmployeeDashboard /></RoleRoute>} />
           <Route path="/dashboard/feedback"  element={<RoleRoute role="employee"><InternalFeedbackPage /></RoleRoute>} />
+          <Route path="/feedback"            element={<RoleRoute role="employee"><InternalFeedbackPage /></RoleRoute>} />
           <Route path="/company-admin"       element={<RoleRoute role="company_admin"><CompanyAdminDashboard /></RoleRoute>} />
           <Route path="/admin"               element={<RoleRoute role="system_admin"><AdminPanel /></RoleRoute>} />
         </Route>
-
-        {/* 404 catch-all */}
-        <Route path="*" element={<NotFoundPage />} />
       </Routes>
+    </AnimatePresence>
   )
-}
-
-// Listen for session-expired events from the API client and show a toast
-function SessionExpiredListener() {
-  const toast = useToast()
-  useEffect(() => {
-    const handler = () => toast.error('Your session has expired. Please sign in again.')
-    window.addEventListener(SESSION_EXPIRED_EVENT, handler)
-    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handler)
-  }, [toast])
-  return null
 }
 
 export default function App() {
   return (
     <AuthProvider>
-      <ToastProvider>
-        <SessionExpiredListener />
-        <AppRoutes />
-      </ToastProvider>
+      <AppRoutes />
     </AuthProvider>
   )
 }

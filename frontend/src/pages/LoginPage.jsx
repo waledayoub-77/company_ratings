@@ -42,7 +42,13 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2">
+    <motion.div
+      className="min-h-screen grid lg:grid-cols-2"
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{    opacity: 0, y: -12 }}
+      transition={{ duration: 0.38, ease: [0.25, 0.46, 0.45, 0.94] }}
+    >
       {/* Left — Form side */}
       <div className="flex items-center justify-center px-6 py-16 bg-ice-50">
         <motion.div
@@ -214,6 +220,6 @@ export default function LoginPage() {
           </div>
         </motion.div>
       </div>
-    </div>
+    </motion.div>
   )
 }

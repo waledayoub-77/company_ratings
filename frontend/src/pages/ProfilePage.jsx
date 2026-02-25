@@ -414,7 +414,40 @@ function ActivitySection({ stats }) {
 
 /* ─── Settings Section ─── */
 function SettingsSection() {
+  const { logout } = useAuth()
   const [passwordForm, setPasswordForm] = useState({ current: '', new: '', confirm: '' })
+  const [pwLoading, setPwLoading] = useState(false)
+  const [pwMsg, setPwMsg] = useState({ type: '', text: '' })
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
+  const handleChangePassword = async () => {
+    setPwMsg({ type: '', text: '' })
+    if (!passwordForm.current || !passwordForm.new || !passwordForm.confirm) {
+      setPwMsg({ type: 'error', text: 'All fields are required.' })
+      return
+    }
+    if (passwordForm.new.length < 8) {
+      setPwMsg({ type: 'error', text: 'New password must be at least 8 characters.' })
+      return
+    }
+    if (passwordForm.new !== passwordForm.confirm) {
+      setPwMsg({ type: 'error', text: 'New passwords do not match.' })
+      return
+    }
+    setPwLoading(true)
+    try {
+      const { apiChangePassword } = await import('../api/auth')
+      await apiChangePassword(passwordForm.current, passwordForm.new)
+      setPwMsg({ type: 'success', text: 'Password updated successfully. You will be logged out.' })
+      setPasswordForm({ current: '', new: '', confirm: '' })
+      setTimeout(() => logout(), 2000)
+    } catch (err) {
+      const msg = err?.data?.message || err?.message || 'Failed to change password.'
+      setPwMsg({ type: 'error', text: msg })
+    } finally {
+      setPwLoading(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -443,7 +476,12 @@ function SettingsSection() {
               value={passwordForm.confirm}
               onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
             />
-            <Button size="sm">Update Password</Button>
+            {pwMsg.text && (
+              <p className={`text-sm ${pwMsg.type === 'error' ? 'text-red-600' : 'text-green-600'}`}>{pwMsg.text}</p>
+            )}
+            <Button size="sm" onClick={handleChangePassword} disabled={pwLoading}>
+              {pwLoading ? 'Updating...' : 'Update Password'}
+            </Button>
           </div>
         </div>
       </Reveal>
@@ -479,14 +517,26 @@ function SettingsSection() {
         <div className="bg-white rounded-2xl border border-red-100  p-6">
           <h3 className="font-semibold text-red-700 mb-2">Danger Zone</h3>
           <p className="text-xs text-red-500 mb-4">These actions are irreversible. Please proceed with caution.</p>
-          <div className="flex gap-2">
-            <button className="h-9 px-4 border border-red-200 text-red-600 text-xs font-medium rounded-lg hover:bg-red-50 transition-colors">
-              Deactivate Account
-            </button>
-            <button className="h-9 px-4 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors">
-              Delete Account
-            </button>
-          </div>
+          {showDeleteConfirm ? (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-sm text-red-700 mb-3">To delete your account, please contact a system administrator.</p>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="h-9 px-4 border border-red-200 text-red-600 text-xs font-medium rounded-lg hover:bg-red-100 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="h-9 px-4 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Delete Account
+              </button>
+            </div>
+          )}
         </div>
       </Reveal>
     </div>

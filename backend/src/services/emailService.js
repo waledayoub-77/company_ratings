@@ -144,7 +144,7 @@ async function sendWelcomeEmail({ to, name }) {
 }
 
 async function sendVerifyEmail({ to, name, token }) {
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').split(',')[0].trim();
   const verifyUrl = `${frontendUrl}/verify-email/${token}`;
   return sendEmail({
     to,
@@ -154,7 +154,7 @@ async function sendVerifyEmail({ to, name, token }) {
 }
 
 async function sendResetPasswordEmail({ to, name, token }) {
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').split(',')[0].trim();
   const resetUrl = `${frontendUrl}/reset-password/${token}`;
   return sendEmail({
     to,

@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { submitFeedback } from '../api/feedback.js'
+import { getMyEmployments } from '../api/employments.js'
+import { getCompanyEmployees } from '../api/companies.js'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Star,
@@ -10,21 +12,20 @@ import {
   ChevronRight,
   Send,
   ArrowLeft,
+  Building2,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import PageHeader from '../components/ui/PageHeader.jsx'
 import Reveal from '../components/ui/Reveal.jsx'
 
-/* ─── Mock data ─── */
-const coworkers = [
-  { id: 1, name: 'Sarah Miller', position: 'Product Manager', dept: 'Product', initials: 'SM', lastFeedback: null },
-  { id: 2, name: 'James Wilson', position: 'Backend Engineer', dept: 'Engineering', initials: 'JW', lastFeedback: 'Q4 2025' },
-  { id: 3, name: 'Priya Patel', position: 'UX Designer', dept: 'Design', initials: 'PP', lastFeedback: null },
-  { id: 4, name: 'David Kim', position: 'DevOps Engineer', dept: 'Engineering', initials: 'DK', lastFeedback: 'Q4 2025' },
-  { id: 5, name: 'Lisa Chen', position: 'QA Lead', dept: 'Engineering', initials: 'LC', lastFeedback: null },
-]
-
 const categories = ['Professionalism', 'Communication', 'Teamwork', 'Reliability']
+
+function getCurrentQuarter() {
+  const now = new Date()
+  return Math.ceil((now.getMonth() + 1) / 3)
+}
 
 export default function InternalFeedbackPage() {
   const [step, setStep] = useState('select')
@@ -34,6 +35,80 @@ export default function InternalFeedbackPage() {
   const [comment, setComment] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // Data loading state
+  const [coworkers, setCoworkers] = useState([])
+  const [companies, setCompanies] = useState([])
+  const [selectedCompanyId, setSelectedCompanyId] = useState(null)
+  const [dataLoading, setDataLoading] = useState(true)
+  const [dataError, setDataError] = useState('')
+
+  // Load user's approved employments on mount
+  useEffect(() => {
+    async function loadEmployments() {
+      setDataLoading(true)
+      setDataError('')
+      try {
+        const res = await getMyEmployments()
+        const employments = res.data || []
+        const approved = employments.filter(
+          e => e.verification_status === 'approved' && e.is_current
+        )
+        const companyMap = new Map()
+        for (const emp of approved) {
+          if (!companyMap.has(emp.company_id)) {
+            companyMap.set(emp.company_id, {
+              id: emp.company_id,
+              name: emp.companies?.name || emp.company_name || 'Unknown Company',
+            })
+          }
+        }
+        const uniqueCompanies = Array.from(companyMap.values())
+        setCompanies(uniqueCompanies)
+        if (uniqueCompanies.length === 1) {
+          setSelectedCompanyId(uniqueCompanies[0].id)
+        }
+      } catch (err) {
+        setDataError(err.message || 'Failed to load your employments')
+      } finally {
+        setDataLoading(false)
+      }
+    }
+    loadEmployments()
+  }, [])
+
+  // Load coworkers when a company is selected
+  useEffect(() => {
+    if (!selectedCompanyId) {
+      setCoworkers([])
+      return
+    }
+    async function loadCoworkers() {
+      setDataLoading(true)
+      setDataError('')
+      try {
+        const res = await getCompanyEmployees(selectedCompanyId)
+        const employees = (res.data || []).map(emp => ({
+          id: emp.id,
+          name: emp.fullName || 'Unknown',
+          position: emp.position || '',
+          dept: emp.department || '',
+          initials: (emp.fullName || 'U')
+            .split(/\s+/)
+            .map(w => w[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2),
+        }))
+        setCoworkers(employees)
+      } catch (err) {
+        setDataError(err.message || 'Failed to load coworkers')
+      } finally {
+        setDataLoading(false)
+      }
+    }
+    loadCoworkers()
+  }, [selectedCompanyId])
 
   const filtered = coworkers.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -53,15 +128,19 @@ export default function InternalFeedbackPage() {
     setLoading(true)
     setError('')
     try {
+      const quarter = getCurrentQuarter()
+      const year = new Date().getFullYear()
+
       await submitFeedback({
-        toEmployeeId: selectedPerson.id,
-        scores: {
-          professionalism: ratings['Professionalism'],
-          communication:   ratings['Communication'],
-          teamwork:        ratings['Teamwork'],
-          reliability:     ratings['Reliability'],
-        },
-        comment: comment.trim() || undefined,
+        ratedEmployeeId: selectedPerson.id,
+        companyId: selectedCompanyId,
+        professionalism: ratings['Professionalism'],
+        communication: ratings['Communication'],
+        teamwork: ratings['Teamwork'],
+        reliability: ratings['Reliability'],
+        writtenFeedback: comment.trim() || undefined,
+        quarter,
+        year,
       })
       setStep('success')
     } catch (err) {
@@ -118,60 +197,110 @@ export default function InternalFeedbackPage() {
                 </div>
               </div>
 
-              {/* Search coworkers */}
-              <div className="mb-6">
-                <div className="relative">
-                  <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-navy-400" />
-                  <input
-                    type="text"
-                    placeholder="Search coworkers by name or position..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="w-full h-12 rounded-xl border border-navy-200 bg-white pl-11 pr-4 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
-                  />
-                </div>
-              </div>
-
-              {/* Coworker list */}
-              <div className="space-y-3">
-                {filtered.map((person, i) => {
-                  const canRate = !person.lastFeedback || person.lastFeedback !== 'Q1 2026'
-                  return (
-                    <Reveal key={person.id} delay={i * 0.05}>
+              {/* Company selector (if multiple companies) */}
+              {companies.length > 1 && (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-navy-700 mb-2">Select Company</label>
+                  <div className="flex flex-wrap gap-2">
+                    {companies.map(company => (
                       <button
-                        onClick={() => canRate && handleSelectPerson(person)}
-                        disabled={!canRate}
-                        className={`w-full flex items-center gap-4 bg-white rounded-2xl border p-5 text-left transition-all duration-200 ${
-                          canRate
-                            ? 'border-navy-100/50 hover:border-navy-200 hover:shadow-md cursor-pointer'
-                            : 'border-navy-100/50 opacity-60 cursor-not-allowed'
+                        key={company.id}
+                        onClick={() => setSelectedCompanyId(company.id)}
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition-all ${
+                          selectedCompanyId === company.id
+                            ? 'bg-navy-900 text-white border-navy-900'
+                            : 'bg-white text-navy-600 border-navy-200 hover:border-navy-300'
                         }`}
                       >
-                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-navy-500 to-navy-700 flex items-center justify-center shrink-0">
-                          <span className="text-white text-sm font-semibold">{person.initials}</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-navy-900 text-sm">{person.name}</h3>
-                          <p className="text-xs text-navy-400 mt-0.5">{person.position} · {person.dept}</p>
-                        </div>
-                        {canRate ? (
-                          <ChevronRight size={16} className="text-navy-300" />
-                        ) : (
-                          <span className="text-[10px] font-medium text-navy-400 bg-navy-50 px-2.5 py-1 rounded-full">
-                            Rated in Q1
-                          </span>
-                        )}
+                        <Building2 size={14} />
+                        {company.name}
                       </button>
-                    </Reveal>
-                  )
-                })}
-              </div>
-
-              {filtered.length === 0 && (
-                <div className="text-center py-12">
-                  <Users size={32} className="text-navy-200 mx-auto mb-3" />
-                  <p className="text-sm text-navy-400">No coworkers found matching your search.</p>
+                    ))}
+                  </div>
                 </div>
+              )}
+
+              {/* Loading state */}
+              {dataLoading && (
+                <div className="text-center py-16">
+                  <Loader2 size={28} className="text-navy-400 mx-auto mb-3 animate-spin" />
+                  <p className="text-sm text-navy-400">Loading coworkers...</p>
+                </div>
+              )}
+
+              {/* Error state */}
+              {dataError && !dataLoading && (
+                <div className="text-center py-16">
+                  <AlertCircle size={32} className="text-red-400 mx-auto mb-3" />
+                  <p className="text-sm text-red-600 mb-4">{dataError}</p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="h-9 px-5 bg-navy-900 text-white text-sm font-medium rounded-lg hover:bg-navy-800 transition-colors"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+
+              {/* No approved employment */}
+              {!dataLoading && !dataError && companies.length === 0 && (
+                <div className="text-center py-16">
+                  <Building2 size={32} className="text-navy-200 mx-auto mb-3" />
+                  <p className="text-sm text-navy-500 mb-2">No approved employment found.</p>
+                  <p className="text-xs text-navy-400">You need an approved employment at a company to give peer feedback.</p>
+                </div>
+              )}
+
+              {/* Coworker list */}
+              {!dataLoading && !dataError && selectedCompanyId && (
+                <>
+                  {/* Search coworkers */}
+                  <div className="mb-6">
+                    <div className="relative">
+                      <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-navy-400" />
+                      <input
+                        type="text"
+                        placeholder="Search coworkers by name or position..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="w-full h-12 rounded-xl border border-navy-200 bg-white pl-11 pr-4 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {filtered.map((person, i) => (
+                      <Reveal key={person.id} delay={i * 0.05}>
+                        <button
+                          onClick={() => handleSelectPerson(person)}
+                          className="w-full flex items-center gap-4 bg-white rounded-2xl border border-navy-100/50 hover:border-navy-200 hover:shadow-md p-5 text-left transition-all duration-200 cursor-pointer"
+                        >
+                          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-navy-500 to-navy-700 flex items-center justify-center shrink-0">
+                            <span className="text-white text-sm font-semibold">{person.initials}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-navy-900 text-sm">{person.name}</h3>
+                            <p className="text-xs text-navy-400 mt-0.5">
+                              {person.position}{person.dept ? ` · ${person.dept}` : ''}
+                            </p>
+                          </div>
+                          <ChevronRight size={16} className="text-navy-300" />
+                        </button>
+                      </Reveal>
+                    ))}
+                  </div>
+
+                  {filtered.length === 0 && !dataLoading && (
+                    <div className="text-center py-12">
+                      <Users size={32} className="text-navy-200 mx-auto mb-3" />
+                      <p className="text-sm text-navy-400">
+                        {coworkers.length === 0
+                          ? 'No coworkers found at this company.'
+                          : 'No coworkers found matching your search.'}
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
             </motion.div>
           )}
@@ -201,7 +330,9 @@ export default function InternalFeedbackPage() {
                   </div>
                   <div>
                     <h2 className="text-lg font-semibold text-navy-900">{selectedPerson.name}</h2>
-                    <p className="text-sm text-navy-500">{selectedPerson.position} · {selectedPerson.dept}</p>
+                    <p className="text-sm text-navy-500">
+                      {selectedPerson.position}{selectedPerson.dept ? ` · ${selectedPerson.dept}` : ''}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -283,8 +414,8 @@ export default function InternalFeedbackPage() {
 
               {/* Error */}
               {error && (
-                <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
-                  <Send size={14} className="shrink-0" />
+                <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 mb-4">
+                  <AlertCircle size={14} className="shrink-0" />
                   {error}
                 </div>
               )}
@@ -303,10 +434,7 @@ export default function InternalFeedbackPage() {
                   className="h-11 px-7 bg-navy-900 text-white text-sm font-medium rounded-xl inline-flex items-center gap-2 hover:bg-navy-800 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
                 >
                   {loading ? (
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
+                    <Loader2 size={16} className="animate-spin" />
                   ) : (
                     <>
                       <Send size={15} />

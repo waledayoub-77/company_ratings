@@ -146,6 +146,64 @@ const getCompanyAnalytics = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /companies/:id/employees
+ * Get approved employees at a company (for peer feedback coworker picker)
+ * Requires auth — excludes the requesting user
+ */
+const getCompanyEmployees = async (req, res, next) => {
+  try {
+    const companyId = req.params.id;
+    const userId = req.user?.userId;
+
+    const supabase = require('../config/database');
+
+    // Get requesting user's employee id to exclude them
+    const { data: selfEmployee } = await supabase
+      .from('employees')
+      .select('id')
+      .eq('user_id', userId)
+      .is('deleted_at', null)
+      .maybeSingle();
+
+    // Get all approved employments at this company with employee details
+    let query = supabase
+      .from('employments')
+      .select('employee_id, position, department, employees!inner(id, full_name, current_position)')
+      .eq('company_id', companyId)
+      .eq('verification_status', 'approved')
+      .eq('is_current', true)
+      .is('deleted_at', null);
+
+    // Exclude self
+    if (selfEmployee) {
+      query = query.neq('employee_id', selfEmployee.id);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    // Flatten and deduplicate by employee_id
+    const seen = new Set();
+    const employees = (data || [])
+      .filter(row => {
+        if (seen.has(row.employee_id)) return false;
+        seen.add(row.employee_id);
+        return true;
+      })
+      .map(row => ({
+        id: row.employee_id,
+        fullName: row.employees?.full_name || 'Unknown',
+        position: row.position || row.employees?.current_position || '',
+        department: row.department || '',
+      }));
+
+    res.status(200).json({ success: true, data: employees });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getCompanies,
   getCompanyById,
@@ -153,5 +211,6 @@ module.exports = {
   updateCompany,
   deleteCompany,
   getCompanyStats,
-  getCompanyAnalytics
+  getCompanyAnalytics,
+  getCompanyEmployees
 };

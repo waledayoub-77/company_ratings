@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { submitFeedback } from '../api/feedback.js'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Star,
@@ -32,6 +33,7 @@ export default function InternalFeedbackPage() {
   const [ratings, setRatings] = useState({})
   const [comment, setComment] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const filtered = coworkers.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -47,12 +49,31 @@ export default function InternalFeedbackPage() {
     setStep('rate')
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setLoading(true)
-    setTimeout(() => {
-      setLoading(false)
+    setError('')
+    try {
+      await submitFeedback({
+        toEmployeeId: selectedPerson.id,
+        scores: {
+          professionalism: ratings['Professionalism'],
+          communication:   ratings['Communication'],
+          teamwork:        ratings['Teamwork'],
+          reliability:     ratings['Reliability'],
+        },
+        comment: comment.trim() || undefined,
+      })
       setStep('success')
-    }, 1500)
+    } catch (err) {
+      const msg = err?.message ?? ''
+      if (msg.includes('409') || msg.toLowerCase().includes('quarter') || msg.toLowerCase().includes('already')) {
+        setError('You have already submitted feedback for this person this quarter.')
+      } else {
+        setError(msg || 'Failed to submit feedback. Please try again.')
+      }
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleReset = () => {
@@ -259,6 +280,14 @@ export default function InternalFeedbackPage() {
                   Feedback is immutable — it cannot be deleted after submission.
                 </p>
               </div>
+
+              {/* Error */}
+              {error && (
+                <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
+                  <Send size={14} className="shrink-0" />
+                  {error}
+                </div>
+              )}
 
               {/* Submit */}
               <div className="flex items-center justify-end gap-3">

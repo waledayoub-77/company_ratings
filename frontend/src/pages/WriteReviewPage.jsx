@@ -1,28 +1,58 @@
-import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Star, ArrowLeft, Eye, EyeOff, CheckCircle2, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, CheckCircle2, AlertCircle } from 'lucide-react'
 import StarRating from '../components/ui/StarRating.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
+import { getCompanyById } from '../api/companies.js'
+import { createReview } from '../api/reviews.js'
 
 export default function WriteReviewPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
+  const { user } = useAuth()
+
+  const [companyName, setCompanyName] = useState('')
   const [rating, setRating] = useState(0)
   const [review, setReview] = useState('')
   const [anonymous, setAnonymous] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    getCompanyById(id)
+      .then(res => setCompanyName(res?.data?.name ?? res?.name ?? ''))
+      .catch(() => {})
+  }, [id])
 
   const charCount = review.length
   const isValid = rating > 0 && charCount >= 50 && charCount <= 2000
 
-  const handleSubmit = (e) => {
+  const userInitials = (user?.full_name ?? user?.fullName ?? '')
+    .split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'ME'
+  const userName = user?.full_name ?? user?.fullName ?? 'You'
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!isValid) return
     setLoading(true)
-    setTimeout(() => {
-      setLoading(false)
+    setError('')
+    try {
+      await createReview({ companyId: id, rating, reviewText: review, isAnonymous: anonymous })
       setSubmitted(true)
-    }, 1500)
+    } catch (err) {
+      const msg = err?.message ?? ''
+      if (msg.toLowerCase().includes('verif') || msg.toLowerCase().includes('employ')) {
+        setError('You must have a verified employment at this company to write a review.')
+      } else if (msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('already')) {
+        setError('You have already submitted a review for this company.')
+      } else {
+        setError(msg || 'Failed to submit review. Please try again.')
+      }
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (submitted) {
@@ -78,15 +108,22 @@ export default function WriteReviewPage() {
             className="inline-flex items-center gap-2 text-sm text-navy-500 hover:text-navy-700 transition-colors mb-8"
           >
             <ArrowLeft size={15} />
-            Back to Stripe
+            {companyName ? `Back to ${companyName}` : 'Back to Company'}
           </Link>
 
           <h1 className="text-3xl font-serif font-bold text-navy-900 mb-2">
             Write Your Review
           </h1>
           <p className="text-navy-500 text-sm mb-10">
-            Share your honest experience at Stripe. Your review helps others make informed career decisions.
+            Share your honest experience{companyName ? ` at ${companyName}` : ''}. Your review helps others make informed career decisions.
           </p>
+
+          {error && (
+            <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 mb-6">
+              <AlertCircle size={16} />
+              {error}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Rating */}
@@ -185,14 +222,14 @@ export default function WriteReviewPage() {
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-9 h-9 rounded-lg bg-navy-100 flex items-center justify-center">
                       <span className="text-navy-500 text-xs font-semibold">
-                        {anonymous ? '?' : 'JD'}
+                        {anonymous ? '?' : userInitials}
                       </span>
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-navy-900">
-                        {anonymous ? 'Anonymous Verified Employee' : 'John Doe'}
+                        {anonymous ? 'Anonymous Verified Employee' : userName}
                       </p>
-                      <p className="text-[11px] text-navy-400">Software Engineer · Just now</p>
+                      <p className="text-[11px] text-navy-400">Just now</p>
                     </div>
                   </div>
                   {rating > 0 && <StarRating rating={rating} size={14} />}

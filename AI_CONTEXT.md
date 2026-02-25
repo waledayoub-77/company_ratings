@@ -1473,7 +1473,7 @@ cd backend
 ---
 
 ##### 🟢 Aya — CompaniesPage + CompanyProfilePage + LandingPage
-> Files: `CompaniesPage.jsx`, `CompanyProfilePage.jsx`, `LandingPage.jsx`  
+>  Files: `CompaniesPage.jsx`, `CompanyProfilePage.jsx`, `LandingPage.jsx`  
 > Import from: `api/companies.js`, `api/admin.js` (submitReport)
 
 **CompaniesPage** (`src/pages/CompaniesPage.jsx`)

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react'
@@ -8,6 +8,7 @@ export default function VerifyEmailPage() {
   const { token } = useParams()
   const [status, setStatus] = useState('loading') // 'loading' | 'success' | 'error'
   const [message, setMessage] = useState('')
+  const calledRef = useRef(false)
 
   useEffect(() => {
     if (!token) {
@@ -15,6 +16,9 @@ export default function VerifyEmailPage() {
       setMessage('Invalid verification link.')
       return
     }
+    // Prevent double-call from React 18 Strict Mode
+    if (calledRef.current) return
+    calledRef.current = true
 
     apiVerifyEmail(token)
       .then(() => setStatus('success'))

@@ -627,17 +627,11 @@ export default function LandingPage() {
               </p>
               <div className="mt-10 flex flex-wrap justify-center gap-4">
                 <Link
-                  to="/register"
+                  to="/companies"
                   className="group h-[56px] px-8 bg-navy-900 text-white text-base font-medium rounded-xl inline-flex items-center gap-2.5 hover:bg-navy-800 transition-all shadow-lg shadow-navy-900/15"
                 >
-                  Create Free Account
-                  <ArrowRight size={18} className="transition-transform group-hover:translate-x-0.5" />
-                </Link>
-                <Link
-                  to="/companies"
-                  className="h-[56px] px-8 border border-navy-200 text-navy-700 text-base font-medium rounded-xl inline-flex items-center gap-2.5 hover:bg-navy-50 hover:border-navy-300 transition-all"
-                >
                   Explore Companies
+                  <ArrowRight size={18} className="transition-transform group-hover:translate-x-0.5" />
                 </Link>
               </div>
             </div>

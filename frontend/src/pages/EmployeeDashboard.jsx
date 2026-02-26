@@ -131,21 +131,39 @@ export default function EmployeeDashboard() {
 
 /* ─── Overview Tab ─── */
 function OverviewTab({ user, employments, reviews, feedback }) {
-  const verifiedCount = employments.filter(e => e.status === 'approved').length
+  const approvedEmployments = employments.filter(e => e.status === 'approved')
+  const verifiedCount = approvedEmployments.length
 
-  const avgScore = feedback.length === 0 ? '—' : (() => {
-    const sum = feedback.reduce((acc, fb) => {
+  // IDs of companies the employee is actually approved at
+  const approvedCompanyIds = new Set(
+    approvedEmployments.map(e => e.company_id ?? e.companyId)
+  )
+
+  // Filter reviews to only those written for approved companies
+  const approvedReviews = reviews.filter(r =>
+    approvedCompanyIds.has(r.company_id ?? r.companyId)
+  )
+
+  // Filter feedback to only those received in the context of approved companies
+  const approvedFeedback = feedback.filter(fb =>
+    approvedCompanyIds.size === 0
+      ? false
+      : approvedCompanyIds.has(fb.company_id ?? fb.companyId) || fb.company_id == null
+  )
+
+  const avgScore = approvedFeedback.length === 0 ? '—' : (() => {
+    const sum = approvedFeedback.reduce((acc, fb) => {
       const avg = ((fb.professionalism || 0) + (fb.communication || 0) + (fb.teamwork || 0) + (fb.reliability || 0)) / 4
       return acc + avg
     }, 0)
-    return (sum / feedback.length).toFixed(1)
+    return (sum / approvedFeedback.length).toFixed(1)
   })()
 
   const stats = [
-    { label: 'Verified Employments', value: String(verifiedCount),  icon: Building2,     color: 'text-navy-500'    },
-    { label: 'Reviews Written',       value: String(reviews.length), icon: PenSquare,     color: 'text-amber-500'   },
-    { label: 'Feedback Received',     value: String(feedback.length),icon: MessageSquare, color: 'text-emerald-500' },
-    { label: 'Avg. Feedback Score',   value: avgScore,               icon: Award,         color: 'text-violet-500'  },
+    { label: 'Verified Employments', value: String(verifiedCount),          icon: Building2,     color: 'text-navy-500'    },
+    { label: 'Reviews Written',       value: String(approvedReviews.length), icon: PenSquare,     color: 'text-amber-500'   },
+    { label: 'Feedback Received',     value: String(approvedFeedback.length),icon: MessageSquare, color: 'text-emerald-500' },
+    { label: 'Avg. Feedback Score',   value: avgScore,                       icon: Award,         color: 'text-violet-500'  },
   ]
 
   return (
@@ -203,11 +221,26 @@ function OverviewTab({ user, employments, reviews, feedback }) {
       <Reveal delay={0.2}>
         <div className="bg-white rounded-2xl border border-navy-100/50 p-6">
           <h3 className="text-sm font-semibold text-navy-900 mb-4">Recent Activity</h3>
-          {reviews.length === 0 && employments.length === 0 && feedback.length === 0 ? (
-            <p className="text-sm text-navy-400">No activity yet. Start by writing a review or requesting employment verification.</p>
+          {approvedEmployments.length === 0 ? (
+            <p className="text-sm text-navy-400">No approved employment yet. Once a company approves you, your activity will appear here.</p>
+          ) : approvedReviews.length === 0 && approvedFeedback.length === 0 ? (
+            <p className="text-sm text-navy-400">No activity yet for your approved {approvedEmployments.length === 1 ? 'company' : 'companies'}. Start by writing a review or giving peer feedback.</p>
           ) : (
             <div className="space-y-4">
-              {reviews.slice(0, 2).map((r, i) => (
+              {approvedEmployments.slice(0, 1).map((emp, i) => (
+                <div key={`emp-${i}`} className="flex items-start gap-3 py-1">
+                  <Building2 size={16} className="text-emerald-500 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm text-navy-700">
+                      Verified at {emp.companies?.name ?? emp.company_name ?? emp.companyName ?? 'a company'}
+                    </p>
+                    <p className="text-xs text-navy-400 mt-0.5">
+                      {new Date(emp.updated_at ?? emp.created_at ?? emp.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {approvedReviews.slice(0, 2).map((r, i) => (
                 <div key={`rev-${i}`} className="flex items-start gap-3 py-1">
                   <CheckCircle2 size={16} className="text-emerald-500 mt-0.5 shrink-0" />
                   <div>
@@ -218,26 +251,13 @@ function OverviewTab({ user, employments, reviews, feedback }) {
                   </div>
                 </div>
               ))}
-              {feedback.slice(0, 2).map((fb, i) => (
+              {approvedFeedback.slice(0, 2).map((fb, i) => (
                 <div key={`fb-${i}`} className="flex items-start gap-3 py-1">
                   <MessageSquare size={16} className="text-navy-500 mt-0.5 shrink-0" />
                   <div>
                     <p className="text-sm text-navy-700">New peer feedback received</p>
                     <p className="text-xs text-navy-400 mt-0.5">
                       {new Date(fb.created_at ?? fb.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              {employments.slice(0, 1).map((emp, i) => (
-                <div key={`emp-${i}`} className="flex items-start gap-3 py-1">
-                  <Building2 size={16} className="text-navy-500 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-sm text-navy-700">
-                      Employment at {emp.companies?.name ?? emp.company_name ?? emp.companyName ?? 'a company'} — {emp.status}
-                    </p>
-                    <p className="text-xs text-navy-400 mt-0.5">
-                      {new Date(emp.created_at ?? emp.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </p>
                   </div>
                 </div>

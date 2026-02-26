@@ -45,9 +45,11 @@ async function tryRefresh() {
 
 function extractError(data) {
   return (
+    // If details array exists, prefer the first detail's message for specificity
+    (Array.isArray(data?.error?.details) && data.error.details[0]?.message) ||
+    (Array.isArray(data?.error?.details) && data.error.details[0]?.msg) ||
     data?.error?.message ||
     data?.message ||
-    (Array.isArray(data?.error?.details) && data.error.details[0]?.msg) ||
     'Something went wrong'
   )
 }

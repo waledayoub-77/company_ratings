@@ -84,13 +84,13 @@ export default function InternalFeedbackPage() {
       await submitFeedback({
         ratedEmployeeId: selectedPerson.employeeId,
         companyId:       selectedPerson.companyId,
-        professionalism: ratings['Professionalism'],
-        communication:   ratings['Communication'],
-        teamwork:        ratings['Teamwork'],
-        reliability:     ratings['Reliability'],
+        professionalism: parseInt(ratings['Professionalism'], 10),
+        communication:   parseInt(ratings['Communication'],   10),
+        teamwork:        parseInt(ratings['Teamwork'],        10),
+        reliability:     parseInt(ratings['Reliability'],     10),
         writtenFeedback: comment.trim() || undefined,
-        quarter:         selectedPerson.quarter,
-        year:            selectedPerson.year,
+        quarter:         parseInt(selectedPerson.quarter, 10),
+        year:            parseInt(selectedPerson.year,    10),
       })
       /* mark as rated locally so UI reflects it immediately */
       setCoworkers(prev => prev.map(c =>

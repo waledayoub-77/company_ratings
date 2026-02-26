@@ -2,8 +2,9 @@ const feedbackService = require("../services/feedbackService");
 const { createNotification } = require('../services/notificationService');
 const supabase = require('../config/database');
 
-// UUID v4 validation helper
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+// UUID validation helper — accepts any UUID version (v1–v5), not just v4
+// (seed data and older records may use non-v4 UUIDs)
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 exports.createFeedback = async (req, res) => {
   try {

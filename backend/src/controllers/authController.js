@@ -1,5 +1,27 @@
 const authService = require('../services/authService');
 
+const changePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'currentPassword and newPassword are required', code: 'MISSING_FIELDS' },
+      });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'New password must be at least 8 characters', code: 'PASSWORD_TOO_SHORT' },
+      });
+    }
+    await authService.changePassword(req.user.userId, { currentPassword, newPassword });
+    res.json({ success: true, message: 'Password updated successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const register = async (req, res, next) => {
   try {
     const user = await authService.registerUser(req.body);
@@ -96,22 +118,16 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
-const changePassword = async (req, res, next) => {
+const updateMe = async (req, res, next) => {
   try {
-    const { currentPassword, newPassword } = req.body;
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ success: false, message: 'Current password and new password are required.' });
-    }
-    if (newPassword.length < 8) {
-      return res.status(400).json({ success: false, message: 'New password must be at least 8 characters.' });
-    }
-    await authService.changePassword(req.user.userId, currentPassword, newPassword);
-    res.json({ success: true, data: { message: 'Password changed successfully.' } });
+    const { fullName, bio, currentPosition, email } = req.body;
+    const result = await authService.updateMe(req.user.userId, req.user.role, { fullName, bio, currentPosition, email });
+    res.json({ success: true, message: 'Profile updated successfully', emailChanged: result.emailChanged });
   } catch (error) {
     next(error);
   }
 };
 
-module.exports = { register, login, refresh, logout, getMe, verifyEmail, forgotPassword, resetPassword, changePassword };
+module.exports = { register, login, refresh, logout, getMe, updateMe, verifyEmail, forgotPassword, resetPassword, changePassword };
 
 //baraa

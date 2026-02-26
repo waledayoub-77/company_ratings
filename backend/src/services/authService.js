@@ -19,9 +19,12 @@ const registerUser = async ({ email, password, role = 'employee', fullName, full
   }
   const password_hash = await bcrypt.hash(password, 12);
 
+  // In development, auto-verify email so integration tests work end-to-end
+  const autoVerify = process.env.NODE_ENV === 'development';
+
   const { data: user, error } = await supabase
     .from('users')
-    .insert({ email, password_hash, role, email_verified: false })
+    .insert({ email, password_hash, role, email_verified: autoVerify })
     .select()
     .single();
 
@@ -90,7 +93,8 @@ const loginUser = async ({ email, password }) => {
     throw new AppError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
   }
 
-  if (!user.email_verified) {
+  // Skip email verification check in development for testing convenience
+  if (process.env.NODE_ENV !== 'development' && !user.email_verified) {
     throw new AppError('Please verify your email before logging in', 403, 'EMAIL_NOT_VERIFIED');
   }
 
@@ -108,8 +112,20 @@ const loginUser = async ({ email, password }) => {
     expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
   });
 
+  // Resolve fullName from the right table per role
+  let fullName = user.full_name || null;
+  if (user.role === 'employee') {
+    const { data: emp } = await supabase
+      .from('employees').select('full_name').eq('user_id', user.id).maybeSingle();
+    fullName = emp?.full_name || fullName;
+  } else if (user.role === 'company_admin') {
+    const { data: company } = await supabase
+      .from('companies').select('name').eq('user_id', user.id).is('deleted_at', null).maybeSingle();
+    fullName = company?.name || fullName;
+  }
+
   return {
-    user: { id: user.id, email: user.email, role: user.role, emailVerified: user.email_verified },
+    user: { id: user.id, email: user.email, role: user.role, fullName, emailVerified: user.email_verified },
     access_token: accessToken,
     refresh_token: refreshToken,
     accessToken,
@@ -178,7 +194,7 @@ const logout = async (token) => {
 const getMe = async (userId) => {
   const { data: user, error } = await supabase
     .from('users')
-    .select('id, email, role, email_verified, is_active, created_at')
+    .select('id, email, role, email_verified, is_active, created_at, full_name')
     .eq('id', userId)
     .eq('is_deleted', false)
     .single();
@@ -187,21 +203,33 @@ const getMe = async (userId) => {
     throw new AppError('User not found', 404, 'USER_NOT_FOUND');
   }
 
-  // Include employee profile id for employee users (needed for feedback)
   let employeeId = null;
+  let fullName   = user.full_name || null;
+
   if (user.role === 'employee') {
     const { data: emp } = await supabase
       .from('employees')
-      .select('id')
+      .select('id, full_name')
       .eq('user_id', userId)
       .maybeSingle();
     employeeId = emp?.id || null;
+    fullName   = emp?.full_name || fullName;
+  } else if (user.role === 'company_admin') {
+    const { data: company } = await supabase
+      .from('companies')
+      .select('name')
+      .eq('user_id', userId)
+      .is('deleted_at', null)
+      .maybeSingle();
+    fullName = company?.name || fullName;
   }
+  // system_admin: fullName comes from users.full_name (set above)
 
   return {
     id: user.id,
     email: user.email,
     role: user.role,
+    fullName,
     employeeId,
     emailVerified: user.email_verified,
     isActive: user.is_active,
@@ -294,29 +322,82 @@ const resetPassword = async (token, newPassword) => {
     .eq('user_id', record.user_id);
 };
 
-// ─── CHANGE PASSWORD (authenticated) ──────────────────────────────────────────
-const changePassword = async (userId, currentPassword, newPassword) => {
-  const { data: user } = await supabase
+// ─── UPDATE ME (authenticated profile update) ─────────────────────────────────
+const updateMe = async (userId, userRole, { fullName, bio, currentPosition, email }) => {
+  let emailChanged = false;
+
+  // ── Email change (all roles) ──────────────────────────────────────────────
+  if (email !== undefined) {
+    const trimmed = email.trim().toLowerCase();
+    const { data: currentUser } = await supabase
+      .from('users').select('email').eq('id', userId).maybeSingle();
+    if (currentUser && trimmed !== currentUser.email) {
+      const { data: taken } = await supabase
+        .from('users').select('id').eq('email', trimmed).maybeSingle();
+      if (taken) throw new AppError('Email is already in use by another account', 409, 'EMAIL_EXISTS');
+      await supabase.from('users').update({ email: trimmed }).eq('id', userId);
+      // Revoke all sessions — user must re-login with new email
+      await supabase.from('refresh_tokens').update({ is_revoked: true }).eq('user_id', userId);
+      emailChanged = true;
+    }
+  }
+
+  // ── Role-specific field updates ───────────────────────────────────────────
+  if (userRole === 'employee') {
+    const { data: emp } = await supabase
+      .from('employees').select('id').eq('user_id', userId).maybeSingle();
+    if (emp) {
+      const updates = {};
+      if (fullName        !== undefined) updates.full_name         = fullName.trim();
+      if (bio             !== undefined) updates.bio               = bio;
+      if (currentPosition !== undefined) updates.current_position = currentPosition.trim();
+      if (Object.keys(updates).length) {
+        const { error: empErr } = await supabase.from('employees').update(updates).eq('id', emp.id);
+        if (empErr) throw empErr;
+      }
+    }
+  } else if (userRole === 'company_admin') {
+    const { data: company } = await supabase
+      .from('companies').select('id').eq('user_id', userId).is('deleted_at', null).maybeSingle();
+    if (company && fullName) {
+      await supabase.from('companies').update({ name: fullName.trim() }).eq('id', company.id);
+    }
+  } else if (userRole === 'system_admin') {
+    // Persists to users.full_name (requires the add_full_name_to_users migration)
+    if (fullName !== undefined) {
+      await supabase.from('users').update({ full_name: fullName.trim() }).eq('id', userId);
+    }
+  }
+
+  return { emailChanged };
+};
+
+// ─── CHANGE PASSWORD (authenticated) ────────────────────────────────────────
+const changePassword = async (userId, { currentPassword, newPassword }) => {
+  const { data: user, error } = await supabase
     .from('users')
-    .select('id, password_hash')
+    .select('password_hash')
     .eq('id', userId)
-    .single();
+    .maybeSingle();
 
-  if (!user) throw new AppError('User not found', 404);
+  if (error || !user) throw new AppError('User not found', 404, 'USER_NOT_FOUND');
 
-  const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
-  if (!isMatch) throw new AppError('Current password is incorrect', 400, 'WRONG_PASSWORD');
+  const valid = await bcrypt.compare(currentPassword, user.password_hash);
+  if (!valid) throw new AppError('Current password is incorrect', 401, 'WRONG_PASSWORD');
+
+  const same = await bcrypt.compare(newPassword, user.password_hash);
+  if (same) throw new AppError('New password must be different from your current password', 400, 'SAME_PASSWORD');
 
   const password_hash = await bcrypt.hash(newPassword, 12);
   await supabase.from('users').update({ password_hash }).eq('id', userId);
 
-  // Revoke all refresh tokens (force re-login on other devices)
+  // Revoke all refresh tokens so old sessions are invalidated
   await supabase
     .from('refresh_tokens')
     .update({ is_revoked: true })
     .eq('user_id', userId);
 };
 
-module.exports = { registerUser, loginUser, refreshToken, logout, getMe, verifyEmail, forgotPassword, resetPassword, changePassword };
+module.exports = { registerUser, loginUser, refreshToken, logout, getMe, updateMe, verifyEmail, forgotPassword, resetPassword, changePassword };
 
 //baraa

@@ -61,10 +61,18 @@ export async function apiGetMe() {
   return authRequest('/auth/me')
 }
 
+/** PATCH /auth/me — update own profile */
+export async function apiUpdateMe({ fullName, bio, currentPosition, email }) {
+  return authRequest('/auth/me', {
+    method: 'PATCH',
+    body:   JSON.stringify({ fullName, bio, currentPosition, email }),
+  })
+}
+
 /** POST /auth/change-password */
-export async function apiChangePassword(currentPassword, newPassword) {
+export async function apiChangePassword({ currentPassword, newPassword }) {
   return authRequest('/auth/change-password', {
     method: 'POST',
-    body: JSON.stringify({ currentPassword, newPassword }),
+    body:   JSON.stringify({ currentPassword, newPassword }),
   })
 }

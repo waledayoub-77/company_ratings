@@ -25,20 +25,29 @@ export function AuthProvider({ children }) {
   const [user, setUser]               = useState(stored.user)
   const [accessToken, setAccessToken] = useState(stored.accessToken)
 
-  // Rehydrate user from server on first load (validates token is still active)
+  // On every app load with a valid token: refresh user data from server.
+  // This ensures fullName, role and other profile fields are always up-to-date
+  // even if they were saved while using a different browser/device.
   useEffect(() => {
-    if (stored.accessToken && !stored.user) {
-      apiGetMe()
-        .then((data) => {
-          setUser(data.data ?? data.user ?? data)
+    if (!stored.accessToken) return
+    apiGetMe()
+      .then((res) => {
+        const fresh = res?.data ?? res?.user ?? res
+        if (!fresh?.id) return
+        setUser(prev => {
+          const merged = { ...(prev ?? {}), ...fresh }
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(merged))
+          return merged
         })
-        .catch(() => {
-          // Token invalid — wipe storage silently
-          localStorage.removeItem(ACCESS_KEY)
-          localStorage.removeItem(REFRESH_KEY)
-          localStorage.removeItem(STORAGE_KEY)
-        })
-    }
+      })
+      .catch(() => {
+        // Token invalid — wipe storage silently
+        localStorage.removeItem(ACCESS_KEY)
+        localStorage.removeItem(REFRESH_KEY)
+        localStorage.removeItem(STORAGE_KEY)
+        setUser(null)
+        setAccessToken(null)
+      })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveSession = useCallback(({ user, accessToken, refreshToken }) => {
@@ -47,6 +56,14 @@ export function AuthProvider({ children }) {
     localStorage.setItem(REFRESH_KEY, refreshToken)
     setUser(user)
     setAccessToken(accessToken)
+  }, [])
+
+  const updateUser = useCallback((patch) => {
+    setUser(prev => {
+      const updated = { ...prev, ...patch }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+      return updated
+    })
   }, [])
 
   const clearSession = useCallback(() => {
@@ -68,7 +85,7 @@ export function AuthProvider({ children }) {
   }, [clearSession])
 
   return (
-    <AuthContext.Provider value={{ user, accessToken, saveSession, clearSession, logout }}>
+    <AuthContext.Provider value={{ user, accessToken, saveSession, updateUser, clearSession, logout }}>
       {children}
     </AuthContext.Provider>
   )

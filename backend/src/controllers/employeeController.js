@@ -100,7 +100,12 @@ exports.updateEmployeeProfile = async (req, res) => {
       .select("id, user_id, full_name, current_position, bio, skills, profile_visibility, created_at, updated_at")
       .single();
 
-    if (updErr) throw updErr;
+    if (updErr) {
+      console.error("updateEmployeeProfile Supabase error:", updErr);
+      // Common cause: SUPABASE_SERVICE_ROLE_KEY not set → anon key blocked by RLS
+      // Or: column doesn't exist in DB → run migrations/add_current_position_to_employees.sql
+      return res.status(500).json({ message: updErr.message || "Database update failed" });
+    }
 
     return res.status(200).json({ data: updated });
   } catch (err) {

@@ -22,18 +22,21 @@ import {
 import PageHeader from '../components/ui/PageHeader.jsx'
 import Badge from '../components/ui/Badge.jsx'
 import Reveal from '../components/ui/Reveal.jsx'
+import { useNavigate } from 'react-router-dom'
 import Button from '../components/ui/Button.jsx'
 import Input from '../components/ui/Input.jsx'
 import { useAuth } from '../context/AuthContext'
-import { apiGetMe } from '../api/auth'
+import { apiGetMe, apiUpdateMe, apiChangePassword } from '../api/auth'
 import { getEmployeeProfile, updateEmployeeProfile } from '../api/employees'
 import { getMyEmployments } from '../api/employments'
 import { getMyReviews } from '../api/reviews'
 import { getFeedbackGiven, getFeedbackReceived } from '../api/feedback'
 
 export default function ProfilePage() {
-  const { user } = useAuth()
-  const employeeId = user?.employeeId
+  const { user, updateUser, logout } = useAuth()
+  const navigate     = useNavigate()
+  const employeeId   = user?.employeeId
+  const originalEmailRef = useRef('')
 
   const [editing, setEditing] = useState(false)
   const [activeSection, setActiveSection] = useState('profile')
@@ -50,8 +53,13 @@ export default function ProfilePage() {
   const [activityStats, setActivityStats] = useState({ totalReviews: 0, feedbackGiven: 0, feedbackReceived: 0, avgRating: '–' })
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
-  const [saveSuccess, setSaveSuccess] = useState(false)
+  const [saveSuccess, setSaveSuccess] = useState('')
   const [loading, setLoading] = useState(true)
+
+  // Capture original email the moment editing starts so we can detect a change
+  useEffect(() => {
+    if (editing) originalEmailRef.current = form.email
+  }, [editing]) // eslint-disable-line react-hooks/exhaustive-deps
   const [resolvedEmployeeId, setResolvedEmployeeId] = useState(employeeId ?? null)
 
   /* Resolve employeeId — login response doesn't include it, only /auth/me does */
@@ -136,21 +144,58 @@ export default function ProfilePage() {
   }, [resolvedEmployeeId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = async () => {
-    if (!resolvedEmployeeId) return
     setSaving(true)
     setSaveError('')
-    setSaveSuccess(false)
+    setSaveSuccess('')
     try {
-      await updateEmployeeProfile(resolvedEmployeeId, {
-        fullName:          form.fullName.trim(),
-        currentPosition:   form.currentPosition.trim(),
-        bio:               form.bio,
-        skills:            form.skills,
-        profileVisibility: form.profileVisibility,
+      const newEmail     = form.email.trim()
+      const emailChanged = newEmail !== originalEmailRef.current
+
+      if (resolvedEmployeeId) {
+        // Employee-specific fields → employees table
+        await updateEmployeeProfile(resolvedEmployeeId, {
+          fullName:          form.fullName.trim(),
+          currentPosition:   form.currentPosition.trim(),
+          bio:               form.bio,
+          skills:            form.skills,
+          profileVisibility: form.profileVisibility,
+        })
+        // Email lives in users table — route through /auth/me for all roles
+        if (emailChanged) {
+          await apiUpdateMe({ email: newEmail })
+        }
+      } else {
+        // Admin / company_admin: all fields through PATCH /auth/me
+        await apiUpdateMe({
+          fullName:        form.fullName.trim(),
+          bio:             form.bio,
+          currentPosition: form.currentPosition?.trim(),
+          email:           newEmail,
+        })
+      }
+
+      // Patch auth context so Navbar refreshes immediately
+      updateUser({
+        fullName: form.fullName.trim(),
+        email:    newEmail,
       })
-      setSaveSuccess(true)
+
+      setSaveSuccess(emailChanged
+        ? 'Email updated — signing you out…'
+        : 'Profile saved successfully.'
+      )
       setEditing(false)
-      setTimeout(() => setSaveSuccess(false), 3000)
+
+      if (emailChanged) {
+        // Email changed → all sessions revoked on backend → sign out
+        setSaveError('')
+        setTimeout(async () => {
+          await logout()
+          navigate('/login')
+        }, 1800)
+      } else {
+        setTimeout(() => setSaveSuccess(''), 3000)
+      }
     } catch (err) {
       setSaveError(err?.message || 'Failed to save changes.')
     } finally {
@@ -350,25 +395,23 @@ function ProfileSection({ form, setForm, editing, setEditing, onSave, onCancel, 
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-navy-900">Personal Information</h2>
-        {!isAdmin && (
-          <button
-            onClick={() => editing ? onCancel() : setEditing(true)}
-            className={`flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-lg transition-all ${
-              editing
-                ? 'bg-navy-100 text-navy-700'
-                : 'border border-navy-200 text-navy-600 hover:bg-navy-50'
-            }`}
-          >
-            {editing ? <X size={13} /> : <Edit3 size={13} />}
-            {editing ? 'Cancel' : 'Edit'}
-          </button>
-        )}
+        <button
+          onClick={() => editing ? onCancel() : setEditing(true)}
+          className={`flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-lg transition-all ${
+            editing
+              ? 'bg-navy-100 text-navy-700'
+              : 'border border-navy-200 text-navy-600 hover:bg-navy-50'
+          }`}
+        >
+          {editing ? <X size={13} /> : <Edit3 size={13} />}
+          {editing ? 'Cancel' : 'Edit'}
+        </button>
       </div>
 
       {saveSuccess && (
         <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-xl px-4 py-3">
           <CheckCircle2 size={15} />
-          Profile saved successfully.
+          {saveSuccess}
         </div>
       )}
 
@@ -376,18 +419,22 @@ function ProfileSection({ form, setForm, editing, setEditing, onSave, onCancel, 
         {editing ? (
           <div className="space-y-5">
             <div className="grid sm:grid-cols-2 gap-5">
-              <Input
+      <Input
                 label="Full Name"
                 value={form.fullName}
                 onChange={(e) => setForm(f => ({ ...f, fullName: e.target.value }))}
               />
-              <Input
-                label="Email"
-                type="email"
-                value={form.email}
-                disabled
-                className="opacity-60 cursor-not-allowed"
-              />
+              <div>
+                <Input
+                  label="Email"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
+                />
+                <p className="text-[11px] text-amber-600 mt-1 flex items-center gap-1">
+                   Changing your email will sign you out immediately.
+                </p>
+              </div>
             </div>
             <Input
               label="Current Position / Job Title"
@@ -625,38 +672,47 @@ function ActivitySection({ stats }) {
 
 /* ─── Settings Section ─── */
 function SettingsSection() {
-  const { logout } = useAuth()
-  const [passwordForm, setPasswordForm] = useState({ current: '', new: '', confirm: '' })
-  const [pwLoading, setPwLoading] = useState(false)
-  const [pwMsg, setPwMsg] = useState({ type: '', text: '' })
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const { logout }              = useAuth()
+  const navigate                = useNavigate()
+  const [form, setForm]         = useState({ current: '', new: '', confirm: '' })
+  const [show, setShow]         = useState({ current: false, new: false, confirm: false })
+  const [error, setError]       = useState('')
+  const [success, setSuccess]   = useState('')
+  const [saving, setSaving]     = useState(false)
 
-  const handleChangePassword = async () => {
-    setPwMsg({ type: '', text: '' })
-    if (!passwordForm.current || !passwordForm.new || !passwordForm.confirm) {
-      setPwMsg({ type: 'error', text: 'All fields are required.' })
-      return
+  const toggleShow = (field) => setShow(s => ({ ...s, [field]: !s[field] }))
+  const setField   = (field, val) => { setForm(f => ({ ...f, [field]: val })); setError(''); setSuccess('') }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError(''); setSuccess('')
+
+    if (!form.current || !form.new || !form.confirm) {
+      return setError('All fields are required.')
     }
-    if (passwordForm.new.length < 8) {
-      setPwMsg({ type: 'error', text: 'New password must be at least 8 characters.' })
-      return
+    if (form.new.length < 8) {
+      return setError('New password must be at least 8 characters.')
     }
-    if (passwordForm.new !== passwordForm.confirm) {
-      setPwMsg({ type: 'error', text: 'New passwords do not match.' })
-      return
+    if (form.new === form.current) {
+      return setError('New password must be different from your current password.')
     }
-    setPwLoading(true)
+    if (form.new !== form.confirm) {
+      return setError('New password and confirmation do not match.')
+    }
+
+    setSaving(true)
     try {
-      const { apiChangePassword } = await import('../api/auth')
-      await apiChangePassword(passwordForm.current, passwordForm.new)
-      setPwMsg({ type: 'success', text: 'Password updated successfully. You will be logged out.' })
-      setPasswordForm({ current: '', new: '', confirm: '' })
-      setTimeout(() => logout(), 2000)
+      await apiChangePassword({ currentPassword: form.current, newPassword: form.new })
+      setSuccess('Password updated successfully. Signing you out…')
+      setForm({ current: '', new: '', confirm: '' })
+      setTimeout(async () => {
+        await logout()
+        navigate('/login')
+      }, 1500)
     } catch (err) {
-      const msg = err?.data?.message || err?.message || 'Failed to change password.'
-      setPwMsg({ type: 'error', text: msg })
+      setError(err?.error?.message || err?.message || 'Failed to update password.')
     } finally {
-      setPwLoading(false)
+      setSaving(false)
     }
   }
 
@@ -668,32 +724,61 @@ function SettingsSection() {
       <Reveal>
         <div className="bg-white rounded-2xl border border-navy-100/50 p-6">
           <h3 className="font-semibold text-navy-900 mb-4">Change Password</h3>
-          <div className="space-y-4 max-w-md">
-            <Input
-              label="Current Password"
-              type="password"
-              value={passwordForm.current}
-              onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })}
-            />
-            <Input
-              label="New Password"
-              type="password"
-              value={passwordForm.new}
-              onChange={(e) => setPasswordForm({ ...passwordForm, new: e.target.value })}
-            />
-            <Input
-              label="Confirm New Password"
-              type="password"
-              value={passwordForm.confirm}
-              onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
-            />
-            {pwMsg.text && (
-              <p className={`text-sm ${pwMsg.type === 'error' ? 'text-red-600' : 'text-green-600'}`}>{pwMsg.text}</p>
+
+          <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
+            {/* Current password */}
+            {['current', 'new', 'confirm'].map((field) => (
+              <div key={field} className="space-y-1">
+                <label className="block text-xs font-medium text-navy-600 capitalize">
+                  {field === 'current' ? 'Current Password' : field === 'new' ? 'New Password' : 'Confirm New Password'}
+                </label>
+                <div className="relative">
+                  <input
+                    type={show[field] ? 'text' : 'password'}
+                    value={form[field]}
+                    onChange={e => setField(field, e.target.value)}
+                    autoComplete={field === 'current' ? 'current-password' : 'new-password'}
+                    className="w-full h-10 rounded-xl border border-navy-200 bg-white px-3 pr-10 text-sm text-navy-900 placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => toggleShow(field)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-400 hover:text-navy-600 transition-colors"
+                    tabIndex={-1}
+                  >
+                    {show[field] ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+                <p className="text-[11px] text-amber-600 mt-1 flex items-center gap-1">
+                   Changing your password will sign you out immediately.
+                </p>
+              </div>
+            ))}
+
+            {/* Inline same-password hint under New Password */}
+            {form.new && form.current && form.new === form.current && (
+              <p className="text-xs text-red-500 -mt-2">New password cannot be the same as your current password.</p>
             )}
-            <Button size="sm" onClick={handleChangePassword} disabled={pwLoading}>
-              {pwLoading ? 'Updating...' : 'Update Password'}
+
+            {/* Error / success banners */}
+            {error && (
+              <div className="flex items-start gap-2 rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-600">
+                <X size={15} className="shrink-0 mt-0.5" />
+                {error}
+              </div>
+            )}
+            {success && (
+              <div className="flex items-start gap-2 rounded-xl bg-emerald-50 border border-emerald-100 px-4 py-3 text-sm text-emerald-700">
+                <CheckCircle2 size={15} className="shrink-0 mt-0.5" />
+                {success}
+              </div>
+            )}
+
+            <Button size="sm" type="submit" disabled={saving}>
+              {saving ? 'Updating…' : 'Update Password'}
             </Button>
-          </div>
+          </form>
         </div>
       </Reveal>
 
@@ -725,31 +810,20 @@ function SettingsSection() {
 
       {/* Danger Zone */}
       <Reveal delay={0.15}>
-        <div className="bg-white rounded-2xl border border-red-100  p-6">
+        <div className="bg-white rounded-2xl border border-red-100 p-6">
           <h3 className="font-semibold text-red-700 mb-2">Danger Zone</h3>
           <p className="text-xs text-red-500 mb-4">These actions are irreversible. Please proceed with caution.</p>
-          {showDeleteConfirm ? (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <p className="text-sm text-red-700 mb-3">To delete your account, please contact a system administrator.</p>
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="h-9 px-4 border border-red-200 text-red-600 text-xs font-medium rounded-lg hover:bg-red-100 transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          ) : (
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowDeleteConfirm(true)}
-                className="h-9 px-4 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Delete Account
-              </button>
-            </div>
-          )}
+          <div className="flex gap-2">
+            <button className="h-9 px-4 border border-red-200 text-red-600 text-xs font-medium rounded-lg hover:bg-red-50 transition-colors">
+              Deactivate Account
+            </button>
+            <button className="h-9 px-4 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors">
+              Delete Account
+            </button>
+          </div>
         </div>
       </Reveal>
     </div>
   )
 }
+

@@ -226,6 +226,55 @@ exports.approveEmployment = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+// GET /api/employments/all  — all statuses (pending + approved + rejected)
+exports.listAllEmployments = async (req, res) => {
+  try {
+    const role = req.user?.role;
+    if (role !== 'company_admin') {
+      return res.status(403).json({ message: 'Company admin only' });
+    }
+    const userId = req.user.userId;
+    const { data: companies, error: cErr } = await supabase
+      .from('companies')
+      .select('id, name')
+      .eq('user_id', userId)
+      .is('deleted_at', null);
+
+    if (cErr) throw cErr;
+    if (!companies || companies.length === 0) {
+      return res.status(404).json({ message: 'No companies found for this admin' });
+    }
+
+    const companyIds = companies.map((c) => c.id);
+
+    const { data, error } = await supabase
+      .from('employments')
+      .select(`
+        id,
+        employee_id,
+        company_id,
+        position,
+        department,
+        start_date,
+        end_date,
+        is_current,
+        verification_status,
+        rejection_note,
+        created_at,
+        employees:employee_id ( id, full_name )
+      `)
+      .in('company_id', companyIds)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return res.status(200).json({ data });
+  } catch (err) {
+    console.error('listAllEmployments error:', err);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
 exports.listPendingEmployments = async (req, res) => {
   try {
     const role = req.user?.role;

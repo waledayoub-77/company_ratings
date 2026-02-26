@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, useScroll, useTransform } from 'framer-motion'
+import { useAuth } from '../context/AuthContext'
 import {
   ArrowRight,
   Shield,
@@ -73,6 +74,8 @@ const testimonials = [
   },
 ]
 
+const ROLE_HOME = { employee: '/dashboard', company_admin: '/company-admin', system_admin: '/admin' }
+
 const GRADIENTS = [
   'from-indigo-500 to-violet-600', 'from-navy-500 to-navy-700',
   'from-cyan-500 to-blue-600',     'from-gray-800 to-gray-950',
@@ -87,6 +90,8 @@ function pickGradient(name) {
 export default function LandingPage() {
   const { scrollYProgress } = useScroll()
   const heroY = useTransform(scrollYProgress, [0, 0.3], [0, -60])
+  const { user } = useAuth()
+  const dashboardHref = user ? (ROLE_HOME[user.role] || '/') : null
 
   const [topCompanies, setTopCompanies] = useState([])
 
@@ -118,19 +123,31 @@ export default function LandingPage() {
             <a href="#testimonials" className="text-sm text-navy-600 hover:text-navy-900 transition-colors">Reviews</a>
           </div>
           <div className="flex items-center gap-3">
-            <Link
-              to="/login"
-              className="text-sm font-medium text-navy-700 hover:text-navy-900 transition-colors hidden sm:block"
-            >
-              Sign In
-            </Link>
-            <Link
-              to="/register"
-              className="h-10 px-5 bg-navy-900 text-white text-sm font-medium rounded-xl inline-flex items-center gap-2 hover:bg-navy-800 transition-colors shadow-sm"
-            >
-              Get Started
-              <ArrowRight size={15} />
-            </Link>
+            {user ? (
+              <Link
+                to={dashboardHref}
+                className="h-10 px-5 bg-navy-900 text-white text-sm font-medium rounded-xl inline-flex items-center gap-2 hover:bg-navy-800 transition-colors shadow-sm"
+              >
+                Go to Dashboard
+                <ArrowRight size={15} />
+              </Link>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className="text-sm font-medium text-navy-700 hover:text-navy-900 transition-colors hidden sm:block"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to="/register"
+                  className="h-10 px-5 bg-navy-900 text-white text-sm font-medium rounded-xl inline-flex items-center gap-2 hover:bg-navy-800 transition-colors shadow-sm"
+                >
+                  Get Started
+                  <ArrowRight size={15} />
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </nav>
@@ -184,10 +201,10 @@ export default function LandingPage() {
 
                 <div className="mt-10 flex flex-wrap items-center gap-4">
                   <Link
-                    to="/register"
+                    to={user ? '/companies' : '/register'}
                     className="group h-[52px] px-7 bg-navy-900 text-white text-[15px] font-medium rounded-xl inline-flex items-center gap-2.5 hover:bg-navy-800 transition-all shadow-lg shadow-navy-900/15"
                   >
-                    Start Reviewing
+                    {user ? 'Browse & Review' : 'Start Reviewing'}
                     <ArrowRight size={17} className="transition-transform group-hover:translate-x-0.5" />
                   </Link>
                   <Link
@@ -493,7 +510,7 @@ export default function LandingPage() {
                 ))}
               </div>
               <Link
-                to="/login"
+                to={user ? '/dashboard/feedback' : '/login'}
                 className="inline-flex items-center gap-2 mt-10 text-sm font-medium text-navy-400 hover:text-white transition-colors group"
               >
                 Try Internal Feedback

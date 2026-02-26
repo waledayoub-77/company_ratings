@@ -10,6 +10,7 @@ router.get("/", requireAuth, employmentController.listMyEmployments);
 
 // Admin view — MUST be before "/:id/..."
 router.get("/pending", requireAuth, employmentController.listPendingEmployments);
+router.get("/all",     requireAuth, employmentController.listAllEmployments);
 
 // Approve / reject / end
 router.patch("/:id/approve", requireAuth, employmentController.approveEmployment);

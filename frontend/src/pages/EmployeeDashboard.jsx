@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Star,
   Building2,
@@ -11,6 +11,7 @@ import {
   XCircle,
   Loader2,
   ChevronRight,
+  ChevronDown,
   Calendar,
   Plus,
   Award,
@@ -275,6 +276,8 @@ function EmploymentTab({ employments, refetch }) {
   const [showRequest, setShowRequest] = useState(false)
   const [companySearch, setCompanySearch] = useState('')
   const [companyResults, setCompanyResults] = useState([])
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [focusedIndex, setFocusedIndex] = useState(-1)
   const [selectedCompany, setSelectedCompany] = useState(null)
   const [position, setPosition] = useState('')
   const [department, setDepartment] = useState('')
@@ -283,20 +286,82 @@ function EmploymentTab({ employments, refetch }) {
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
   const [formSuccess, setFormSuccess] = useState('')
+  const [loadingCompanies, setLoadingCompanies] = useState(false)
   const searchTimeout = useRef(null)
+  const comboRef = useRef(null)
+  const inputRef = useRef(null)
+  const listRef = useRef(null)
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleOutside(e) {
+      if (comboRef.current && !comboRef.current.contains(e.target)) {
+        setDropdownOpen(false)
+        setFocusedIndex(-1)
+      }
+    }
+    document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [])
+
+  const fetchCompanies = useCallback(async (query = '') => {
+    setLoadingCompanies(true)
+    try {
+      const res = await getCompanies({ ...(query.trim() ? { search: query } : {}), limit: 8 })
+      setCompanyResults(res?.data ?? [])
+    } catch { setCompanyResults([]) }
+    finally { setLoadingCompanies(false) }
+  }, [])
+
+  const openDropdown = useCallback((query = companySearch) => {
+    setDropdownOpen(true)
+    setFocusedIndex(-1)
+    fetchCompanies(query)
+  }, [companySearch, fetchCompanies])
 
   const handleCompanySearch = (val) => {
     setCompanySearch(val)
     setSelectedCompany(null)
+    setFocusedIndex(-1)
     clearTimeout(searchTimeout.current)
-    if (!val.trim()) { setCompanyResults([]); return }
-    searchTimeout.current = setTimeout(async () => {
-      try {
-        const res = await getCompanies({ search: val, limit: 6 })
-        setCompanyResults(res?.data ?? [])
-      } catch { setCompanyResults([]) }
-    }, 300)
+    setDropdownOpen(true)
+    searchTimeout.current = setTimeout(() => fetchCompanies(val), 250)
   }
+
+  const selectCompany = (company) => {
+    setSelectedCompany(company)
+    setCompanySearch(company.name)
+    setDropdownOpen(false)
+    setFocusedIndex(-1)
+    setCompanyResults([])
+  }
+
+  const handleKeyDown = (e) => {
+    if (!dropdownOpen) {
+      if (e.key === 'ArrowDown' || e.key === 'Enter') { e.preventDefault(); openDropdown(); return }
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setFocusedIndex(i => Math.min(i + 1, companyResults.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setFocusedIndex(i => Math.max(i - 1, 0))
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      if (focusedIndex >= 0 && companyResults[focusedIndex]) selectCompany(companyResults[focusedIndex])
+    } else if (e.key === 'Escape') {
+      setDropdownOpen(false)
+      setFocusedIndex(-1)
+    }
+  }
+
+  // Scroll focused item into view
+  useEffect(() => {
+    if (focusedIndex >= 0 && listRef.current) {
+      const item = listRef.current.children[focusedIndex]
+      item?.scrollIntoView({ block: 'nearest' })
+    }
+  }, [focusedIndex])
 
   const handleSubmitRequest = async () => {
     if (!selectedCompany) { setFormError('Please select a company from the list.'); return }
@@ -316,6 +381,8 @@ function EmploymentTab({ employments, refetch }) {
       setShowRequest(false)
       setSelectedCompany(null)
       setCompanySearch('')
+      setCompanyResults([])
+      setDropdownOpen(false)
       setPosition('')
       setDepartment('')
       setStartDate('')
@@ -363,34 +430,76 @@ function EmploymentTab({ employments, refetch }) {
             </div>
           )}
           <div className="grid sm:grid-cols-2 gap-4">
-            {/* Company search */}
-            <div className="space-y-1.5 relative">
+            {/* Company combobox */}
+            <div className="space-y-1.5 relative" ref={comboRef}>
               <label className="block text-[13px] font-medium text-navy-700">Company *</label>
               <div className="relative">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-navy-400" />
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-navy-400 pointer-events-none" />
                 <input
+                  ref={inputRef}
                   type="text"
-                  placeholder="Search company..."
-                  value={selectedCompany ? selectedCompany.name : companySearch}
+                  placeholder="Type to search or press ↓ to browse..."
+                  value={companySearch}
                   onChange={(e) => handleCompanySearch(e.target.value)}
-                  className="w-full h-10 rounded-xl border border-navy-200 bg-white pl-8 pr-4 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
+                  onFocus={() => { if (!dropdownOpen) openDropdown() }}
+                  onKeyDown={handleKeyDown}
+                  autoComplete="off"
+                  className="w-full h-10 rounded-xl border border-navy-200 bg-white pl-8 pr-9 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
                 />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => {
+                    if (dropdownOpen) { setDropdownOpen(false); setFocusedIndex(-1) }
+                    else { openDropdown(); inputRef.current?.focus() }
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-navy-400 hover:text-navy-600 transition-colors"
+                >
+                  <ChevronDown size={15} className={`transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
               </div>
-              {companyResults.length > 0 && !selectedCompany && (
-                <div className="absolute z-10 w-full bg-white border border-navy-100 rounded-xl shadow-lg mt-1 overflow-hidden">
-                  {companyResults.map(c => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => { setSelectedCompany(c); setCompanySearch(c.name); setCompanyResults([]) }}
-                      className="w-full text-left px-4 py-2.5 text-sm text-navy-800 hover:bg-navy-50 transition-colors"
-                    >
-                      {c.name}
-                      {c.industry && <span className="text-xs text-navy-400 ml-2">· {c.industry}</span>}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <AnimatePresence>
+                {dropdownOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute z-20 w-full bg-white border border-navy-100 rounded-xl shadow-xl overflow-hidden"
+                    style={{ maxHeight: 220 }}
+                  >
+                    {loadingCompanies ? (
+                      <div className="px-4 py-3 text-sm text-navy-400 text-center flex items-center justify-center gap-2">
+                        <Loader2 size={13} className="animate-spin" />
+                        Loading companies…
+                      </div>
+                    ) : companyResults.length === 0 ? (
+                      <div className="px-4 py-3 text-sm text-navy-400 text-center flex items-center justify-center gap-2">
+                        <Search size={13} />
+                        No companies found{companySearch.trim() ? ` for "${companySearch.trim()}"` : ''}
+                      </div>
+                    ) : (
+                      <div ref={listRef} className="overflow-y-auto" style={{ maxHeight: 220 }}>
+                        {companyResults.map((c, idx) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onMouseDown={(e) => { e.preventDefault(); selectCompany(c) }}
+                            onMouseEnter={() => setFocusedIndex(idx)}
+                            className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-2 ${
+                              idx === focusedIndex ? 'bg-navy-50 text-navy-900' : 'text-navy-700 hover:bg-navy-50'
+                            }`}
+                          >
+                            <Building2 size={13} className="text-navy-400 shrink-0" />
+                            <span className="font-medium">{c.name}</span>
+                            {c.industry && <span className="text-xs text-navy-400 ml-auto shrink-0">{c.industry}</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
             <div className="space-y-1.5">
               <label className="block text-[13px] font-medium text-navy-700">Position *</label>
@@ -461,7 +570,7 @@ function EmploymentTab({ employments, refetch }) {
       ) : (
         <div className="space-y-4">
           {employments.map((emp, i) => {
-            const config    = statusConfig[emp.status] ?? statusConfig.pending
+            const config    = statusConfig[emp.verification_status ?? emp.status] ?? statusConfig.pending
             const gradient  = gradients[i % gradients.length]
             const name      = emp.companies?.name ?? emp.company_name ?? emp.companyName ?? 'Company'
             const dept      = emp.department ?? emp.dept ?? ''

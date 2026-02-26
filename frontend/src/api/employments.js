@@ -19,6 +19,13 @@ export async function getMyEmployments() {
 }
 
 /**
+ * GET /employments/all — all employments (pending + approved + rejected) for company admin
+ */
+export async function getAllEmploymentsForAdmin() {
+  return authRequest('/employments/all')
+}
+
+/**
  * GET /employments/pending — pending requests for the company admin's company
  */
 export async function getPendingEmployments() {

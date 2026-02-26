@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Star,
   Users,
@@ -11,6 +11,10 @@ import {
   FileText,
   Settings,
   Building2,
+  Search,
+  ChevronDown,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react'
 import {
   BarChart,
@@ -31,7 +35,7 @@ import Button from '../components/ui/Button.jsx'
 import Input from '../components/ui/Input.jsx'
 import { useAuth } from '../context/AuthContext'
 import { getCompanyStats, getCompanyAnalytics, getCompanyReviews, getCompanyById, updateCompany } from '../api/companies'
-import { getPendingEmployments, approveEmployment, rejectEmployment } from '../api/employments'
+import { getPendingEmployments, approveEmployment, rejectEmployment, getAllEmploymentsForAdmin } from '../api/employments'
 import { getFeedbackReceived } from '../api/feedback'
 
 export default function CompanyAdminDashboard() {
@@ -218,21 +222,30 @@ function AnalyticsTab({ companyId }) {
 }
 
 /* ─── Requests Tab ─── */
+const REQ_STATUS = {
+  pending:  { badge: 'bg-amber-50 text-amber-700 border-amber-200',   icon: Clock,         label: 'Pending'  },
+  approved: { badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle2, label: 'Approved' },
+  rejected: { badge: 'bg-red-50 text-red-700 border-red-200',          icon: XCircle,       label: 'Rejected' },
+}
+
 function RequestsTab({ companyId, onCountChange }) {
-  const [requests, setRequests] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [processing, setProcessing] = useState({})
+  const [allRequests, setAllRequests] = useState([])
+  const [loading, setLoading]         = useState(true)
+  const [search, setSearch]           = useState('')
+  const [expandedId, setExpandedId]   = useState(null)
+  const [processing, setProcessing]   = useState({})
+  const [rejectNote, setRejectNote]   = useState({})
+  const [actionResult, setActionResult] = useState({})
 
   const load = async () => {
     setLoading(true)
     try {
-      const res = await getPendingEmployments()
-      const list = res?.data?.employments ?? res?.data ?? []
-      const arr = Array.isArray(list) ? list : []
-      setRequests(arr)
-      onCountChange?.(arr.length)
+      const res  = await getAllEmploymentsForAdmin()
+      const list = Array.isArray(res?.data) ? res.data : []
+      setAllRequests(list)
+      onCountChange?.(list.filter(r => r.verification_status === 'pending').length)
     } catch {
-      setRequests([])
+      setAllRequests([])
     } finally {
       setLoading(false)
     }
@@ -243,70 +256,207 @@ function RequestsTab({ companyId, onCountChange }) {
   const handle = async (id, action) => {
     setProcessing(p => ({ ...p, [id]: true }))
     try {
-      if (action === 'approve') await approveEmployment(id)
-      else await rejectEmployment(id)
-      await load()
+      if (action === 'approve') {
+        await approveEmployment(id)
+      } else {
+        await rejectEmployment(id, { rejectionNote: rejectNote[id] ?? '' })
+      }
+      setActionResult(r => ({ ...r, [id]: action }))
+      // update in-place so it's instant
+      setAllRequests(prev => prev.map(r =>
+        r.id === id
+          ? { ...r, verification_status: action === 'approve' ? 'approved' : 'rejected', rejection_note: rejectNote[id] ?? '' }
+          : r
+      ))
+      onCountChange?.(allRequests.filter(r =>
+        r.id !== id && r.verification_status === 'pending'
+      ).length)
+      setExpandedId(null)
     } catch { /* silent */ } finally {
       setProcessing(p => ({ ...p, [id]: false }))
     }
   }
 
-  if (loading) return <div className="py-20 text-center text-navy-400 text-sm">Loading requests…</div>
+  const filtered = allRequests.filter(r => {
+    if (!search.trim()) return true
+    const q = search.toLowerCase()
+    const name = (r.employees?.full_name ?? '').toLowerCase()
+    const pos  = (r.position ?? '').toLowerCase()
+    const dept = (r.department ?? '').toLowerCase()
+    return name.includes(q) || pos.includes(q) || dept.includes(q)
+  })
 
-  if (!requests.length) return (
-    <div className="bg-white rounded-2xl border border-navy-100/50 p-12 text-center">
-      <CheckCircle2 size={32} className="text-emerald-400 mx-auto mb-3" />
-      <p className="text-sm text-navy-500">All caught up! No pending requests.</p>
-    </div>
-  )
+  const pending  = filtered.filter(r => r.verification_status === 'pending')
+  const resolved = filtered.filter(r => r.verification_status !== 'pending')
+  const groups   = [
+    { label: 'Pending', items: pending },
+    { label: 'Resolved', items: resolved },
+  ]
+
+  if (loading) return <div className="py-20 text-center text-navy-400 text-sm"><Loader2 size={20} className="animate-spin mx-auto" /></div>
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-semibold text-navy-900 mb-2">
-        Pending Verification Requests
-        <span className="ml-2 text-sm font-normal text-navy-400">({requests.length})</span>
-      </h2>
-      {requests.map((req, i) => {
-        const name = req.employee?.user?.fullName ?? req.employee?.fullName ?? 'Unknown'
-        const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-        return (
-          <Reveal key={req.id} delay={i * 0.08}>
-            <div className="bg-white rounded-2xl border border-navy-100/50 p-6 hover:border-navy-200 transition-all">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                <div className="flex items-center gap-4 flex-1">
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-navy-400 to-navy-600 flex items-center justify-center shrink-0">
-                    <span className="text-white text-sm font-semibold">{initials}</span>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-navy-900 text-sm">{name}</h3>
-                    <p className="text-xs text-navy-400 mt-0.5">{req.position ?? '–'}</p>
-                    <p className="text-xs text-navy-300 mt-0.5">
-                      {req.startDate ? new Date(req.startDate).toLocaleDateString() : '–'}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 sm:ml-auto">
-                  <Badge variant="warning"><Clock size={12} className="mr-1" />Pending</Badge>
+    <div className="space-y-5">
+      {/* Header + search */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+        <h2 className="text-lg font-semibold text-navy-900">
+          Employment Requests
+          <span className="ml-2 text-sm font-normal text-navy-400">({allRequests.length})</span>
+        </h2>
+        <div className="relative w-full sm:w-72">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-navy-400 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Search by name, position, department…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full h-10 rounded-xl border border-navy-200 bg-white pl-8 pr-4 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
+          />
+        </div>
+      </div>
+
+      {filtered.length === 0 && (
+        <div className="bg-white rounded-2xl border border-navy-100/50 p-12 text-center">
+          <Search size={28} className="text-navy-200 mx-auto mb-3" />
+          <p className="text-sm text-navy-400">{search ? `No requests match "${search}"` : 'No employment requests yet.'}</p>
+        </div>
+      )}
+
+      {groups.map(({ label, items }) => items.length === 0 ? null : (
+        <div key={label} className="space-y-3">
+          <h3 className="text-xs font-semibold uppercase tracking-widest text-navy-400">{label} ({items.length})</h3>
+          {items.map((req, i) => {
+            const name     = req.employees?.full_name ?? 'Unknown'
+            const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+            const status   = req.verification_status ?? 'pending'
+            const cfg      = REQ_STATUS[status] ?? REQ_STATUS.pending
+            const Icon     = cfg.icon
+            const isOpen   = expandedId === req.id
+            const isProcessing = !!processing[req.id]
+
+            return (
+              <Reveal key={req.id} delay={i * 0.05}>
+                <div className={`bg-white rounded-2xl border transition-all ${
+                  isOpen ? 'border-navy-300 shadow-md shadow-navy-900/5' : 'border-navy-100/50 hover:border-navy-200'
+                }`}>
+                  {/* Row — always visible */}
                   <button
-                    onClick={() => handle(req.id, 'approve')}
-                    disabled={processing[req.id]}
-                    className="h-9 px-4 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                    type="button"
+                    onClick={() => setExpandedId(isOpen ? null : req.id)}
+                    className="w-full text-left px-6 py-4"
                   >
-                    <CheckCircle2 size={14} /> Approve
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-navy-400 to-navy-700 flex items-center justify-center shrink-0">
+                        <span className="text-white text-sm font-semibold">{initials}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-navy-900 truncate">{name}</p>
+                        <p className="text-xs text-navy-400 mt-0.5">
+                          {req.position ?? '–'}{req.department ? ` · ${req.department}` : ''}
+                        </p>
+                      </div>
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold ${cfg.badge}`}>
+                        <Icon size={11} />{cfg.label}
+                      </span>
+                      <ChevronDown
+                        size={16}
+                        className={`text-navy-400 transition-transform duration-200 shrink-0 ${isOpen ? 'rotate-180' : ''}`}
+                      />
+                    </div>
                   </button>
-                  <button
-                    onClick={() => handle(req.id, 'reject')}
-                    disabled={processing[req.id]}
-                    className="h-9 px-4 border border-red-200 text-red-600 text-xs font-medium rounded-lg hover:bg-red-50 transition-colors flex items-center gap-1.5 disabled:opacity-50"
-                  >
-                    <XCircle size={14} /> Reject
-                  </button>
+
+                  {/* Expanded panel */}
+                  <AnimatePresence>
+                    {isOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-6 pb-5 border-t border-navy-100 pt-4 space-y-4">
+                          {/* Details grid */}
+                          <div className="grid sm:grid-cols-3 gap-3 text-sm">
+                            <div>
+                              <p className="text-xs text-navy-400 mb-0.5">Start Date</p>
+                              <p className="font-medium text-navy-800">
+                                {req.start_date ? new Date(req.start_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '–'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-navy-400 mb-0.5">End Date</p>
+                              <p className="font-medium text-navy-800">
+                                {req.end_date ? new Date(req.end_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Present'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-navy-400 mb-0.5">Submitted</p>
+                              <p className="font-medium text-navy-800">
+                                {req.created_at ? new Date(req.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '–'}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Rejection note (already rejected) */}
+                          {status === 'rejected' && req.rejection_note && (
+                            <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+                              <AlertCircle size={14} className="text-red-400 mt-0.5 shrink-0" />
+                              <p className="text-xs text-red-700"><span className="font-semibold">Rejection reason:</span> {req.rejection_note}</p>
+                            </div>
+                          )}
+
+                          {/* Action area — only for pending */}
+                          {status === 'pending' && (
+                            <div className="space-y-3">
+                              <div>
+                                <label className="text-xs font-medium text-navy-600 block mb-1">Rejection note <span className="text-navy-400">(optional, shown to employee)</span></label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g. Could not verify employment details…"
+                                  value={rejectNote[req.id] ?? ''}
+                                  onChange={e => setRejectNote(n => ({ ...n, [req.id]: e.target.value }))}
+                                  className="w-full h-9 rounded-xl border border-navy-200 bg-white px-3 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
+                                />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handle(req.id, 'approve')}
+                                  disabled={isProcessing}
+                                  className="h-9 px-5 bg-emerald-600 text-white text-xs font-semibold rounded-xl hover:bg-emerald-700 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                                >
+                                  {isProcessing ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                                  Approve
+                                </button>
+                                <button
+                                  onClick={() => handle(req.id, 'reject')}
+                                  disabled={isProcessing}
+                                  className="h-9 px-5 border border-red-200 text-red-600 text-xs font-semibold rounded-xl hover:bg-red-50 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                                >
+                                  {isProcessing ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />}
+                                  Reject
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Already resolved label */}
+                          {status === 'approved' && (
+                            <div className="flex items-center gap-2 text-emerald-700 text-xs font-medium">
+                              <CheckCircle2 size={14} />
+                              This request has been approved.
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
-              </div>
-            </div>
-          </Reveal>
-        )
-      })}
+              </Reveal>
+            )
+          })}
+        </div>
+      ))}
     </div>
   )
 }

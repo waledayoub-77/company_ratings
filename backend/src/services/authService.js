@@ -19,12 +19,9 @@ const registerUser = async ({ email, password, role = 'employee', fullName, full
   }
   const password_hash = await bcrypt.hash(password, 12);
 
-  // In development, auto-verify email so integration tests work end-to-end
-  const autoVerify = process.env.NODE_ENV === 'development';
-
   const { data: user, error } = await supabase
     .from('users')
-    .insert({ email, password_hash, role, email_verified: autoVerify })
+    .insert({ email, password_hash, role, email_verified: false })
     .select()
     .single();
 
@@ -93,8 +90,7 @@ const loginUser = async ({ email, password }) => {
     throw new AppError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
   }
 
-  // Skip email verification check in development for testing convenience
-  if (process.env.NODE_ENV !== 'development' && !user.email_verified) {
+  if (!user.email_verified) {
     throw new AppError('Please verify your email before logging in', 403, 'EMAIL_NOT_VERIFIED');
   }
 

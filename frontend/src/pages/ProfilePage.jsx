@@ -18,6 +18,8 @@ import {
   Plus,
   Eye,
   EyeOff,
+  AlertCircle,
+  Loader2,
 } from 'lucide-react'
 import PageHeader from '../components/ui/PageHeader.jsx'
 import Badge from '../components/ui/Badge.jsx'
@@ -26,7 +28,7 @@ import { useNavigate } from 'react-router-dom'
 import Button from '../components/ui/Button.jsx'
 import Input from '../components/ui/Input.jsx'
 import { useAuth } from '../context/AuthContext'
-import { apiGetMe, apiUpdateMe, apiChangePassword } from '../api/auth'
+import { apiGetMe, apiUpdateMe, apiChangePassword, apiDeactivateAccount, apiDeleteAccount } from '../api/auth'
 import { getEmployeeProfile, updateEmployeeProfile } from '../api/employees'
 import { getMyEmployments } from '../api/employments'
 import { getMyReviews } from '../api/reviews'
@@ -681,6 +683,12 @@ function SettingsSection() {
   const [success, setSuccess]   = useState('')
   const [saving, setSaving]     = useState(false)
 
+  // Danger zone
+  const [dangerModal, setDangerModal]   = useState(null) // 'deactivate' | 'delete' | null
+  const [dangerLoading, setDangerLoading] = useState(false)
+  const [dangerError, setDangerError]   = useState('')
+  const [dangerSuccess, setDangerSuccess] = useState('')
+
   const toggleShow = (field) => setShow(s => ({ ...s, [field]: !s[field] }))
   const setField   = (field, val) => { setForm(f => ({ ...f, [field]: val })); setError(''); setSuccess('') }
 
@@ -814,14 +822,102 @@ function SettingsSection() {
         <div className="bg-white rounded-2xl border border-red-100 p-6">
           <h3 className="font-semibold text-red-700 mb-2">Danger Zone</h3>
           <p className="text-xs text-red-500 mb-4">These actions are irreversible. Please proceed with caution.</p>
-          <div className="flex gap-2">
-            <button className="h-9 px-4 border border-red-200 text-red-600 text-xs font-medium rounded-lg hover:bg-red-50 transition-colors">
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => { setDangerModal('deactivate'); setDangerError(''); setDangerSuccess('') }}
+              className="h-9 px-4 border border-red-200 text-red-600 text-xs font-medium rounded-lg hover:bg-red-50 transition-colors"
+            >
               Deactivate Account
             </button>
-            <button className="h-9 px-4 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors">
+            <button
+              onClick={() => { setDangerModal('delete'); setDangerError(''); setDangerSuccess('') }}
+              className="h-9 px-4 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors"
+            >
               Delete Account
             </button>
           </div>
+
+          {/* Inline confirmation panel */}
+          <AnimatePresence>
+            {dangerModal && (
+              <motion.div
+                key={dangerModal}
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="mt-5 pt-5 border-t border-red-100">
+                  {dangerModal === 'deactivate' ? (
+                    <>
+                      <p className="text-sm font-semibold text-red-700 mb-1">Deactivate your account?</p>
+                      <p className="text-xs text-navy-500 mb-3">
+                        Your account will be disabled and you will be signed out immediately. A system admin can reactivate it later.
+                        Your data (reviews, feedback, etc.) will remain intact.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm font-semibold text-red-700 mb-1">Permanently delete your account?</p>
+                      <p className="text-xs text-navy-500 mb-3">
+                        Your account will be marked as deleted and you will be signed out immediately.
+                        Your data (reviews, feedback) will be preserved per our policy but your account cannot be recovered.
+                      </p>
+                    </>
+                  )}
+
+                  {dangerError && (
+                    <div className="flex items-center gap-1.5 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3">
+                      <AlertCircle size={12} className="shrink-0" />{dangerError}
+                    </div>
+                  )}
+                  {dangerSuccess && (
+                    <div className="flex items-center gap-1.5 text-xs text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 mb-3">
+                      <CheckCircle2 size={12} className="shrink-0" />{dangerSuccess}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      disabled={dangerLoading}
+                      onClick={async () => {
+                        setDangerError('')
+                        setDangerLoading(true)
+                        try {
+                          if (dangerModal === 'deactivate') {
+                            await apiDeactivateAccount()
+                            setDangerSuccess('Account deactivated. Signing you out…')
+                          } else {
+                            await apiDeleteAccount()
+                            setDangerSuccess('Account deleted. Signing you out…')
+                          }
+                          setTimeout(async () => {
+                            await logout()
+                            navigate('/login')
+                          }, 1500)
+                        } catch (err) {
+                          setDangerError(err?.error?.message || err?.message || 'Something went wrong.')
+                        } finally {
+                          setDangerLoading(false)
+                        }
+                      }}
+                      className="h-8 px-4 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-all disabled:opacity-50 inline-flex items-center gap-1.5"
+                    >
+                      {dangerLoading && <Loader2 size={11} className="animate-spin" />}
+                      {dangerModal === 'deactivate' ? 'Confirm Deactivate' : 'Confirm Delete'}
+                    </button>
+                    <button
+                      onClick={() => setDangerModal(null)}
+                      className="h-8 px-4 text-xs text-navy-500 hover:text-navy-700 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </Reveal>
     </div>

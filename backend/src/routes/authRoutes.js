@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, refresh, logout, getMe, updateMe, verifyEmail, forgotPassword, resetPassword, changePassword } = require('../controllers/authController');
+const { register, login, refresh, logout, getMe, updateMe, verifyEmail, forgotPassword, resetPassword, changePassword, deactivateAccount, deleteAccount } = require('../controllers/authController');
 const { validateRegister, validateLogin } = require('../utils/validators');
 const { validate } = require('../middlewares/validateMiddleware');
 const { authLimiter } = require('../middlewares/rateLimiter');
@@ -19,5 +19,7 @@ router.post('/logout', requireAuth, logout);
 router.get('/me', requireAuth, getMe);
 router.post('/change-password', requireAuth, changePassword);
 router.patch('/me', requireAuth, updateMe);
+router.patch('/me/deactivate', requireAuth, deactivateAccount);
+router.delete('/me', requireAuth, deleteAccount);
 
 module.exports = router;

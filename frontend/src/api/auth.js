@@ -76,3 +76,13 @@ export async function apiChangePassword({ currentPassword, newPassword }) {
     body:   JSON.stringify({ currentPassword, newPassword }),
   })
 }
+
+/** PATCH /auth/me/deactivate — user self-deactivates */
+export async function apiDeactivateAccount() {
+  return authRequest('/auth/me/deactivate', { method: 'PATCH' })
+}
+
+/** DELETE /auth/me — user soft-deletes own account (data kept) */
+export async function apiDeleteAccount() {
+  return authRequest('/auth/me', { method: 'DELETE' })
+}

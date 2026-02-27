@@ -172,6 +172,21 @@ const updateReview = async (reviewId, updates, userId) => {
     throw new AppError('Reviews can only be edited within 24 hours of submission', 403);
   }
 
+  // Check that the employee still has an active employment at the company they reviewed
+  const { data: activeEmployment } = await supabase
+    .from('employments')
+    .select('id')
+    .eq('employee_id', employee.id)
+    .eq('company_id', review.company_id)
+    .eq('verification_status', 'approved')
+    .eq('is_current', true)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (!activeEmployment) {
+    throw new AppError('You cannot edit a review after ending your employment at this company', 403);
+  }
+
   const { overallRating, content } = updates;
 
   // Update review

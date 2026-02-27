@@ -123,7 +123,7 @@ export default function EmployeeDashboard() {
           <>
             {activeTab === 'overview'   && <OverviewTab   user={user} employments={employments} reviews={reviews} feedback={feedback} />}
             {activeTab === 'employment' && <EmploymentTab employments={employments} refetch={refetchEmployments} />}
-            {activeTab === 'reviews'    && <ReviewsTab    reviews={reviews} refetch={refetchReviews} />}
+            {activeTab === 'reviews'    && <ReviewsTab    reviews={reviews} employments={employments} refetch={refetchReviews} />}
             {activeTab === 'feedback'   && <FeedbackTab   feedback={feedback} />}
           </>
         )}
@@ -796,7 +796,7 @@ function EmploymentTab({ employments, refetch }) {
 }
 
 /* ─── Reviews Tab ─── */
-function ReviewsTab({ reviews, refetch }) {
+function ReviewsTab({ reviews, employments = [], refetch }) {
   const [editingId, setEditingId] = useState(null)
   const [editRating, setEditRating] = useState(0)
   const [editText, setEditText] = useState('')
@@ -868,7 +868,13 @@ function ReviewsTab({ reviews, refetch }) {
         const isAnon       = review.is_anonymous ?? review.isAnonymous ?? false
         const createdAt    = review.created_at   ?? review.createdAt
         const canEditUntil = review.can_edit_until ?? review.canEditUntil
-        const canEdit      = canEditUntil && new Date(canEditUntil) > new Date()
+        // Also block editing if the employee has ended their employment at this company
+        const isStillEmployed = employments.some(
+          e => e.company_id === review.company_id &&
+               (e.verification_status ?? e.status) === 'approved' &&
+               e.is_current !== false
+        )
+        const canEdit      = canEditUntil && new Date(canEditUntil) > new Date() && isStillEmployed
         const hoursLeft    = canEditUntil ? Math.max(0, Math.round((new Date(canEditUntil) - new Date()) / 3600000)) : 0
         const isEditing    = editingId === review.id
 

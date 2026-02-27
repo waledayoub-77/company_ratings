@@ -128,6 +128,46 @@ const updateMe = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, refresh, logout, getMe, updateMe, verifyEmail, forgotPassword, resetPassword, changePassword };
+// PATCH /auth/me/deactivate — user self-deactivates (is_active = false, tokens revoked)
+const deactivateAccount = async (req, res, next) => {
+  try {
+    const supabase = require('../config/database');
+    const userId = req.user.userId;
+    const { error: updateErr } = await supabase
+      .from('users')
+      .update({ is_active: false })
+      .eq('id', userId);
+    if (updateErr) throw updateErr;
+    // Revoke all refresh tokens so they can't re-authenticate silently
+    await supabase.from('refresh_tokens').update({ is_revoked: true }).eq('user_id', userId);
+    res.json({ success: true, message: 'Account deactivated. A system admin can reactivate it.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// DELETE /auth/me — user soft-deletes their own account (data preserved)
+const deleteAccount = async (req, res, next) => {
+  try {
+    const supabase = require('../config/database');
+    const userId = req.user.userId;
+    const { data: user } = await supabase.from('users').select('role').eq('id', userId).single();
+    if (user?.role === 'system_admin') {
+      return res.status(403).json({ success: false, error: { message: 'System admins cannot self-delete', code: 'FORBIDDEN' } });
+    }
+    const now = new Date().toISOString();
+    const { error: updateErr } = await supabase
+      .from('users')
+      .update({ deleted_at: now, is_active: false, is_deleted: true })
+      .eq('id', userId);
+    if (updateErr) throw updateErr;
+    await supabase.from('refresh_tokens').update({ is_revoked: true }).eq('user_id', userId);
+    res.json({ success: true, message: 'Account deleted. Your data has been preserved per our policy.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { register, login, refresh, logout, getMe, updateMe, verifyEmail, forgotPassword, resetPassword, changePassword, deactivateAccount, deleteAccount };
 
 //baraa

@@ -13,6 +13,8 @@
     "test:admin-system":  "playwright test tests/05-system-admin.spec.js",
     "test:profile": "playwright test tests/06-profile.spec.js",
     "test:guards":  "playwright test tests/07-route-guards.spec.js",
+    "test:security": "playwright test tests/08-security.spec.js",
+    "test:cross":   "playwright test tests/09-cross-role.spec.js",
     "report":       "playwright show-report"
   },
   "devDependencies": {

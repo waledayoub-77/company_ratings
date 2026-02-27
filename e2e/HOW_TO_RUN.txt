@@ -10,13 +10,15 @@ dev server) and the backend (Express API) must be running at the same time.
 Tests are performed through a real Chromium browser, simulating a real user.
 
 Test files:
-  01-public.spec.js      — Public pages (Landing, Companies browse, Company profile)
-  02-auth.spec.js        — Register, Login, Logout, Forgot Password
-  03-employee.spec.js    — Employee Dashboard, Employment, Reviews, Feedback
-  04-company-admin.spec.js — Company Admin Dashboard, Requests, Settings
-  05-system-admin.spec.js  — Admin Panel: Reports, Users, Companies, Audit Logs
-  06-profile.spec.js     — Profile page: view, edit, change password, deactivate
-  07-route-guards.spec.js  — Route protection & role-based redirects
+  01-public.spec.js      — Guest: Landing (G1-G2), Browse/Search/Filter/Sort/Paginate (G3-G9), Company profile (G10-G13), 404, Route redirects (G29-G31)
+  02-auth.spec.js        — Guest: Register (G14-G18), Login all roles (G19-G22), Forgot/Reset Password (G23-G25), Verify Email (G26-G28), Logout (E4)
+  03-employee.spec.js    — Employee: Dashboard/Navbar (E1-E6), Employment CRUD (E7-E11, E35-E36), Reviews lifecycle (E12-E21), Feedback (E22-E25), Notifications (E31-E32), Role redirects (E33-E34)
+  04-company-admin.spec.js — Company Admin: Dashboard/Navbar (C1-C6), Request approve/reject (C7-C10), Reviews + star bug (C11-C12), Feedback (C13), Settings (C14-C16), Bugs (C17), Redirects (C18-C21)
+  05-system-admin.spec.js  — Admin: Overview (A1-A3), Reports (A4-A6), Companies approve/reject (A7-A9), Users CRUD/bulk (A10-A17), Audit logs (A18), Override employment (A19), Redirects (A20-A21)
+  06-profile.spec.js     — Profile: View real data (E26), Edit name/bio/position (E27), Change password all cases (E28), Deactivate/Delete (E29-E30), All roles
+  07-route-guards.spec.js  — All role-based redirects: unauthenticated → /login, wrong-role redirects, logged-in blocked from /login+/register
+  08-security.spec.js    — S1-S11: system_admin self-register bug, API 403 checks, cross-company access, token lifecycle, XSS sanitization, rate limiting
+  09-cross-role.spec.js  — X1-X8: Page refresh auth, multi-tab logout, empty states, mobile responsive, loading skeletons, end-employment + review-edit, re-employment flow
 
 
 PREREQUISITES
@@ -52,9 +54,17 @@ STEP 1 — Configure test credentials
   SYSTEM_ADMIN_EMAIL=your_sysadmin@example.com
   SYSTEM_ADMIN_PASSWORD=YourSysAdminPassword123!
 
+  # Optional — for suspended-user and verify-email tests:
+  SUSPENDED_EMAIL=suspended_user@example.com
+  SUSPENDED_PASSWORD=SuspendedPassword123!
+  VERIFY_TOKEN=paste_token_from_supabase_verification_email
+
   IMPORTANT: These accounts must already exist in your Supabase database and have
   their emails confirmed. Create them through the app's Register page first, then
   manually confirm them in Supabase Authentication dashboard if needed.
+  The SUSPENDED account must have been suspended via the Admin Panel (A10).
+  VERIFY_TOKEN is only needed to test the email-verification link (G26/G27);
+  leave it blank to skip those sub-tests.
 
 
 STEP 2 — Install Playwright and browsers
@@ -97,13 +107,15 @@ STEP 5 — Run the Tests
     npm run test:ui
 
   # Run a specific test file only:
-    npm run test:public        (01-public)
-    npm run test:auth          (02-auth)
-    npm run test:employee      (03-employee)
-    npm run test:company-admin (04-company-admin)
-    npm run test:system-admin  (05-system-admin)
-    npm run test:profile       (06-profile)
-    npm run test:guards        (07-route-guards)
+    npm run test:public        (01-public — Guest: landing, browse, filter, company profile)
+    npm run test:auth          (02-auth   — Register, Login, Forgot/Reset PW, Verify Email)
+    npm run test:employee      (03-employee — Full employee flow: employment, reviews, feedback)
+    npm run test:company-admin (04-company-admin — Requests, analytics, settings)
+    npm run test:system-admin  (05-system-admin  — Reports, users, companies, audit logs)
+    npm run test:profile       (06-profile — Profile edit, password, deactivate/delete)
+    npm run test:guards        (07-route-guards — All role-based redirect scenarios)
+    npm run test:security      (08-security — API auth bypass, XSS, token lifecycle, rate limit)
+    npm run test:cross         (09-cross-role — Refresh, multi-tab, mobile, empty states)
 
   # Show the last HTML report in browser:
     npm run report

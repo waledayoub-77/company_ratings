@@ -14,13 +14,14 @@ import {
   ChevronRight,
   AlertCircle,
   Loader2,
+  Trash2,
 } from 'lucide-react'
 import StarRating from '../components/ui/StarRating.jsx'
 import Badge from '../components/ui/Badge.jsx'
 import Reveal from '../components/ui/Reveal.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { getCompanyById, getCompanyReviews, getCompanyAnalytics } from '../api/companies'
-import { submitReport } from '../api/admin'
+import { submitReport, adminDeleteReview } from '../api/admin'
 
 /* ─── Helpers ─── */
 const GRADIENTS = [
@@ -59,8 +60,9 @@ export default function CompanyProfilePage() {
   const [sortReviews, setSortReviews] = useState('Recent')
   const [reviewPage, setReviewPage] = useState(1)
 
-  // Report state
+  // Report / remove state
   const [reportingId, setReportingId] = useState(null)
+  const [removingReviewId, setRemovingReviewId] = useState(null)
   const [reportReason, setReportReason] = useState('')
   const [reportDescription, setReportDescription] = useState('')
   const [reportSubmitting, setReportSubmitting] = useState(false)
@@ -218,6 +220,7 @@ export default function CompanyProfilePage() {
                     </div>
                   </div>
 
+                  {user?.role !== 'system_admin' && (
                   <Link
                     to={`/companies/${id}/review`}
                     className="h-11 px-6 bg-navy-900 text-white text-sm font-medium rounded-xl inline-flex items-center gap-2 hover:bg-navy-800 transition-all shadow-sm shadow-navy-900/15"
@@ -225,6 +228,7 @@ export default function CompanyProfilePage() {
                     <PenSquare size={15} />
                     Write a Review
                   </Link>
+                  )}
                 </div>
 
                 <p className="mt-5 text-sm text-navy-600 leading-relaxed max-w-3xl">
@@ -399,21 +403,43 @@ export default function CompanyProfilePage() {
                     {/* Review footer */}
                     <div className="mt-5 pt-4 border-t border-navy-50 flex items-center justify-between">
                       <div />
-                      {reportSuccess === review.id ? (
-                        <span className="text-xs text-emerald-600 font-medium">Report submitted</span>
-                      ) : (
-                      <button
-                        onClick={() => {
-                          if (!user) { window.location.href = '/login'; return }
-                          setReportingId(reportingId === review.id ? null : review.id)
-                          setReportError(null)
-                        }}
-                        className="flex items-center gap-1.5 text-xs text-navy-300 hover:text-red-500 transition-colors"
-                      >
-                        <Flag size={13} />
-                        Report
-                      </button>
-                      )}
+                      <div className="flex items-center gap-3">
+                        {user?.role === 'system_admin' && (
+                          <button
+                            onClick={async () => {
+                              if (!window.confirm('Remove this review permanently?')) return
+                              setRemovingReviewId(review.id)
+                              try {
+                                await adminDeleteReview(review.id)
+                                setReviews(prev => prev.filter(r => r.id !== review.id))
+                              } catch (e) { alert(e?.message || 'Failed to remove review') }
+                              finally { setRemovingReviewId(null) }
+                            }}
+                            disabled={removingReviewId === review.id}
+                            className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                          >
+                            {removingReviewId === review.id
+                              ? <Loader2 size={13} className="animate-spin" />
+                              : <Trash2 size={13} />}
+                            Remove
+                          </button>
+                        )}
+                        {reportSuccess === review.id ? (
+                          <span className="text-xs text-emerald-600 font-medium">Report submitted</span>
+                        ) : user?.role !== 'system_admin' ? (
+                        <button
+                          onClick={() => {
+                            if (!user) { window.location.href = '/login'; return }
+                            setReportingId(reportingId === review.id ? null : review.id)
+                            setReportError(null)
+                          }}
+                          className="flex items-center gap-1.5 text-xs text-navy-300 hover:text-red-500 transition-colors"
+                        >
+                          <Flag size={13} />
+                          Report
+                        </button>
+                        ) : null}
+                      </div>
                     </div>
 
                     {/* Inline report form */}

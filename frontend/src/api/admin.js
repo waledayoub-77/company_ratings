@@ -111,6 +111,41 @@ export async function verifyCompany(id) {
   return authRequest(`/admin/companies/${id}/verify`, { method: 'PATCH' })
 }
 
+/**
+ * POST /admin/companies — create a new company
+ * @param {Object} data — name, industry, location, description, website, email
+ */
+export async function createCompany(data) {
+  return authRequest('/admin/companies', {
+    method: 'POST',
+    body:   JSON.stringify(data),
+  })
+}
+
+/**
+ * PATCH /admin/companies/:id — update a company
+ */
+export async function updateAdminCompany(id, data) {
+  return authRequest(`/admin/companies/${id}`, {
+    method: 'PATCH',
+    body:   JSON.stringify(data),
+  })
+}
+
+/**
+ * DELETE /admin/companies/:id — soft-delete a company
+ */
+export async function deleteCompany(id) {
+  return authRequest(`/admin/companies/${id}`, { method: 'DELETE' })
+}
+
+/**
+ * DELETE /admin/reviews/:id — admin removes a review directly
+ */
+export async function adminDeleteReview(id) {
+  return authRequest(`/admin/reviews/${id}`, { method: 'DELETE' })
+}
+
 // ─── Employment override ──────────────────────────────────────────────────────
 
 /**

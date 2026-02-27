@@ -160,30 +160,51 @@ exports.resolveReport = async (req, res) => {
     const { id } = req.params;
     const { action, adminNote } = req.body;
 
-    const VALID_ACTIONS = ['dismissed', 'resolved'];
+    // 'remove'  → soft-delete the linked review + mark report resolved
+    // 'dismiss' → mark report dismissed without touching the review
+    const VALID_ACTIONS = ['remove', 'dismiss'];
     if (!action || !VALID_ACTIONS.includes(action)) {
       return res.status(400).json({
         success: false,
-        error: { message: `Invalid action. Must be: ${VALID_ACTIONS.join(', ')}`, code: 'INVALID_ACTION' },
+        error: { message: `Invalid action. Must be one of: ${VALID_ACTIONS.join(', ')}`, code: 'INVALID_ACTION' },
       });
     }
 
-    const { data: report } = await supabase.from('reported_reviews').select('id, status').eq('id', id).maybeSingle();
+    const { data: report } = await supabase
+      .from('reported_reviews')
+      .select('id, status, review_id')
+      .eq('id', id)
+      .maybeSingle();
     if (!report) return res.status(404).json({ success: false, error: { message: 'Report not found', code: 'NOT_FOUND' } });
     if (report.status !== 'pending') {
       return res.status(400).json({ success: false, error: { message: 'Report already resolved', code: 'ALREADY_RESOLVED' } });
     }
 
+    // Determine new status and optionally delete the review
+    const reportStatus = action === 'remove' ? 'resolved' : 'dismissed';
+    if (action === 'remove' && report.review_id) {
+      await supabase
+        .from('company_reviews')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', report.review_id);
+    }
+
     const { data: updated, error } = await supabase
       .from('reported_reviews')
-      .update({ status: action, admin_note: adminNote || null, resolved_by: adminId, resolved_at: new Date().toISOString() })
+      .update({ status: reportStatus, admin_note: adminNote || null, resolved_by: adminId, resolved_at: new Date().toISOString() })
       .eq('id', id)
       .select()
       .single();
 
     if (error) throw error;
 
-    await logAudit({ adminId, action: `report_${action}`, targetType: 'report', targetId: id, details: { adminNote } });
+    await logAudit({
+      adminId,
+      action: `report_${reportStatus}`,
+      targetType: 'report',
+      targetId: id,
+      details: { adminNote, reviewDeleted: action === 'remove' },
+    });
 
     return res.json({ success: true, data: updated });
   } catch (err) {
@@ -486,6 +507,126 @@ exports.verifyCompany = async (req, res) => {
     return res.json({ success: true, data: updated });
   } catch (err) {
     console.error('verifyCompany error:', err);
+    return res.status(500).json({ success: false, error: { message: 'Server error', code: 'SERVER_ERROR' } });
+  }
+};
+
+// ─── COMPANY CRUD ────────────────────────────────────────────────────────────
+
+/**
+ * POST /api/admin/companies
+ * Create a new company (auto-verified)
+ */
+exports.createAdminCompany = async (req, res) => {
+  try {
+    const adminId = req.user?.userId;
+    const { name, industry, location, description, website, email } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, error: { message: 'Company name is required', code: 'MISSING_FIELD' } });
+    }
+
+    const { data, error } = await supabase
+      .from('companies')
+      .insert({
+        name: name.trim(),
+        industry: industry?.trim() || null,
+        location: location?.trim() || null,
+        description: description?.trim() || null,
+        website: website?.trim() || null,
+        email: email?.trim() || null,
+        is_verified: true,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    await logAudit({ adminId, action: 'company_created', targetType: 'company', targetId: data.id, details: { companyName: name.trim() } });
+    return res.status(201).json({ success: true, data });
+  } catch (err) {
+    console.error('createAdminCompany error:', err);
+    return res.status(500).json({ success: false, error: { message: 'Server error', code: 'SERVER_ERROR' } });
+  }
+};
+
+/**
+ * PATCH /api/admin/companies/:id
+ * Update company fields
+ */
+exports.updateAdminCompany = async (req, res) => {
+  try {
+    const adminId = req.user?.userId;
+    const { id } = req.params;
+    const { name, industry, location, description, website, email } = req.body;
+
+    const { data: company } = await supabase.from('companies').select('id').eq('id', id).is('deleted_at', null).maybeSingle();
+    if (!company) return res.status(404).json({ success: false, error: { message: 'Company not found', code: 'NOT_FOUND' } });
+
+    const updates = {};
+    if (name        !== undefined) updates.name        = name.trim();
+    if (industry    !== undefined) updates.industry    = industry?.trim()  || null;
+    if (location    !== undefined) updates.location    = location?.trim()  || null;
+    if (description !== undefined) updates.description = description?.trim() || null;
+    if (website     !== undefined) updates.website     = website?.trim()   || null;
+    if (email       !== undefined) updates.email       = email?.trim()     || null;
+
+    const { data: updated, error } = await supabase.from('companies').update(updates).eq('id', id).select().single();
+    if (error) throw error;
+
+    await logAudit({ adminId, action: 'company_updated', targetType: 'company', targetId: id, details: updates });
+    return res.json({ success: true, data: updated });
+  } catch (err) {
+    console.error('updateAdminCompany error:', err);
+    return res.status(500).json({ success: false, error: { message: 'Server error', code: 'SERVER_ERROR' } });
+  }
+};
+
+/**
+ * DELETE /api/admin/companies/:id
+ * Soft-delete a company (sets deleted_at)
+ */
+exports.deleteCompany = async (req, res) => {
+  try {
+    const adminId = req.user?.userId;
+    const { id } = req.params;
+
+    const { data: company } = await supabase.from('companies').select('id, name').eq('id', id).is('deleted_at', null).maybeSingle();
+    if (!company) return res.status(404).json({ success: false, error: { message: 'Company not found', code: 'NOT_FOUND' } });
+
+    await supabase.from('companies').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+
+    await logAudit({ adminId, action: 'company_deleted', targetType: 'company', targetId: id, details: { companyName: company.name } });
+    return res.json({ success: true, message: 'Company deleted successfully' });
+  } catch (err) {
+    console.error('deleteCompany error:', err);
+    return res.status(500).json({ success: false, error: { message: 'Server error', code: 'SERVER_ERROR' } });
+  }
+};
+
+/**
+ * DELETE /api/admin/reviews/:id
+ * Admin direct soft-delete of a review from any company page
+ */
+exports.deleteAdminReview = async (req, res) => {
+  try {
+    const adminId = req.user?.userId;
+    const { id } = req.params;
+
+    const { data: review } = await supabase
+      .from('company_reviews')
+      .select('id, company_id')
+      .eq('id', id)
+      .is('deleted_at', null)
+      .maybeSingle();
+    if (!review) return res.status(404).json({ success: false, error: { message: 'Review not found', code: 'NOT_FOUND' } });
+
+    await supabase.from('company_reviews').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+
+    await logAudit({ adminId, action: 'review_deleted', targetType: 'review', targetId: id, details: { companyId: review.company_id } });
+    return res.json({ success: true, message: 'Review removed successfully' });
+  } catch (err) {
+    console.error('deleteAdminReview error:', err);
     return res.status(500).json({ success: false, error: { message: 'Server error', code: 'SERVER_ERROR' } });
   }
 };

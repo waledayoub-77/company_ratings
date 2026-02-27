@@ -22,7 +22,13 @@ router.delete('/admin/users/:id', requireAuth, requireSystemAdmin, adminControll
 
 // ─── ADMIN: COMPANIES ─────────────────────────────────────────────────────────
 router.get('/admin/companies', requireAuth, requireSystemAdmin, adminController.getAdminCompanies);
+router.post('/admin/companies', requireAuth, requireSystemAdmin, adminController.createAdminCompany);
 router.patch('/admin/companies/:id/verify', requireAuth, requireSystemAdmin, adminController.verifyCompany);
+router.patch('/admin/companies/:id', requireAuth, requireSystemAdmin, adminController.updateAdminCompany);
+router.delete('/admin/companies/:id', requireAuth, requireSystemAdmin, adminController.deleteCompany);
+
+// ─── ADMIN: DIRECT REVIEW REMOVE ─────────────────────────────────────────────
+router.delete('/admin/reviews/:id', requireAuth, requireSystemAdmin, adminController.deleteAdminReview);
 
 // ─── ADMIN: EMPLOYMENT OVERRIDE ───────────────────────────────────────────────
 router.patch('/admin/employments/:id/override', requireAuth, requireSystemAdmin, adminController.overrideEmployment);

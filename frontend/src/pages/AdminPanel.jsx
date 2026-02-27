@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Shield,
   Users,
@@ -17,6 +17,12 @@ import {
   Loader2,
   RefreshCw,
   BadgeCheck,
+  Plus,
+  Edit2,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Save,
 } from 'lucide-react'
 import PageHeader from '../components/ui/PageHeader.jsx'
 import Badge from '../components/ui/Badge.jsx'
@@ -27,6 +33,9 @@ import {
   resolveReport,
   getAdminCompanies,
   verifyCompany,
+  createCompany,
+  updateAdminCompany,
+  deleteCompany,
   getAdminUsers,
   suspendUser,
   unsuspendUser,
@@ -292,105 +301,232 @@ function ReportsTab() {
 }
 
 /* ─── Companies Tab ─── */
+const COMPANY_PAGE_SIZE = 5
 function CompaniesTab() {
-  const [companies, setCompanies] = useState([])
-  const [loading, setLoading]     = useState(true)
-  const [working, setWorking]     = useState(null)
-  const [search, setSearch]       = useState('')
+  const [companies, setCompanies]         = useState([])
+  const [loading, setLoading]             = useState(true)
+  const [working, setWorking]             = useState(null)
+  const [search, setSearch]               = useState('')
+  const [page, setPage]                   = useState(1)
+  const [totalPages, setTotalPages]       = useState(1)
+  const [total, setTotal]                 = useState(0)
 
-  const load = useCallback(() => {
+  // Add form
+  const [showAdd, setShowAdd]             = useState(false)
+  const [addForm, setAddForm]             = useState({ name: '', industry: '', location: '', description: '', website: '', email: '' })
+  const [addError, setAddError]           = useState('')
+  const [addSubmitting, setAddSubmitting] = useState(false)
+
+  // Edit form
+  const [editingId, setEditingId]           = useState(null)
+  const [editForm, setEditForm]             = useState({})
+  const [editError, setEditError]           = useState('')
+  const [editSubmitting, setEditSubmitting] = useState(false)
+
+  const load = useCallback((q = '', p = 1) => {
     setLoading(true)
-    getAdminCompanies({ limit: 50 })
-      .then(res => setCompanies(res?.data ?? []))
+    getAdminCompanies({ search: q || undefined, page: p, limit: COMPANY_PAGE_SIZE })
+      .then(res => {
+        setCompanies(res?.data ?? [])
+        const pg = res?.pagination
+        setTotalPages(pg ? Math.max(1, Math.ceil(pg.total / COMPANY_PAGE_SIZE)) : 1)
+        setTotal(pg?.total ?? 0)
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { load(search, page) }, [load, page]) // eslint-disable-line
+
+  useEffect(() => {
+    const t = setTimeout(() => { setPage(1); load(search, 1) }, 350)
+    return () => clearTimeout(t)
+  }, [search]) // eslint-disable-line
 
   const handleVerify = async (id) => {
     setWorking(id)
     try {
       await verifyCompany(id)
       setCompanies(prev => prev.map(c => c.id === id ? { ...c, is_verified: true } : c))
-    } catch (e) {
-      alert(e?.message || 'Verification failed')
-    } finally {
-      setWorking(null)
-    }
+    } catch (e) { alert(e?.message || 'Verification failed') }
+    finally { setWorking(null) }
   }
 
-  const filtered = companies.filter(c =>
-    !search || c.name?.toLowerCase().includes(search.toLowerCase()) || c.industry?.toLowerCase().includes(search.toLowerCase())
-  )
+  const handleDelete = async (id, name) => {
+    if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return
+    setWorking(id)
+    try {
+      await deleteCompany(id)
+      // refresh current page (might now be empty → go back one)
+      const newTotal = total - 1
+      const newMaxPage = Math.max(1, Math.ceil(newTotal / COMPANY_PAGE_SIZE))
+      const nextPage = page > newMaxPage ? newMaxPage : page
+      setPage(nextPage)
+      load(search, nextPage)
+    } catch (e) { alert(e?.message || 'Delete failed') }
+    finally { setWorking(null) }
+  }
+
+  const handleAdd = async () => {
+    if (!addForm.name.trim()) { setAddError('Company name is required.'); return }
+    setAddError('')
+    setAddSubmitting(true)
+    try {
+      await createCompany(addForm)
+      setShowAdd(false)
+      setAddForm({ name: '', industry: '', location: '', description: '', website: '', email: '' })
+      setPage(1)
+      load(search, 1)
+    } catch (e) { setAddError(e?.message || 'Failed to create company.') }
+    finally { setAddSubmitting(false) }
+  }
+
+  const openEdit = (company) => {
+    setEditingId(company.id)
+    setEditForm({ name: company.name, industry: company.industry || '', location: company.location || '', description: company.description || '', website: company.website || '', email: company.email || '' })
+    setEditError('')
+  }
+
+  const handleEditSave = async () => {
+    if (!editForm.name?.trim()) { setEditError('Name is required.'); return }
+    setEditError('')
+    setEditSubmitting(true)
+    try {
+      const updated = await updateAdminCompany(editingId, editForm)
+      setCompanies(prev => prev.map(c => c.id === editingId ? { ...c, ...updated?.data } : c))
+      setEditingId(null)
+    } catch (e) { setEditError(e?.message || 'Save failed.') }
+    finally { setEditSubmitting(false) }
+  }
+
+  const fieldCls = 'w-full h-9 rounded-lg border border-navy-200 bg-white px-3 text-sm text-navy-900 placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all'
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
+      {/* Header row */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <h2 className="text-lg font-semibold text-navy-900">
-          Companies
-          <span className="text-sm font-normal text-navy-400 ml-2">({filtered.length})</span>
+          Companies <span className="text-sm font-normal text-navy-400">({total})</span>
         </h2>
-        <div className="relative w-56">
-          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-navy-400" />
-          <input
-            type="text"
-            placeholder="Search companies…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full h-9 rounded-xl border border-navy-200 bg-white pl-9 pr-4 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
-          />
+        <div className="flex items-center gap-3">
+          <div className="relative w-52">
+            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-navy-400" />
+            <input type="text" placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)}
+              className="w-full h-9 rounded-xl border border-navy-200 bg-white pl-9 pr-4 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all" />
+          </div>
+          <button onClick={() => { setShowAdd(v => !v); setAddError('') }}
+            className="h-9 px-4 bg-navy-900 text-white text-xs font-medium rounded-xl hover:bg-navy-800 transition-colors flex items-center gap-1.5">
+            {showAdd ? <X size={13} /> : <Plus size={13} />}
+            {showAdd ? 'Cancel' : 'Add Company'}
+          </button>
         </div>
       </div>
 
-      {loading ? <Spinner /> : filtered.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-navy-100/50 py-12 text-center text-sm text-navy-400">
-          No companies found.
-        </div>
+      {/* Add company form */}
+      <AnimatePresence>
+        {showAdd && (
+          <motion.div key="add-form" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+            <div className="bg-navy-50/60 border border-navy-100 rounded-2xl p-5">
+              <h3 className="text-sm font-semibold text-navy-900 mb-4">New Company</h3>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div><label className="text-xs text-navy-500 mb-1 block">Name *</label><input className={fieldCls} value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))} placeholder="Acme Corp" /></div>
+                <div><label className="text-xs text-navy-500 mb-1 block">Industry</label><input className={fieldCls} value={addForm.industry} onChange={e => setAddForm(f => ({ ...f, industry: e.target.value }))} placeholder="Technology" /></div>
+                <div><label className="text-xs text-navy-500 mb-1 block">Location</label><input className={fieldCls} value={addForm.location} onChange={e => setAddForm(f => ({ ...f, location: e.target.value }))} placeholder="Riyadh, SA" /></div>
+                <div><label className="text-xs text-navy-500 mb-1 block">Email</label><input className={fieldCls} type="email" value={addForm.email} onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))} placeholder="info@company.com" /></div>
+                <div><label className="text-xs text-navy-500 mb-1 block">Website</label><input className={fieldCls} value={addForm.website} onChange={e => setAddForm(f => ({ ...f, website: e.target.value }))} placeholder="https://company.com" /></div>
+                <div className="sm:col-span-2"><label className="text-xs text-navy-500 mb-1 block">Description</label><textarea className="w-full rounded-lg border border-navy-200 bg-white px-3 py-2 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all resize-none" rows={2} value={addForm.description} onChange={e => setAddForm(f => ({ ...f, description: e.target.value }))} placeholder="Short description…" /></div>
+              </div>
+              {addError && <p className="text-xs text-red-600 mt-2">{addError}</p>}
+              <div className="flex gap-2 mt-4">
+                <button onClick={handleAdd} disabled={addSubmitting} className="h-9 px-5 bg-emerald-600 text-white text-xs font-medium rounded-xl hover:bg-emerald-700 transition-colors flex items-center gap-1.5 disabled:opacity-50">
+                  {addSubmitting ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />} Create Company
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Company list */}
+      {loading ? <Spinner /> : companies.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-navy-100/50 py-12 text-center text-sm text-navy-400">No companies found.</div>
       ) : (
         <div className="space-y-3">
-          {filtered.map((company, i) => (
+          {companies.map((company, i) => (
             <Reveal key={company.id} delay={i * 0.04}>
-              <div className="bg-white rounded-2xl border border-navy-100/50 p-5 hover:border-navy-200 transition-all">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                  <div className="flex items-center gap-4 flex-1 min-w-0">
-                    <div className="w-11 h-11 rounded-xl bg-navy-100 flex items-center justify-center shrink-0">
-                      <Building2 size={20} className="text-navy-500" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-navy-900 truncate">{company.name}</h3>
-                        {company.is_verified
-                          ? <Badge variant="success">Verified</Badge>
-                          : <Badge variant="warning">Unverified</Badge>
-                        }
-                      </div>
-                      <p className="text-xs text-navy-400 mt-0.5 truncate">{company.industry} · {company.location}</p>
-                      {company.owner?.email && (
-                        <p className="text-xs text-navy-300 mt-0.5 truncate">Admin: {company.owner.email}</p>
-                      )}
-                    </div>
+              {editingId === company.id ? (
+                /* Inline edit form */
+                <div className="bg-white border-2 border-navy-200 rounded-2xl p-5">
+                  <div className="grid sm:grid-cols-2 gap-3 mb-3">
+                    <div><label className="text-xs text-navy-500 mb-1 block">Name *</label><input className={fieldCls} value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} /></div>
+                    <div><label className="text-xs text-navy-500 mb-1 block">Industry</label><input className={fieldCls} value={editForm.industry} onChange={e => setEditForm(f => ({ ...f, industry: e.target.value }))} /></div>
+                    <div><label className="text-xs text-navy-500 mb-1 block">Location</label><input className={fieldCls} value={editForm.location} onChange={e => setEditForm(f => ({ ...f, location: e.target.value }))} /></div>
+                    <div><label className="text-xs text-navy-500 mb-1 block">Email</label><input className={fieldCls} type="email" value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))} /></div>
+                    <div><label className="text-xs text-navy-500 mb-1 block">Website</label><input className={fieldCls} value={editForm.website} onChange={e => setEditForm(f => ({ ...f, website: e.target.value }))} /></div>
+                    <div className="sm:col-span-2"><label className="text-xs text-navy-500 mb-1 block">Description</label><textarea className="w-full rounded-lg border border-navy-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all resize-none" rows={2} value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} /></div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs text-navy-300">{new Date(company.created_at).toLocaleDateString()}</span>
-                    {!company.is_verified && (
-                      <button
-                        onClick={() => handleVerify(company.id)}
-                        disabled={working === company.id}
-                        className="h-8 px-3 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-1.5 disabled:opacity-50"
-                      >
-                        {working === company.id
-                          ? <Loader2 size={12} className="animate-spin" />
-                          : <BadgeCheck size={13} />
-                        }
-                        Verify
-                      </button>
-                    )}
+                  {editError && <p className="text-xs text-red-600 mb-2">{editError}</p>}
+                  <div className="flex gap-2">
+                    <button onClick={handleEditSave} disabled={editSubmitting} className="h-8 px-4 bg-navy-900 text-white text-xs font-medium rounded-lg hover:bg-navy-800 transition-colors flex items-center gap-1.5 disabled:opacity-50">
+                      {editSubmitting ? <Loader2 size={11} className="animate-spin" /> : <Save size={12} />} Save
+                    </button>
+                    <button onClick={() => setEditingId(null)} className="h-8 px-4 text-xs text-navy-500 hover:text-navy-700 transition-colors">Cancel</button>
                   </div>
                 </div>
-              </div>
+              ) : (
+                /* Normal row */
+                <div className="bg-white rounded-2xl border border-navy-100/50 p-5 hover:border-navy-200 transition-all">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                      <div className="w-11 h-11 rounded-xl bg-navy-100 flex items-center justify-center shrink-0">
+                        <Building2 size={20} className="text-navy-500" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-navy-900 truncate">{company.name}</h3>
+                          {company.is_verified ? <Badge variant="success">Verified</Badge> : <Badge variant="warning">Unverified</Badge>}
+                        </div>
+                        <p className="text-xs text-navy-400 mt-0.5 truncate">{[company.industry, company.location].filter(Boolean).join(' · ') || '—'}</p>
+                        {company.owner?.email && <p className="text-xs text-navy-300 mt-0.5 truncate">Admin: {company.owner.email}</p>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs text-navy-300">{new Date(company.created_at).toLocaleDateString()}</span>
+                      {!company.is_verified && (
+                        <button onClick={() => handleVerify(company.id)} disabled={working === company.id}
+                          className="h-8 px-3 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-1.5 disabled:opacity-50">
+                          {working === company.id ? <Loader2 size={12} className="animate-spin" /> : <BadgeCheck size={13} />} Verify
+                        </button>
+                      )}
+                      <button onClick={() => openEdit(company)} title="Edit"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-navy-400 hover:bg-navy-50 hover:text-navy-700 transition-colors">
+                        <Edit2 size={14} />
+                      </button>
+                      <button onClick={() => handleDelete(company.id, company.name)} disabled={working === company.id} title="Delete"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-navy-400 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-50">
+                        {working === company.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={14} />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </Reveal>
           ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {!loading && totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3 pt-2">
+          <button onClick={() => setPage(p => p - 1)} disabled={page <= 1}
+            className="w-9 h-9 rounded-xl text-navy-600 hover:bg-navy-50 disabled:opacity-30 transition-all flex items-center justify-center">
+            <ChevronLeft size={16} />
+          </button>
+          <span className="text-sm text-navy-500">Page {page} of {totalPages}</span>
+          <button onClick={() => setPage(p => p + 1)} disabled={page >= totalPages}
+            className="w-9 h-9 rounded-xl text-navy-600 hover:bg-navy-50 disabled:opacity-30 transition-all flex items-center justify-center">
+            <ChevronRight size={16} />
+          </button>
         </div>
       )}
     </div>
@@ -398,42 +534,55 @@ function CompaniesTab() {
 }
 
 /* ─── Users Tab ─── */
+const USER_PAGE_SIZE = 10
 function UsersTab() {
-  const [users, setUsers]     = useState([])
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch]   = useState('')
-  const [working, setWorking] = useState(null)
+  const [users, setUsers]         = useState([])
+  const [loading, setLoading]     = useState(true)
+  const [search, setSearch]       = useState('')
+  const [working, setWorking]     = useState(null)
+  const [page, setPage]           = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [total, setTotal]         = useState(0)
 
-  const load = useCallback((q = '') => {
+  const load = useCallback((q = '', p = 1) => {
     setLoading(true)
-    getAdminUsers({ search: q || undefined, limit: 40 })
-      .then(res => setUsers(res?.data ?? []))
+    getAdminUsers({ search: q || undefined, page: p, limit: USER_PAGE_SIZE })
+      .then(res => {
+        setUsers(res?.data ?? [])
+        const pg = res?.pagination
+        setTotalPages(pg ? Math.max(1, Math.ceil(pg.total / USER_PAGE_SIZE)) : 1)
+        setTotal(pg?.total ?? 0)
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { load(search, page) }, [load, page]) // eslint-disable-line
 
   useEffect(() => {
-    const t = setTimeout(() => load(search), 350)
+    const t = setTimeout(() => { setPage(1); load(search, 1) }, 350)
     return () => clearTimeout(t)
-  }, [search, load])
+  }, [search]) // eslint-disable-line
 
   const handleSuspend = async (id, isActive) => {
     setWorking(id)
     try {
-      if (isActive) { await suspendUser(id) } else { await unsuspendUser(id) }
+      if (isActive) { await suspendUser(id, { reason: 'Suspended by admin' }) } else { await unsuspendUser(id) }
       setUsers(prev => prev.map(u => u.id === id ? { ...u, is_active: !isActive } : u))
     } catch (e) { alert(e?.message || 'Action failed') }
     finally { setWorking(null) }
   }
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Permanently delete this user?')) return
+    if (!window.confirm('Permanently delete this user? They will be removed from the platform and cannot log in.')) return
     setWorking(id)
     try {
       await deleteUser(id)
-      setUsers(prev => prev.filter(u => u.id !== id))
+      const newTotal = total - 1
+      const newMaxPage = Math.max(1, Math.ceil(newTotal / USER_PAGE_SIZE))
+      const nextPage = page > newMaxPage ? newMaxPage : page
+      setPage(nextPage)
+      load(search, nextPage)
     } catch (e) { alert(e?.message || 'Delete failed') }
     finally { setWorking(null) }
   }
@@ -441,16 +590,13 @@ function UsersTab() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
-        <h2 className="text-lg font-semibold text-navy-900">User Management</h2>
+        <h2 className="text-lg font-semibold text-navy-900">
+          User Management <span className="text-sm font-normal text-navy-400">({total})</span>
+        </h2>
         <div className="relative w-64">
           <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-navy-400" />
-          <input
-            type="text"
-            placeholder="Search by name or email…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full h-10 rounded-xl border border-navy-200 bg-white pl-10 pr-4 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
-          />
+          <input type="text" placeholder="Search by name or email…" value={search} onChange={e => setSearch(e.target.value)}
+            className="w-full h-10 rounded-xl border border-navy-200 bg-white pl-10 pr-4 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all" />
         </div>
       </div>
 
@@ -501,19 +647,14 @@ function UsersTab() {
                             ? <Loader2 size={14} className="animate-spin text-navy-400" />
                             : (
                               <>
-                                <button
-                                  onClick={() => handleSuspend(u.id, u.is_active)}
-                                  title={u.is_active ? 'Suspend' : 'Unsuspend'}
+                                <button onClick={() => handleSuspend(u.id, u.is_active)} title={u.is_active ? 'Suspend' : 'Unsuspend'}
                                   className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
                                     u.is_active ? 'text-navy-400 hover:bg-amber-50 hover:text-amber-600' : 'text-navy-400 hover:bg-emerald-50 hover:text-emerald-600'
-                                  }`}
-                                >
+                                  }`}>
                                   {u.is_active ? <Ban size={14} /> : <CheckCircle2 size={14} />}
                                 </button>
-                                <button
-                                  onClick={() => handleDelete(u.id)}
-                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-navy-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                                >
+                                <button onClick={() => handleDelete(u.id)}
+                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-navy-400 hover:bg-red-50 hover:text-red-600 transition-colors">
                                   <Trash2 size={14} />
                                 </button>
                               </>
@@ -526,6 +667,21 @@ function UsersTab() {
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {!loading && totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3 pt-2">
+          <button onClick={() => setPage(p => p - 1)} disabled={page <= 1}
+            className="w-9 h-9 rounded-xl text-navy-600 hover:bg-navy-50 disabled:opacity-30 transition-all flex items-center justify-center">
+            <ChevronLeft size={16} />
+          </button>
+          <span className="text-sm text-navy-500">Page {page} of {totalPages} · {total} users</span>
+          <button onClick={() => setPage(p => p + 1)} disabled={page >= totalPages}
+            className="w-9 h-9 rounded-xl text-navy-600 hover:bg-navy-50 disabled:opacity-30 transition-all flex items-center justify-center">
+            <ChevronRight size={16} />
+          </button>
         </div>
       )}
     </div>

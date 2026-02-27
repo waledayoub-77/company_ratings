@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   User,
@@ -20,6 +20,9 @@ import {
   EyeOff,
   AlertCircle,
   Loader2,
+  Trash2,
+  Edit2,
+  ChevronLeft,
 } from 'lucide-react'
 import PageHeader from '../components/ui/PageHeader.jsx'
 import Badge from '../components/ui/Badge.jsx'
@@ -33,6 +36,7 @@ import { getEmployeeProfile, updateEmployeeProfile } from '../api/employees'
 import { getMyEmployments } from '../api/employments'
 import { getMyReviews } from '../api/reviews'
 import { getFeedbackGiven, getFeedbackReceived } from '../api/feedback'
+import { getAdminCompanies, createCompany, updateAdminCompany, deleteCompany } from '../api/admin'
 
 export default function ProfilePage() {
   const { user, updateUser, logout } = useAuth()
@@ -231,6 +235,7 @@ export default function ProfilePage() {
     { id: 'profile',    label: 'Profile',    icon: User      },
     ...(!isAdmin ? [{ id: 'employment', label: 'Employment', icon: Briefcase }] : []),
     ...(!isAdmin ? [{ id: 'activity',   label: 'Activity',   icon: FileText  }] : []),
+    ...(isAdmin  ? [{ id: 'companies',  label: 'Companies',  icon: Building2 }] : []),
     { id: 'settings',   label: 'Settings',   icon: Shield    },
   ]
 
@@ -343,6 +348,18 @@ export default function ProfilePage() {
                 </motion.div>
               )}
 
+              {activeSection === 'companies' && (
+                <motion.div
+                  key="companies"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <AdminCompaniesSection />
+                </motion.div>
+              )}
+
               {activeSection === 'settings' && (
                 <motion.div
                   key="settings"
@@ -360,6 +377,190 @@ export default function ProfilePage() {
       </div>
       </div>
     </div>
+  )
+}
+
+/* ─── Admin Companies Section ─── */
+const ADMIN_CO_PAGE_SIZE = 5
+function AdminCompaniesSection() {
+  const [companies, setCompanies]         = useState([])
+  const [loading, setLoading]             = useState(true)
+  const [search, setSearch]               = useState('')
+  const [page, setPage]                   = useState(1)
+  const [totalPages, setTotalPages]       = useState(1)
+  const [total, setTotal]                 = useState(0)
+  const [showAdd, setShowAdd]             = useState(false)
+  const [addForm, setAddForm]             = useState({ name: '', industry: '', location: '', email: '', website: '', description: '' })
+  const [addError, setAddError]           = useState('')
+  const [addSubmitting, setAddSubmitting] = useState(false)
+  const [editingId, setEditingId]         = useState(null)
+  const [editForm, setEditForm]           = useState({})
+  const [editError, setEditError]         = useState('')
+  const [editSubmitting, setEditSubmitting] = useState(false)
+
+  const load = useCallback((q = '', p = 1) => {
+    setLoading(true)
+    getAdminCompanies({ search: q || undefined, page: p, limit: ADMIN_CO_PAGE_SIZE })
+      .then(res => {
+        setCompanies(res?.data ?? [])
+        const pg = res?.pagination
+        setTotalPages(pg ? Math.max(1, Math.ceil(pg.total / ADMIN_CO_PAGE_SIZE)) : 1)
+        setTotal(pg?.total ?? 0)
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  useEffect(() => { load(search, page) }, [load, page]) // eslint-disable-line
+  useEffect(() => {
+    const t = setTimeout(() => { setPage(1); load(search, 1) }, 350)
+    return () => clearTimeout(t)
+  }, [search]) // eslint-disable-line
+
+  const handleAdd = async () => {
+    if (!addForm.name.trim()) { setAddError('Company name is required.'); return }
+    setAddSubmitting(true); setAddError('')
+    try {
+      await createCompany(addForm)
+      setAddForm({ name: '', industry: '', location: '', email: '', website: '', description: '' })
+      setShowAdd(false)
+      load(search, 1); setPage(1)
+    } catch (e) { setAddError(e?.message || 'Failed to create company') }
+    finally { setAddSubmitting(false) }
+  }
+
+  const handleEdit = async (id) => {
+    setEditSubmitting(true); setEditError('')
+    try {
+      await updateAdminCompany(id, editForm)
+      setEditingId(null)
+      load(search, page)
+    } catch (e) { setEditError(e?.message || 'Failed to update company') }
+    finally { setEditSubmitting(false) }
+  }
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this company? This cannot be undone.')) return
+    try {
+      await deleteCompany(id)
+      const newTotal = total - 1
+      const newMaxPage = Math.max(1, Math.ceil(newTotal / ADMIN_CO_PAGE_SIZE))
+      const nextPage = page > newMaxPage ? newMaxPage : page
+      setPage(nextPage); load(search, nextPage)
+    } catch (e) { alert(e?.message || 'Delete failed') }
+  }
+
+  const FIELD_CLS = 'h-9 rounded-lg border border-navy-200 bg-white px-3 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all w-full'
+  const LABEL_CLS = 'block text-xs text-navy-400 mb-1'
+
+  return (
+    <Reveal>
+      <div className="bg-white rounded-2xl border border-navy-100/50 p-6 space-y-6">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <h2 className="text-lg font-semibold text-navy-900">
+            Companies <span className="text-sm font-normal text-navy-400">({total})</span>
+          </h2>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <input type="text" placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)}
+                className="h-9 w-52 rounded-xl border border-navy-200 bg-white pl-9 pr-3 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all" />
+              <Building2 size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-navy-400" />
+            </div>
+            <button onClick={() => { setShowAdd(v => !v); setAddError('') }}
+              className="h-9 px-4 bg-navy-900 text-white text-sm font-medium rounded-xl hover:bg-navy-800 transition-all flex items-center gap-1.5">
+              <Plus size={15} />{showAdd ? 'Cancel' : 'Add Company'}
+            </button>
+          </div>
+        </div>
+
+        {/* Add form */}
+        {showAdd && (
+          <div className="p-4 bg-navy-50/50 rounded-xl border border-navy-100 space-y-3">
+            <p className="text-sm font-semibold text-navy-800">New Company</p>
+            {addError && <p className="text-xs text-red-500">{addError}</p>}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2"><label className={LABEL_CLS}>Name *</label><input className={FIELD_CLS} value={addForm.name} onChange={e => setAddForm(f => ({...f, name: e.target.value}))} /></div>
+              <div><label className={LABEL_CLS}>Industry</label><input className={FIELD_CLS} value={addForm.industry} onChange={e => setAddForm(f => ({...f, industry: e.target.value}))} /></div>
+              <div><label className={LABEL_CLS}>Location</label><input className={FIELD_CLS} value={addForm.location} onChange={e => setAddForm(f => ({...f, location: e.target.value}))} /></div>
+              <div><label className={LABEL_CLS}>Email</label><input className={FIELD_CLS} value={addForm.email} onChange={e => setAddForm(f => ({...f, email: e.target.value}))} /></div>
+              <div><label className={LABEL_CLS}>Website</label><input className={FIELD_CLS} value={addForm.website} onChange={e => setAddForm(f => ({...f, website: e.target.value}))} /></div>
+              <div className="col-span-2"><label className={LABEL_CLS}>Description</label><textarea className="rounded-lg border border-navy-200 bg-white px-3 py-2 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all w-full h-20 resize-none" value={addForm.description} onChange={e => setAddForm(f => ({...f, description: e.target.value}))} /></div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setShowAdd(false)} className="h-8 px-3 rounded-lg text-xs text-navy-500 hover:bg-navy-100 transition-colors">Cancel</button>
+              <button onClick={handleAdd} disabled={addSubmitting}
+                className="h-8 px-4 bg-navy-900 text-white text-xs font-medium rounded-lg hover:bg-navy-800 transition-all disabled:opacity-50 flex items-center gap-1.5">
+                {addSubmitting ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+                Create
+              </button>
+            </div>
+          </div>
+        )}
+
+        {loading ? (
+          <div className="flex justify-center py-8"><Loader2 size={24} className="animate-spin text-navy-300" /></div>
+        ) : companies.length === 0 ? (
+          <p className="text-center text-sm text-navy-400 py-8">No companies found.</p>
+        ) : (
+          <div className="divide-y divide-navy-50">
+            {companies.map(co => editingId === co.id ? (
+              <div key={co.id} className="py-4 space-y-3">
+                {editError && <p className="text-xs text-red-500">{editError}</p>}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2"><label className={LABEL_CLS}>Name</label><input className={FIELD_CLS} value={editForm.name ?? ''} onChange={e => setEditForm(f => ({...f, name: e.target.value}))} /></div>
+                  <div><label className={LABEL_CLS}>Industry</label><input className={FIELD_CLS} value={editForm.industry ?? ''} onChange={e => setEditForm(f => ({...f, industry: e.target.value}))} /></div>
+                  <div><label className={LABEL_CLS}>Location</label><input className={FIELD_CLS} value={editForm.location ?? ''} onChange={e => setEditForm(f => ({...f, location: e.target.value}))} /></div>
+                  <div><label className={LABEL_CLS}>Email</label><input className={FIELD_CLS} value={editForm.email ?? ''} onChange={e => setEditForm(f => ({...f, email: e.target.value}))} /></div>
+                  <div><label className={LABEL_CLS}>Website</label><input className={FIELD_CLS} value={editForm.website ?? ''} onChange={e => setEditForm(f => ({...f, website: e.target.value}))} /></div>
+                  <div className="col-span-2"><label className={LABEL_CLS}>Description</label><textarea className="rounded-lg border border-navy-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all w-full h-20 resize-none" value={editForm.description ?? ''} onChange={e => setEditForm(f => ({...f, description: e.target.value}))} /></div>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <button onClick={() => setEditingId(null)} className="h-8 px-3 rounded-lg text-xs text-navy-500 hover:bg-navy-100 transition-colors">Cancel</button>
+                  <button onClick={() => handleEdit(co.id)} disabled={editSubmitting}
+                    className="h-8 px-4 bg-navy-900 text-white text-xs font-medium rounded-lg hover:bg-navy-800 transition-all disabled:opacity-50 flex items-center gap-1.5">
+                    {editSubmitting ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+                    Save
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div key={co.id} className="py-4 flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-navy-900 truncate">{co.name}</p>
+                  <p className="text-xs text-navy-400 mt-0.5">{[co.industry, co.location].filter(Boolean).join(' · ') || '—'}</p>
+                  {co.website && <a href={co.website} target="_blank" rel="noopener noreferrer" className="text-xs text-navy-400 hover:text-navy-700 underline truncate block mt-0.5">{co.website}</a>}
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button onClick={() => { setEditingId(co.id); setEditForm({ name: co.name, industry: co.industry ?? '', location: co.location ?? '', email: co.email ?? '', website: co.website ?? '', description: co.description ?? '' }); setEditError('') }}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-navy-400 hover:bg-navy-50 hover:text-navy-700 transition-colors">
+                    <Edit2 size={14} />
+                  </button>
+                  <button onClick={() => handleDelete(co.id)}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-navy-400 hover:bg-red-50 hover:text-red-600 transition-colors">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!loading && totalPages > 1 && (
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <button onClick={() => setPage(p => p - 1)} disabled={page <= 1}
+              className="w-9 h-9 rounded-xl text-navy-600 hover:bg-navy-50 disabled:opacity-30 transition-all flex items-center justify-center">
+              <ChevronLeft size={16} />
+            </button>
+            <span className="text-sm text-navy-500">Page {page} of {totalPages} · {total} companies</span>
+            <button onClick={() => setPage(p => p + 1)} disabled={page >= totalPages}
+              className="w-9 h-9 rounded-xl text-navy-600 hover:bg-navy-50 disabled:opacity-30 transition-all flex items-center justify-center">
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        )}
+      </div>
+    </Reveal>
   )
 }
 

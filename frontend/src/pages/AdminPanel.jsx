@@ -84,6 +84,7 @@ export default function AdminPanel() {
         tag="System Admin"
         title="Platform Administration"
         subtitle="Moderate content, manage users and companies, and monitor platform health."
+        backHref
       />
 
       <div className="max-w-7xl mx-auto px-6 lg:px-8 pb-20">

@@ -39,7 +39,7 @@ export default function WriteReviewPage() {
     setLoading(true)
     setError('')
     try {
-      await createReview({ companyId: id, rating, reviewText: review, isAnonymous: anonymous })
+      await createReview({ companyId: id, overallRating: rating, content: review, isAnonymous: anonymous })
       setSubmitted(true)
     } catch (err) {
       const msg = err?.message ?? ''

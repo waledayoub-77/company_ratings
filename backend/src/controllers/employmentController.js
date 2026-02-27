@@ -75,15 +75,9 @@ exports.requestEmployment = async (req, res) => {
 exports.endEmployment = async (req, res) => {
   try {
     const { id } = req.params;
-    const { endDate } = req.body;
+    const today = new Date().toISOString().split('T')[0];
+    const endDate = req.body.endDate || today;
     const userId = req.user.userId;
-
-    if (!endDate) {
-      return res.status(400).json({
-        success: false,
-        error: { message: "endDate is required", code: "VALIDATION_ERROR" },
-      });
-    }
 
     const supabase = require("../config/database");
 

@@ -34,6 +34,18 @@ export async function getFeedbackGiven(params = {}) {
 }
 
 /**
+ * POST /feedback/:id/report — report a feedback entry to system admins
+ * @param {string} id — feedback UUID
+ * @param {Object} data — reason (string), description (string)
+ */
+export async function reportFeedback(id, data) {
+  return authRequest(`/feedback/${id}/report`, {
+    method: 'POST',
+    body:   JSON.stringify(data),
+  })
+}
+
+/**
  * GET /feedback/coworkers
  * Returns coworkers who share an approved current employment with the logged-in employee.
  * @param {Object} params — quarter (1-4, optional), year (optional)

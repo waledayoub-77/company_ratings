@@ -238,6 +238,7 @@ export default function ProfilePage() {
         tag="My Account"
         title="Profile"
         subtitle="Manage your personal information, employment history, and account settings."
+        backHref
       />
 
       <div className="flex-1 overflow-y-auto">

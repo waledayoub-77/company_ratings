@@ -52,7 +52,11 @@ export async function rejectEmployment(id, data = {}) {
 
 /**
  * PATCH /employments/:id/end
+ * @param {Object} data — endDate (optional, defaults to today on server)
  */
-export async function endEmployment(id) {
-  return authRequest(`/employments/${id}/end`, { method: 'PATCH' })
+export async function endEmployment(id, data = {}) {
+  return authRequest(`/employments/${id}/end`, {
+    method: 'PATCH',
+    body:   JSON.stringify(data),
+  })
 }

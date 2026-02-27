@@ -58,8 +58,8 @@ const recalculateCompanyRating = async (companyId) => {
 const createReview = async (reviewData, userId) => {
   const {
     companyId,
-    overallRating,
-    content,
+    overallRating = reviewData.rating,
+    content       = reviewData.reviewText,
     isAnonymous
   } = reviewData;
 
@@ -105,6 +105,7 @@ const createReview = async (reviewData, userId) => {
   }
 
   // Create review
+  const canEditUntil = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
   const { data, error } = await supabase
     .from('company_reviews')
     .insert({
@@ -113,7 +114,8 @@ const createReview = async (reviewData, userId) => {
       employment_id: employment.id,
       overall_rating: overallRating,
       content,
-      is_anonymous: isAnonymous || false
+      is_anonymous: isAnonymous || false,
+      can_edit_until: canEditUntil,
     })
     .select()
     .single();
@@ -162,12 +164,12 @@ const updateReview = async (reviewId, updates, userId) => {
     throw new AppError('You can only edit your own reviews', 403);
   }
 
-  // Check 48-hour window
+  // Check 24-hour window
   const canEditUntil = new Date(review.can_edit_until);
   const now = new Date();
 
   if (now > canEditUntil) {
-    throw new AppError('Reviews can only be edited within 48 hours of submission', 403);
+    throw new AppError('Reviews can only be edited within 24 hours of submission', 403);
   }
 
   const { overallRating, content } = updates;

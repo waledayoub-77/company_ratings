@@ -64,7 +64,7 @@ const validateLogin = [
  */
 const validateReview = [
   body('companyId')
-    .isUUID()
+    .custom(val => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val))
     .withMessage('Invalid company ID'),
   
   body('overallRating')
@@ -114,12 +114,12 @@ const validateEmploymentRequest = [
  */
 const validateFeedback = [
   body('ratedEmployeeId')
-    .isUUID()
-    .withMessage('Invalid employee ID'),
+    .notEmpty()
+    .withMessage('ratedEmployeeId is required'),
   
   body('companyId')
-    .isUUID()
-    .withMessage('Invalid company ID'),
+    .notEmpty()
+    .withMessage('companyId is required'),
   
   body('professionalism')
     .isInt({ min: 1, max: 5 })
@@ -142,6 +142,14 @@ const validateFeedback = [
     .trim()
     .isLength({ max: 1000 })
     .withMessage('Written feedback must not exceed 1000 characters'),
+
+  body('quarter')
+    .isInt({ min: 1, max: 4 })
+    .withMessage('Quarter must be an integer between 1 and 4'),
+
+  body('year')
+    .isInt({ min: 2020, max: 2100 })
+    .withMessage('Year must be a valid integer (2020–2100)'),
 ];
 
 /**

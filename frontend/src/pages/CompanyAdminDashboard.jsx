@@ -75,6 +75,7 @@ export default function CompanyAdminDashboard() {
         tag="Company Admin"
         title={`${companyName} Dashboard`}
         subtitle="Manage your company profile, verify employees, and view analytics."
+        backHref
       />
 
       <div className="max-w-7xl mx-auto px-6 lg:px-8 pb-20">

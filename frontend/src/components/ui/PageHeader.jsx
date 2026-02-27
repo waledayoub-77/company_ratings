@@ -1,6 +1,15 @@
 import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
 
-export default function PageHeader({ tag, title, subtitle, children, align = 'left' }) {
+export default function PageHeader({ tag, title, subtitle, children, align = 'left', backHref }) {
+  const navigate = useNavigate()
+
+  const handleBack = () => {
+    if (typeof backHref === 'string') navigate(backHref)
+    else navigate(-1)
+  }
+
   return (
     <div className={`pt-28 pb-10 ${align === 'center' ? 'text-center' : ''}`}>
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
@@ -9,6 +18,17 @@ export default function PageHeader({ tag, title, subtitle, children, align = 'le
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         >
+          {backHref !== undefined && (
+            <div className="mb-4">
+              <button
+                onClick={handleBack}
+                className="inline-flex items-center gap-1.5 text-sm text-navy-400 hover:text-navy-700 transition-colors"
+              >
+                <ArrowLeft size={15} />
+                Back
+              </button>
+            </div>
+          )}
           {tag && (
             <span className="inline-block text-xs font-semibold uppercase tracking-[0.15em] text-navy-500 mb-3">
               {tag}

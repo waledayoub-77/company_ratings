@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import PageHeader from '../components/ui/PageHeader.jsx'
 import Reveal from '../components/ui/Reveal.jsx'
+import StarRating from '../components/ui/StarRating.jsx'
 import { getCompanies } from '../api/companies'
 
 /* ─── Constants ─── */
@@ -117,6 +118,7 @@ export default function CompaniesPage() {
         tag="Explore"
         title="Browse Companies"
         subtitle="Discover verified reviews from real employees at companies across every industry."
+        backHref
       >
         {/* Search bar */}
         <div className="flex items-center gap-3 mt-2">
@@ -309,14 +311,12 @@ export default function CompaniesPage() {
 
                   <div className="mt-5 pt-4 border-t border-navy-100/50 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1">
-                        <Star size={15} className="fill-amber-400 text-amber-400" />
-                        <span className="text-sm font-bold text-navy-900">{Number(company.overall_rating).toFixed(1)}</span>
-                      </div>
+                      <StarRating rating={Number(company.overall_rating)} size={14} />
+                      <span className="text-sm font-bold text-navy-900">{Number(company.overall_rating).toFixed(1)}</span>
                       <span className="text-xs text-navy-300">/5</span>
                     </div>
                     <span className="text-xs text-navy-400 font-medium">
-                      {company.total_reviews} reviews
+                      {company.total_reviews ?? 0} review{(company.total_reviews ?? 0) !== 1 ? 's' : ''}
                     </span>
                   </div>
                 </div>

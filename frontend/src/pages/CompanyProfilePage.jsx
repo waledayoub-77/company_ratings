@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   Star,
@@ -44,6 +44,7 @@ const SORT_MAP = {
 export default function CompanyProfilePage() {
   const { id } = useParams()
   const { user } = useAuth()
+  const navigate = useNavigate()
 
   // Company state
   const [company, setCompany] = useState(null)
@@ -178,6 +179,13 @@ export default function CompanyProfilePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           >
+            <button
+              onClick={() => navigate(-1)}
+              className="inline-flex items-center gap-1.5 text-sm text-navy-400 hover:text-navy-700 transition-colors mb-6"
+            >
+              <ChevronLeft size={15} />
+              Back
+            </button>
             <div className="flex flex-col md:flex-row md:items-start gap-6">
               {/* Company logo */}
               <div className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center shrink-0 shadow-lg shadow-indigo-500/20`}>

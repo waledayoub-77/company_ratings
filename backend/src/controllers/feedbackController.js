@@ -331,3 +331,52 @@ exports.getFeedbackGiven = async (req, res) => {
     return res.status(500).json({ success: false, error: { message: "Server error", code: "SERVER_ERROR" } });
   }
 };
+
+exports.reportFeedback = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason, description } = req.body;
+    const reporterUserId = req.user?.userId;
+
+    if (!reason) {
+      return res.status(400).json({ success: false, error: { message: 'reason is required', code: 'VALIDATION_ERROR' } });
+    }
+    if (!description || description.trim().length < 10) {
+      return res.status(400).json({ success: false, error: { message: 'description must be at least 10 characters', code: 'VALIDATION_ERROR' } });
+    }
+
+    // Verify feedback exists
+    const { data: fb, error: fbErr } = await supabase
+      .from('peer_feedback')
+      .select('id, rated_employee_id')
+      .eq('id', id)
+      .single();
+
+    if (fbErr || !fb) {
+      return res.status(404).json({ success: false, error: { message: 'Feedback not found', code: 'NOT_FOUND' } });
+    }
+
+    // Notify all system admins
+    const { data: admins } = await supabase
+      .from('users')
+      .select('id')
+      .eq('role', 'system_admin');
+
+    if (admins?.length) {
+      for (const admin of admins) {
+        await createNotification({
+          userId: admin.id,
+          type: 'feedback_report',
+          title: 'Feedback Reported',
+          message: `A peer feedback entry has been reported. Reason: ${reason}. ${description.trim()}`,
+          link: null,
+        });
+      }
+    }
+
+    return res.status(200).json({ success: true, message: 'Report submitted. An admin will review it shortly.' });
+  } catch (err) {
+    console.error('reportFeedback error:', err);
+    return res.status(500).json({ success: false, error: { message: 'Server error', code: 'SERVER_ERROR' } });
+  }
+};

@@ -125,6 +125,7 @@ export default function InternalFeedbackPage() {
         tag="Internal Feedback"
         title="Peer Feedback Module"
         subtitle="Rate your coworkers on key professional dimensions. Feedback is visible only to the rated employee and your company admin."
+        backHref
       />
 
       <div className="max-w-5xl mx-auto px-6 lg:px-8 pb-20">

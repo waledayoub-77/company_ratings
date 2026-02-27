@@ -687,20 +687,60 @@ function UsersTab() {
 }
 
 /* ─── Audit Tab ─── */
-function AuditTab() {
-  const [entries, setEntries] = useState([])
-  const [loading, setLoading] = useState(true)
+const AUDIT_PAGE_SIZE = 15
 
-  useEffect(() => {
-    getAuditLogs({ limit: 30 })
-      .then(res => setEntries(res?.data ?? []))
+const ACTION_ICON_MAP = {
+  company_created:      { color: 'bg-emerald-50 text-emerald-600' },
+  company_deleted:      { color: 'bg-red-50    text-red-500'      },
+  company_updated:      { color: 'bg-blue-50   text-blue-500'     },
+  company_verified:     { color: 'bg-emerald-50 text-emerald-600' },
+  user_deleted:         { color: 'bg-red-50    text-red-500'      },
+  user_suspended:       { color: 'bg-amber-50  text-amber-600'    },
+  user_unsuspended:     { color: 'bg-emerald-50 text-emerald-600' },
+  review_deleted:       { color: 'bg-red-50    text-red-500'      },
+  report_resolved:      { color: 'bg-emerald-50 text-emerald-600' },
+  report_dismissed:     { color: 'bg-navy-50   text-navy-400'     },
+}
+
+function auditSubtitle(entry) {
+  const parts = []
+  const d = entry.details ?? {}
+  if (d.companyName) parts.push(d.companyName)
+  if (d.email)       parts.push(d.email)
+  if (d.reason)      parts.push(d.reason)
+  if (entry.admin?.email) parts.push(`by ${entry.admin.email}`)
+  return parts.join(' · ')
+}
+
+function AuditTab() {
+  const [entries, setEntries]     = useState([])
+  const [loading, setLoading]     = useState(true)
+  const [page, setPage]           = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [total, setTotal]         = useState(0)
+
+  const load = useCallback((p = 1) => {
+    setLoading(true)
+    getAuditLogs({ page: p, limit: AUDIT_PAGE_SIZE })
+      .then(res => {
+        setEntries(res?.data ?? [])
+        const pg = res?.pagination
+        setTotalPages(pg ? Math.max(1, Math.ceil(pg.total / AUDIT_PAGE_SIZE)) : 1)
+        setTotal(pg?.total ?? 0)
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
 
+  useEffect(() => { load(page) }, [load, page]) // eslint-disable-line
+
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold text-navy-900 mb-2">Audit Log</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-navy-900">
+          Audit Log <span className="text-sm font-normal text-navy-400">({total})</span>
+        </h2>
+      </div>
 
       {loading ? <Spinner /> : entries.length === 0 ? (
         <div className="bg-white rounded-2xl border border-navy-100/50 py-12 text-center text-sm text-navy-400">
@@ -708,32 +748,46 @@ function AuditTab() {
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-navy-100/50 overflow-hidden">
-          {entries.map((entry, i) => (
-            <div
-              key={entry.id ?? i}
-              className={`flex items-start gap-4 px-6 py-4 ${
-                i < entries.length - 1 ? 'border-b border-navy-50' : ''
-              }`}
-            >
-              <div className="w-8 h-8 rounded-lg bg-navy-50 flex items-center justify-center shrink-0 mt-0.5">
-                <Shield size={14} className="text-navy-400" />
+          {entries.map((entry, i) => {
+            const style = ACTION_ICON_MAP[entry.action] ?? { color: 'bg-navy-50 text-navy-400' }
+            return (
+              <div
+                key={entry.id ?? i}
+                className={`flex items-start gap-4 px-6 py-4 ${i < entries.length - 1 ? 'border-b border-navy-50' : ''}`}
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${style.color}`}>
+                  <Shield size={14} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-navy-800 font-medium capitalize">
+                    {entry.action?.replace(/_/g, ' ') ?? '—'}
+                  </p>
+                  <p className="text-xs text-navy-400 mt-0.5 truncate">
+                    {auditSubtitle(entry) || '—'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-navy-400 shrink-0">
+                  <Clock size={12} />
+                  {timeAgo(entry.created_at)}
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-navy-800 font-medium capitalize">
-                  {entry.action?.replace(/_/g, ' ') ?? '—'}
-                </p>
-                <p className="text-xs text-navy-400 mt-0.5">
-                  by {entry.admin?.email ?? 'Admin'}
-                  {entry.entity_type ? ` · ${entry.entity_type}` : ''}
-                  {entry.details?.reason ? ` · ${entry.details.reason}` : ''}
-                </p>
-              </div>
-              <div className="flex items-center gap-1.5 text-xs text-navy-400 shrink-0">
-                <Clock size={12} />
-                {timeAgo(entry.created_at)}
-              </div>
-            </div>
-          ))}
+            )
+          })}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {!loading && totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3 pt-2">
+          <button onClick={() => setPage(p => p - 1)} disabled={page <= 1}
+            className="w-9 h-9 rounded-xl text-navy-600 hover:bg-navy-50 disabled:opacity-30 transition-all flex items-center justify-center">
+            <ChevronLeft size={16} />
+          </button>
+          <span className="text-sm text-navy-500">Page {page} of {totalPages} · {total} entries</span>
+          <button onClick={() => setPage(p => p + 1)} disabled={page >= totalPages}
+            className="w-9 h-9 rounded-xl text-navy-600 hover:bg-navy-50 disabled:opacity-30 transition-all flex items-center justify-center">
+            <ChevronRight size={16} />
+          </button>
         </div>
       )}
     </div>

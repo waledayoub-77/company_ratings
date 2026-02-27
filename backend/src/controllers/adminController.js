@@ -1,5 +1,5 @@
 /**
- * adminController.js — Walid's admin panel + reports
+ * adminController.js 
  * Routes:
  *   POST   /api/reports                          — any authenticated user
  *   GET    /api/admin/reports                    — system_admin

@@ -150,6 +150,14 @@ function OverviewTab({ user, employments, reviews, feedback }) {
     ])
   )
 
+  // Lookup for ALL employments (used by activity feed)
+  const allCompanyNameMap = Object.fromEntries(
+    employments.map(e => [
+      e.company_id ?? e.companyId,
+      e.companies?.name ?? e.company_name ?? e.companyName ?? 'a company'
+    ])
+  )
+
   // Filter reviews to only those written for approved companies
   const approvedReviews = reviews.filter(r =>
     approvedCompanyIds.has(r.company_id ?? r.companyId)
@@ -232,55 +240,103 @@ function OverviewTab({ user, employments, reviews, feedback }) {
       <Reveal delay={0.2}>
         <div className="bg-white rounded-2xl border border-navy-100/50 p-6">
           <h3 className="text-sm font-semibold text-navy-900 mb-4">Recent Activity</h3>
-          {approvedEmployments.length === 0 ? (
-            <p className="text-sm text-navy-400">No approved employment yet. Once a company approves you, your activity will appear here.</p>
-          ) : approvedReviews.length === 0 && approvedFeedback.length === 0 ? (
-            <p className="text-sm text-navy-400">No activity yet for your approved {approvedEmployments.length === 1 ? 'company' : 'companies'}. Start by writing a review or giving peer feedback.</p>
-          ) : (
-            <div className="space-y-4">
-              {approvedEmployments.slice(0, 1).map((emp, i) => (
-                <div key={`emp-${i}`} className="flex items-start gap-3 py-1">
-                  <Building2 size={16} className="text-emerald-500 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-sm text-navy-700">
-                      Verified at {emp.companies?.name ?? emp.company_name ?? emp.companyName ?? 'a company'}
-                    </p>
-                    <p className="text-xs text-navy-400 mt-0.5">
-                      {new Date(emp.updated_at ?? emp.created_at ?? emp.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              {approvedReviews.slice(0, 2).map((r, i) => (
-                <div key={`rev-${i}`} className="flex items-start gap-3 py-1">
-                  <CheckCircle2 size={16} className="text-emerald-500 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-sm text-navy-700">You reviewed {r.companies?.name ?? r.company_name ?? r.companyName ?? 'a company'}</p>
-                    <p className="text-xs text-navy-400 mt-0.5">
-                      {new Date(r.created_at ?? r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              {approvedFeedback.slice(0, 2).map((fb, i) => {
-                const fbCompanyId = fb.company_id ?? fb.companyId
-                const fbCompany = companyNameMap[fbCompanyId]
-                return (
-                  <div key={`fb-${i}`} className="flex items-start gap-3 py-1">
-                    <MessageSquare size={16} className="text-navy-500 mt-0.5 shrink-0" />
+          {(() => {
+            const fmtDate = d => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
+
+            // Build a unified list of activity events
+            const activities = []
+
+            employments.forEach(emp => {
+              const name = emp.companies?.name ?? emp.company_name ?? emp.companyName ?? 'a company'
+              const status = emp.verification_status ?? emp.status
+              const isCurrent = emp.is_current !== false
+
+              if (status === 'approved') {
+                // Always add a "Verified" event
+                activities.push({
+                  key: `emp-approved-${emp.id ?? emp.company_id}`,
+                  Icon: Building2,
+                  color: 'text-emerald-500',
+                  label: `Verified at ${name}`,
+                  date: emp.verified_at ?? emp.updated_at ?? emp.created_at,
+                })
+                // If employment was later ended, also add an "Ended" event
+                if (!isCurrent) {
+                  const endD = emp.end_date ?? emp.endDate
+                  activities.push({
+                    key: `emp-ended-${emp.id ?? emp.company_id}`,
+                    Icon: XCircle,
+                    color: 'text-orange-400',
+                    label: `Ended employment at ${name}`,
+                    date: endD ?? emp.updated_at ?? emp.created_at,
+                    sublabel: endD ? `End date: ${fmtDate(endD)}` : null,
+                  })
+                }
+              } else if (status === 'pending') {
+                activities.push({
+                  key: `emp-pending-${emp.id ?? emp.company_id}`,
+                  Icon: Loader2,
+                  color: 'text-amber-500',
+                  label: `Verification request sent to ${name}`,
+                  date: emp.created_at ?? emp.createdAt,
+                })
+              } else if (status === 'rejected') {
+                activities.push({
+                  key: `emp-rejected-${emp.id ?? emp.company_id}`,
+                  Icon: XCircle,
+                  color: 'text-red-400',
+                  label: `Verification rejected at ${name}`,
+                  date: emp.updated_at ?? emp.created_at,
+                })
+              }
+            })
+
+            reviews.forEach((r, i) => {
+              const name = r.companies?.name ?? r.company_name ?? r.companyName ?? allCompanyNameMap[r.company_id ?? r.companyId] ?? 'a company'
+              activities.push({
+                key: `review-${r.id ?? i}`,
+                Icon: PenSquare,
+                color: 'text-amber-500',
+                label: `You reviewed ${name}`,
+                date: r.created_at ?? r.createdAt,
+              })
+            })
+
+            feedback.forEach((fb, i) => {
+              const fbCompany = allCompanyNameMap[fb.company_id ?? fb.companyId]
+              activities.push({
+                key: `fb-${fb.id ?? i}`,
+                Icon: MessageSquare,
+                color: 'text-navy-500',
+                label: `New peer feedback received${fbCompany ? ` at ${fbCompany}` : ''}`,
+                date: fb.created_at ?? fb.createdAt,
+              })
+            })
+
+            // Sort newest first
+            activities.sort((a, b) => new Date(b.date) - new Date(a.date))
+            const recent = activities.slice(0, 7)
+
+            if (recent.length === 0) {
+              return <p className="text-sm text-navy-400">No activity yet. Once a company approves you or you write a review, your activity will appear here.</p>
+            }
+
+            return (
+              <div className="space-y-4">
+                {recent.map(({ key, Icon, color, label, date, sublabel }) => (
+                  <div key={key} className="flex items-start gap-3 py-1">
+                    <Icon size={16} className={`${color} mt-0.5 shrink-0`} />
                     <div>
-                      <p className="text-sm text-navy-700">
-                        New peer feedback received{fbCompany ? ` at ${fbCompany}` : ''}
-                      </p>
+                      <p className="text-sm text-navy-700">{label}</p>
                       <p className="text-xs text-navy-400 mt-0.5">
-                        {new Date(fb.created_at ?? fb.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {sublabel ? sublabel : fmtDate(date)}
                       </p>
                     </div>
                   </div>
-                )
-              })}
-            </div>
-          )}
+                ))}
+              </div>
+            )
+          })()}
         </div>
       </Reveal>
     </div>

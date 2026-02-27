@@ -520,7 +520,7 @@ exports.verifyCompany = async (req, res) => {
 exports.createAdminCompany = async (req, res) => {
   try {
     const adminId = req.user?.userId;
-    const { name, industry, location, description, website, email } = req.body;
+    const { name, industry, location, description, website } = req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({ success: false, error: { message: 'Company name is required', code: 'MISSING_FIELD' } });
@@ -529,12 +529,12 @@ exports.createAdminCompany = async (req, res) => {
     const { data, error } = await supabase
       .from('companies')
       .insert({
+        user_id: adminId,
         name: name.trim(),
-        industry: industry?.trim() || null,
-        location: location?.trim() || null,
+        industry: industry?.trim() || 'Other',
+        location: location?.trim() || 'Unknown',
         description: description?.trim() || null,
         website: website?.trim() || null,
-        email: email?.trim() || null,
         is_verified: true,
       })
       .select()
@@ -558,7 +558,7 @@ exports.updateAdminCompany = async (req, res) => {
   try {
     const adminId = req.user?.userId;
     const { id } = req.params;
-    const { name, industry, location, description, website, email } = req.body;
+    const { name, industry, location, description, website } = req.body;
 
     const { data: company } = await supabase.from('companies').select('id').eq('id', id).is('deleted_at', null).maybeSingle();
     if (!company) return res.status(404).json({ success: false, error: { message: 'Company not found', code: 'NOT_FOUND' } });
@@ -569,7 +569,6 @@ exports.updateAdminCompany = async (req, res) => {
     if (location    !== undefined) updates.location    = location?.trim()  || null;
     if (description !== undefined) updates.description = description?.trim() || null;
     if (website     !== undefined) updates.website     = website?.trim()   || null;
-    if (email       !== undefined) updates.email       = email?.trim()     || null;
 
     const { data: updated, error } = await supabase.from('companies').update(updates).eq('id', id).select().single();
     if (error) throw error;

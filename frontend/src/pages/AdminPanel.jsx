@@ -313,7 +313,7 @@ function CompaniesTab() {
 
   // Add form
   const [showAdd, setShowAdd]             = useState(false)
-  const [addForm, setAddForm]             = useState({ name: '', industry: '', location: '', description: '', website: '', email: '' })
+  const [addForm, setAddForm]             = useState({ name: '', industry: '', location: '', description: '', website: '' })
   const [addError, setAddError]           = useState('')
   const [addSubmitting, setAddSubmitting] = useState(false)
 
@@ -374,7 +374,7 @@ function CompaniesTab() {
     try {
       await createCompany(addForm)
       setShowAdd(false)
-      setAddForm({ name: '', industry: '', location: '', description: '', website: '', email: '' })
+      setAddForm({ name: '', industry: '', location: '', description: '', website: '' })
       setPage(1)
       load(search, 1)
     } catch (e) { setAddError(e?.message || 'Failed to create company.') }
@@ -383,7 +383,7 @@ function CompaniesTab() {
 
   const openEdit = (company) => {
     setEditingId(company.id)
-    setEditForm({ name: company.name, industry: company.industry || '', location: company.location || '', description: company.description || '', website: company.website || '', email: company.email || '' })
+    setEditForm({ name: company.name, industry: company.industry || '', location: company.location || '', description: company.description || '', website: company.website || '' })
     setEditError('')
   }
 
@@ -432,7 +432,6 @@ function CompaniesTab() {
                 <div><label className="text-xs text-navy-500 mb-1 block">Name *</label><input className={fieldCls} value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))} placeholder="Acme Corp" /></div>
                 <div><label className="text-xs text-navy-500 mb-1 block">Industry</label><input className={fieldCls} value={addForm.industry} onChange={e => setAddForm(f => ({ ...f, industry: e.target.value }))} placeholder="Technology" /></div>
                 <div><label className="text-xs text-navy-500 mb-1 block">Location</label><input className={fieldCls} value={addForm.location} onChange={e => setAddForm(f => ({ ...f, location: e.target.value }))} placeholder="Riyadh, SA" /></div>
-                <div><label className="text-xs text-navy-500 mb-1 block">Email</label><input className={fieldCls} type="email" value={addForm.email} onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))} placeholder="info@company.com" /></div>
                 <div><label className="text-xs text-navy-500 mb-1 block">Website</label><input className={fieldCls} value={addForm.website} onChange={e => setAddForm(f => ({ ...f, website: e.target.value }))} placeholder="https://company.com" /></div>
                 <div className="sm:col-span-2"><label className="text-xs text-navy-500 mb-1 block">Description</label><textarea className="w-full rounded-lg border border-navy-200 bg-white px-3 py-2 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all resize-none" rows={2} value={addForm.description} onChange={e => setAddForm(f => ({ ...f, description: e.target.value }))} placeholder="Short description…" /></div>
               </div>
@@ -461,7 +460,6 @@ function CompaniesTab() {
                     <div><label className="text-xs text-navy-500 mb-1 block">Name *</label><input className={fieldCls} value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} /></div>
                     <div><label className="text-xs text-navy-500 mb-1 block">Industry</label><input className={fieldCls} value={editForm.industry} onChange={e => setEditForm(f => ({ ...f, industry: e.target.value }))} /></div>
                     <div><label className="text-xs text-navy-500 mb-1 block">Location</label><input className={fieldCls} value={editForm.location} onChange={e => setEditForm(f => ({ ...f, location: e.target.value }))} /></div>
-                    <div><label className="text-xs text-navy-500 mb-1 block">Email</label><input className={fieldCls} type="email" value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))} /></div>
                     <div><label className="text-xs text-navy-500 mb-1 block">Website</label><input className={fieldCls} value={editForm.website} onChange={e => setEditForm(f => ({ ...f, website: e.target.value }))} /></div>
                     <div className="sm:col-span-2"><label className="text-xs text-navy-500 mb-1 block">Description</label><textarea className="w-full rounded-lg border border-navy-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all resize-none" rows={2} value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} /></div>
                   </div>

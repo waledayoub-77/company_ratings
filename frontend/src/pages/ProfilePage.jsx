@@ -390,7 +390,7 @@ function AdminCompaniesSection() {
   const [totalPages, setTotalPages]       = useState(1)
   const [total, setTotal]                 = useState(0)
   const [showAdd, setShowAdd]             = useState(false)
-  const [addForm, setAddForm]             = useState({ name: '', industry: '', location: '', email: '', website: '', description: '' })
+  const [addForm, setAddForm]             = useState({ name: '', industry: '', location: '', website: '', description: '' })
   const [addError, setAddError]           = useState('')
   const [addSubmitting, setAddSubmitting] = useState(false)
   const [editingId, setEditingId]         = useState(null)
@@ -422,7 +422,7 @@ function AdminCompaniesSection() {
     setAddSubmitting(true); setAddError('')
     try {
       await createCompany(addForm)
-      setAddForm({ name: '', industry: '', location: '', email: '', website: '', description: '' })
+      setAddForm({ name: '', industry: '', location: '', website: '', description: '' })
       setShowAdd(false)
       load(search, 1); setPage(1)
     } catch (e) { setAddError(e?.message || 'Failed to create company') }
@@ -482,7 +482,6 @@ function AdminCompaniesSection() {
               <div className="col-span-2"><label className={LABEL_CLS}>Name *</label><input className={FIELD_CLS} value={addForm.name} onChange={e => setAddForm(f => ({...f, name: e.target.value}))} /></div>
               <div><label className={LABEL_CLS}>Industry</label><input className={FIELD_CLS} value={addForm.industry} onChange={e => setAddForm(f => ({...f, industry: e.target.value}))} /></div>
               <div><label className={LABEL_CLS}>Location</label><input className={FIELD_CLS} value={addForm.location} onChange={e => setAddForm(f => ({...f, location: e.target.value}))} /></div>
-              <div><label className={LABEL_CLS}>Email</label><input className={FIELD_CLS} value={addForm.email} onChange={e => setAddForm(f => ({...f, email: e.target.value}))} /></div>
               <div><label className={LABEL_CLS}>Website</label><input className={FIELD_CLS} value={addForm.website} onChange={e => setAddForm(f => ({...f, website: e.target.value}))} /></div>
               <div className="col-span-2"><label className={LABEL_CLS}>Description</label><textarea className="rounded-lg border border-navy-200 bg-white px-3 py-2 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all w-full h-20 resize-none" value={addForm.description} onChange={e => setAddForm(f => ({...f, description: e.target.value}))} /></div>
             </div>
@@ -510,7 +509,6 @@ function AdminCompaniesSection() {
                   <div className="col-span-2"><label className={LABEL_CLS}>Name</label><input className={FIELD_CLS} value={editForm.name ?? ''} onChange={e => setEditForm(f => ({...f, name: e.target.value}))} /></div>
                   <div><label className={LABEL_CLS}>Industry</label><input className={FIELD_CLS} value={editForm.industry ?? ''} onChange={e => setEditForm(f => ({...f, industry: e.target.value}))} /></div>
                   <div><label className={LABEL_CLS}>Location</label><input className={FIELD_CLS} value={editForm.location ?? ''} onChange={e => setEditForm(f => ({...f, location: e.target.value}))} /></div>
-                  <div><label className={LABEL_CLS}>Email</label><input className={FIELD_CLS} value={editForm.email ?? ''} onChange={e => setEditForm(f => ({...f, email: e.target.value}))} /></div>
                   <div><label className={LABEL_CLS}>Website</label><input className={FIELD_CLS} value={editForm.website ?? ''} onChange={e => setEditForm(f => ({...f, website: e.target.value}))} /></div>
                   <div className="col-span-2"><label className={LABEL_CLS}>Description</label><textarea className="rounded-lg border border-navy-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all w-full h-20 resize-none" value={editForm.description ?? ''} onChange={e => setEditForm(f => ({...f, description: e.target.value}))} /></div>
                 </div>

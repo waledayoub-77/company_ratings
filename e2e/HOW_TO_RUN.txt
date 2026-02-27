@@ -1,0 +1,161 @@
+================================================================================
+  COMPANY RATINGS — E2E TEST SUITE
+  Playwright Browser-Based Tests (Frontend + Backend Integration)
+================================================================================
+
+OVERVIEW
+--------
+These tests run against the real running application — both the frontend (Vite
+dev server) and the backend (Express API) must be running at the same time.
+Tests are performed through a real Chromium browser, simulating a real user.
+
+Test files:
+  01-public.spec.js      — Public pages (Landing, Companies browse, Company profile)
+  02-auth.spec.js        — Register, Login, Logout, Forgot Password
+  03-employee.spec.js    — Employee Dashboard, Employment, Reviews, Feedback
+  04-company-admin.spec.js — Company Admin Dashboard, Requests, Settings
+  05-system-admin.spec.js  — Admin Panel: Reports, Users, Companies, Audit Logs
+  06-profile.spec.js     — Profile page: view, edit, change password, deactivate
+  07-route-guards.spec.js  — Route protection & role-based redirects
+
+
+PREREQUISITES
+-------------
+  1. Node.js >= 18 installed
+  2. The project root's Node modules installed:
+       cd c:\Users\GamingCorner\Documents\GitHub\company_ratings
+       npm install
+  3. The backend's Node modules installed (adjust path if needed):
+       cd backend
+       npm install
+       cd ..
+
+
+STEP 1 — Configure test credentials
+-------------------------------------
+  cd e2e
+  copy .env.example .env   (Windows)
+  # OR
+  cp .env.example .env     (Git Bash / WSL)
+
+  Then open e2e\.env and fill in real credentials for your Supabase test database:
+
+  EMPLOYEE_EMAIL=your_employee@example.com
+  EMPLOYEE_PASSWORD=YourEmployeePassword123!
+
+  EMPLOYEE2_EMAIL=your_employee2@example.com
+  EMPLOYEE2_PASSWORD=YourEmployee2Password123!
+
+  COMPANY_ADMIN_EMAIL=your_companyadmin@example.com
+  COMPANY_ADMIN_PASSWORD=YourCompanyAdminPassword123!
+
+  SYSTEM_ADMIN_EMAIL=your_sysadmin@example.com
+  SYSTEM_ADMIN_PASSWORD=YourSysAdminPassword123!
+
+  IMPORTANT: These accounts must already exist in your Supabase database and have
+  their emails confirmed. Create them through the app's Register page first, then
+  manually confirm them in Supabase Authentication dashboard if needed.
+
+
+STEP 2 — Install Playwright and browsers
+-----------------------------------------
+  cd e2e
+  npm install
+  npx playwright install chromium
+
+
+STEP 3 — Start the Backend server
+-----------------------------------
+  Open a new terminal:
+    cd c:\Users\GamingCorner\Documents\GitHub\company_ratings\backend
+    npm run dev
+  (or: node index.js / npm start — whatever your backend uses)
+
+  Wait until you see: "Server running on port 5000" (or similar)
+
+
+STEP 4 — Start the Frontend dev server
+----------------------------------------
+  Open another terminal:
+    cd c:\Users\GamingCorner\Documents\GitHub\company_ratings
+    npm run dev
+
+  Wait until you see: "VITE ready in Xms — Local: http://localhost:5173"
+
+
+STEP 5 — Run the Tests
+-----------------------
+  In a third terminal, from the e2e/ directory:
+
+  # Run ALL tests (headless, sequential):
+    npm test
+
+  # Run ALL tests in a headed browser (you can watch):
+    npm run test:headed
+
+  # Run ALL tests with Playwright's interactive UI:
+    npm run test:ui
+
+  # Run a specific test file only:
+    npm run test:public        (01-public)
+    npm run test:auth          (02-auth)
+    npm run test:employee      (03-employee)
+    npm run test:company-admin (04-company-admin)
+    npm run test:system-admin  (05-system-admin)
+    npm run test:profile       (06-profile)
+    npm run test:guards        (07-route-guards)
+
+  # Show the last HTML report in browser:
+    npm run report
+
+
+TEST RESULTS
+------------
+  - Results are printed in the terminal after each run
+  - A full HTML report is saved to: e2e/playwright-report/index.html
+  - Screenshots on failure: e2e/test-results/<test-name>/screenshot.png
+  - Videos on failure: e2e/test-results/<test-name>/video.webm
+
+  To view the HTML report:
+    npx playwright show-report
+
+
+TROUBLESHOOTING
+---------------
+  Q: Tests fail with "ERR_CONNECTION_REFUSED" or "page.goto timeout"
+  A: Make sure BOTH the frontend (port 5173) and backend (port 5000) are running
+     before starting the tests.
+
+  Q: Login tests fail with "invalid credentials"
+  A: Double-check the e2e/.env file. The credentials must exactly match the
+     registered users in Supabase. Passwords are case-sensitive.
+
+  Q: "Email not confirmed" errors
+  A: Go to Supabase Dashboard → Authentication → Users → find the account →
+     click "Confirm email" manually.
+
+  Q: Role-based redirect tests fail
+  A: Ensure each test account has the correct role set in the database:
+     - EMPLOYEE account → role = 'employee'
+     - COMPANY_ADMIN account → role = 'company_admin'
+     - SYSTEM_ADMIN account → role = 'system_admin'
+
+  Q: Tests that depend on seed data are skipped (e.g., "No pending requests")
+  A: This is expected when the database is empty. Run through the app manually
+     to create some data first (add a company, request employment, etc.) then
+     re-run the tests.
+
+  Q: Video/screenshot artifacts getting large
+  A: Clean up with: rm -rf e2e/test-results   (or delete the folder manually)
+
+
+ARCHITECTURE NOTES
+------------------
+  - baseURL: http://localhost:5173  (Vite frontend)
+  - Backend API:  http://localhost:5000/api
+  - Tests are run SEQUENTIALLY (workers: 1) to avoid conflicting auth sessions
+  - Browser: Chromium only (cross-browser can be added in playwright.config.js)
+  - Auth helper: e2e/tests/helpers/auth.js — loginAsEmployee(), loginAsCompanyAdmin(),
+    loginAsSystemAdmin(), logout()
+
+================================================================================

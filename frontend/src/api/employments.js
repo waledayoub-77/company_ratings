@@ -60,3 +60,10 @@ export async function endEmployment(id, data = {}) {
     body:   JSON.stringify(data),
   })
 }
+
+/**
+ * DELETE /employments/:id/cancel — employee cancels their own pending request
+ */
+export async function cancelEmployment(id) {
+  return authRequest(`/employments/${id}/cancel`, { method: 'DELETE' })
+}

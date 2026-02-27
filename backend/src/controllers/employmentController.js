@@ -391,3 +391,48 @@ exports.rejectEmployment = async (req, res) => {
 };
 
 // PATCH /api/employments/:id/reject — defined above, duplicate removed
+
+// DELETE /api/employments/:id/cancel — employee cancels their own pending request
+exports.cancelEmployment = async (req, res) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const employmentId = req.params.id;
+
+    // Resolve employee record
+    const { data: employee, error: empErr } = await supabase
+      .from('employees')
+      .select('id')
+      .eq('user_id', userId)
+      .single();
+
+    if (empErr || !employee) return res.status(400).json({ message: 'Employee profile not found' });
+
+    // Fetch the employment and verify ownership + pending status
+    const { data: employment, error: fetchErr } = await supabase
+      .from('employments')
+      .select('id, employee_id, verification_status')
+      .eq('id', employmentId)
+      .is('deleted_at', null)
+      .single();
+
+    if (fetchErr || !employment) return res.status(404).json({ message: 'Employment request not found' });
+    if (employment.employee_id !== employee.id) return res.status(403).json({ message: 'Forbidden' });
+    if (employment.verification_status !== 'pending') {
+      return res.status(400).json({ message: 'Only pending requests can be cancelled' });
+    }
+
+    const { error: delErr } = await supabase
+      .from('employments')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', employmentId);
+
+    if (delErr) throw delErr;
+
+    return res.json({ message: 'Employment request cancelled' });
+  } catch (e) {
+    console.error('cancelEmployment error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};

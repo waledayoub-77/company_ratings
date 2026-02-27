@@ -27,7 +27,7 @@ import Badge from '../components/ui/Badge.jsx'
 import Reveal from '../components/ui/Reveal.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { getMyReviews, updateReview, deleteReview } from '../api/reviews.js'
-import { getMyEmployments, requestEmployment, endEmployment } from '../api/employments.js'
+import { getMyEmployments, requestEmployment, endEmployment, cancelEmployment } from '../api/employments.js'
 import { getFeedbackReceived, reportFeedback } from '../api/feedback.js'
 import { getCompanies } from '../api/companies.js'
 
@@ -294,6 +294,9 @@ function EmploymentTab({ employments, refetch }) {
   const [endingDate, setEndingDate] = useState('')
   const [endError, setEndError] = useState('')
   const [endSubmitting, setEndSubmitting] = useState(false)
+  const [discardingId, setDiscardingId] = useState(null)
+  const [discardSubmitting, setDiscardSubmitting] = useState(false)
+  const [discardError, setDiscardError] = useState('')
   const [companySearch, setCompanySearch] = useState('')
   const [companyResults, setCompanyResults] = useState([])
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -399,6 +402,20 @@ function EmploymentTab({ employments, refetch }) {
     }
   }
 
+  const handleCancelEmployment = async (id) => {
+    setDiscardError('')
+    setDiscardSubmitting(true)
+    try {
+      await cancelEmployment(id)
+      setDiscardingId(null)
+      await refetch()
+    } catch (err) {
+      setDiscardError(err?.message ?? 'Failed to cancel request.')
+    } finally {
+      setDiscardSubmitting(false)
+    }
+  }
+
   const handleSubmitRequest = async () => {    if (!selectedCompany) { setFormError('Please select a company from the list.'); return }
     if (!position.trim()) { setFormError('Position is required.'); return }
     if (!startDate)        { setFormError('Start date is required.'); return }
@@ -430,7 +447,7 @@ function EmploymentTab({ employments, refetch }) {
     }
   }
 
-  const hasApproved = employments.some(e => (e.verification_status ?? e.status) === 'approved')
+  const hasApproved = employments.some(e => (e.verification_status ?? e.status) === 'approved' && e.is_current !== false)
 
   return (
     <div className="space-y-6">
@@ -642,6 +659,17 @@ function EmploymentTab({ employments, refetch }) {
                               End
                             </button>
                           )}
+                          {(emp.verification_status ?? emp.status) === 'pending' && (
+                            <button
+                              onClick={() => {
+                                setDiscardingId(discardingId === emp.id ? null : emp.id)
+                                setDiscardError('')
+                              }}
+                              className="text-xs text-red-400 hover:text-red-600 font-medium transition-colors"
+                            >
+                              Discard
+                            </button>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-4 mt-3 text-xs text-navy-400">
@@ -702,6 +730,44 @@ function EmploymentTab({ employments, refetch }) {
                                 </button>
                                 <button
                                   onClick={() => { setEndingId(null); setEndError('') }}
+                                  className="h-8 px-4 text-xs text-navy-500 hover:text-navy-700 transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                      {/* Inline discard confirmation */}
+                      <AnimatePresence>
+                        {discardingId === emp.id && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="mt-4 pt-4 border-t border-navy-100 space-y-3">
+                              <p className="text-xs font-semibold text-navy-700">Cancel request at {name}?</p>
+                              <p className="text-xs text-navy-400">This will permanently remove your pending verification request. You can submit a new one at any time.</p>
+                              {discardError && (
+                                <div className="flex items-center gap-1.5 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                                  <AlertCircle size={12} />{discardError}
+                                </div>
+                              )}
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleCancelEmployment(emp.id)}
+                                  disabled={discardSubmitting}
+                                  className="h-8 px-4 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-all disabled:opacity-50 inline-flex items-center gap-1.5"
+                                >
+                                  {discardSubmitting ? <Loader2 size={11} className="animate-spin" /> : null}
+                                  Confirm Discard
+                                </button>
+                                <button
+                                  onClick={() => { setDiscardingId(null); setDiscardError('') }}
                                   className="h-8 px-4 text-xs text-navy-500 hover:text-navy-700 transition-colors"
                                 >
                                   Cancel

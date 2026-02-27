@@ -12,16 +12,12 @@ test.describe('Unauthenticated access — all protected routes → /login', () =
   const routes = ['/dashboard', '/dashboard/feedback', '/feedback', '/company-admin', '/admin', '/profile'];
   for (const route of routes) {
     test(`${route} → /login when not logged in`, async ({ page }) => {
-      await page.context().clearCookies();
-      await page.evaluate(() => localStorage.clear());
       await page.goto(route);
       await expect(page).toHaveURL(/login/, { timeout: 8_000 });
     });
   }
 
   test('/companies/:id/review without auth → /login', async ({ page }) => {
-    await page.context().clearCookies();
-    await page.evaluate(() => localStorage.clear());
     await page.goto('/companies/00000000-0000-0000-0000-000000000000/review');
     await expect(page).toHaveURL(/login/, { timeout: 8_000 });
   });

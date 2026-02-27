@@ -12,7 +12,7 @@ const API_URL = 'http://localhost:5000/api';
 
 // Helper — get stored token after login
 async function getToken(page) {
-  return page.evaluate(() => localStorage.getItem('accessToken'));
+  return page.evaluate(() => localStorage.getItem('rh_access'));
 }
 
 // ─── S1 REGISTER AS SYSTEM_ADMIN (BUG) ───────────────────────────────────────
@@ -153,7 +153,7 @@ test.describe('S6 Company admin cannot approve other company employment', () => 
 
 // ─── S7 TOKEN EXPIRY — SILENT REFRESH ────────────────────────────────────────
 test.describe('S7–S8 Token lifecycle', () => {
-  test('S7 after login, accessToken exists in localStorage', async ({ page }) => {
+  test('S7 after login, rh_access token exists in localStorage', async ({ page }) => {
     await loginAsEmployee(page);
     const token = await getToken(page);
     expect(token).toBeTruthy();
@@ -171,8 +171,9 @@ test.describe('S7–S8 Token lifecycle', () => {
     await loginAsEmployee(page);
     // Clear all auth tokens
     await page.evaluate(() => {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('rh_user');
+      localStorage.removeItem('rh_access');
+      localStorage.removeItem('rh_refresh');
       document.cookie.split(';').forEach(c => {
         document.cookie = c.replace(/^ +/, '').replace(/=.*/, `=;expires=${new Date().toUTCString()};path=/`);
       });
@@ -217,12 +218,12 @@ test.describe('S9–S10 XSS Input Sanitization', () => {
     await page.goto('/register');
     const companyOpt = page.getByText(/company.*admin/i).first();
     if (await companyOpt.count() > 0) await companyOpt.click();
-    await page.getByLabel(/email/i).fill(`xss_test_${Date.now()}@example.com`);
-    await page.getByLabel(/password/i).first().fill('TestPass1234!');
-    await page.getByLabel(/first name/i).or(page.getByPlaceholder(/first name/i)).fill('<script>alert(1)</script>').catch(() => {});
+    await page.locator('input[type="email"]').fill(`xss_test_${Date.now()}@example.com`);
+    await page.locator('input[type="password"]').first().fill('TestPass1234!');
+    await page.getByPlaceholder('John').fill('<script>alert(1)</script>').catch(() => {});
     const companyName = page.getByLabel(/company name/i).or(page.getByPlaceholder(/company name/i));
     if (await companyName.count() > 0) await companyName.first().fill('<script>alert("XSS")</script>');
-    await page.getByRole('button', { name: /register|sign up/i }).click();
+    await page.getByRole('button', { name: /register|sign up|create/i }).click();
     await page.waitForTimeout(2_000);
     const xssTriggered = await page.evaluate(() => window.__xssTriggered);
     expect(xssTriggered).toBeFalsy();

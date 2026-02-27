@@ -187,6 +187,7 @@ export default function Navbar() {
                 <div ref={notifRef} className="relative hidden md:block">
                   <button
                     onClick={() => setNotifOpen(v => !v)}
+                    aria-label="Notifications"
                     className="relative w-10 h-10 flex items-center justify-center rounded-xl text-navy-600 hover:bg-navy-50 hover:text-navy-900 transition-colors"
                   >
                     <Bell size={18} strokeWidth={1.8} />
@@ -333,6 +334,7 @@ export default function Navbar() {
             {/* Mobile menu toggle */}
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
+              aria-label="Toggle menu"
               className="md:hidden w-10 h-10 flex items-center justify-center rounded-xl text-navy-700 hover:bg-navy-50 transition-colors"
             >
               {mobileOpen ? <X size={20} /> : <Menu size={20} />}

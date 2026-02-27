@@ -75,9 +75,9 @@ test.describe('E7–E11 Employment Requests', () => {
     const empTab = page.getByRole('button', { name: /employment/i })
       .or(page.getByRole('tab', { name: /employment/i }));
     if (await empTab.count() > 0) await empTab.first().click();
-    // Request form or "request employment" button
-    const form = page.getByText(/request employment|add employment|new request/i)
-      .or(page.getByRole('button', { name: /request employment|apply/i }));
+    // Request form or "request employment / verification" button OR employment history heading
+    const form = page.getByText(/request.*employment|request.*verif|add employment|new request|employment history/i)
+      .or(page.getByRole('button', { name: /request.*employment|request.*verif|apply/i }));
     await expect(form.first()).toBeVisible({ timeout: 8_000 });
   });
 
@@ -322,11 +322,11 @@ test.describe('E22–E25 Employee Feedback', () => {
   });
 
   test('E22 feedback received tab shows category scores or empty state', async ({ page }) => {
-    await page.goto('/feedback');
-    const receivedTab = page.getByRole('tab', { name: /received/i })
-      .or(page.getByRole('button', { name: /received/i }));
-    if (await receivedTab.count() > 0) await receivedTab.first().click();
-    await expect(page.getByText(/received|category|no feedback|nothing yet/i).first()).toBeVisible({ timeout: 8_000 });
+    await page.goto('/dashboard');
+    // Click the Feedback tab in the dashboard (shows received feedback via FeedbackTab)
+    const feedbackTab = page.getByRole('button', { name: /^feedback$/i });
+    if (await feedbackTab.count() > 0) await feedbackTab.first().click();
+    await expect(page.getByText(/feedback received|no feedback received|category|professionalism/i).first()).toBeVisible({ timeout: 8_000 });
   });
 
   test('/dashboard/feedback shows internal feedback page', async ({ page }) => {

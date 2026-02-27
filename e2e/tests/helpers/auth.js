@@ -9,11 +9,11 @@ const E = process.env;
  */
 async function loginAs(page, email, password) {
   await page.goto('/login');
-  await page.getByLabel(/email/i).fill(email);
-  await page.getByLabel(/password/i).fill(password);
-  await page.getByRole('button', { name: /sign in|log in/i }).click();
+  await page.locator('input[type="email"]').fill(email);
+  await page.locator('input[type="password"]').fill(password);
+  await page.getByRole('button', { name: /sign in/i }).click();
   // Wait until we leave /login (redirect to dashboard / company-admin / admin)
-  await page.waitForURL(url => !url.includes('/login'), { timeout: 10_000 });
+  await page.waitForURL(url => !url.href.includes('/login'), { timeout: 10_000 });
 }
 
 async function loginAsEmployee(page) {

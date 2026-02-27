@@ -6,6 +6,11 @@ const supabase = require('../config/database');
 const { sendVerifyEmail, sendWelcomeEmail, sendResetPasswordEmail } = require('./emailService');
 
 const registerUser = async ({ email, password, role = 'employee', fullName, full_name, companyName }) => {
+  // Block self-registration as system_admin (S1)
+  if (role === 'system_admin') {
+    throw new AppError('Cannot register as system_admin', 403, 'FORBIDDEN_ROLE');
+  }
+
   // Accept both camelCase and snake_case for full name
   fullName = fullName || full_name;
   const { data: existingUser } = await supabase

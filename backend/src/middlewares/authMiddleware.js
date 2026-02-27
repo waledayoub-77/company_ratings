@@ -1,4 +1,5 @@
 const { verifyAccessToken } = require('../utils/jwt');
+const supabase = require('../config/database');
 
 const requireAuth = async (req, res, next) => {
   try {
@@ -13,6 +14,27 @@ const requireAuth = async (req, res, next) => {
 
     const token = authHeader.substring(7);
     const decoded = verifyAccessToken(token);
+
+    // Per-request suspension/deletion check (fixes A14 — no stale-token bypass)
+    const { data: dbUser } = await supabase
+      .from('users')
+      .select('is_active, is_deleted')
+      .eq('id', decoded.userId)
+      .maybeSingle();
+
+    if (!dbUser || dbUser.is_deleted) {
+      return res.status(401).json({
+        success: false,
+        error: { message: 'Account not found', code: 'USER_NOT_FOUND' },
+      });
+    }
+
+    if (!dbUser.is_active) {
+      return res.status(403).json({
+        success: false,
+        error: { message: 'Your account has been suspended', code: 'ACCOUNT_SUSPENDED' },
+      });
+    }
 
     req.user = decoded; // { userId, email, role }
     next();

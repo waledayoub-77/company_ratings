@@ -38,12 +38,8 @@ test.describe('S1 ⚠️ BUG — Prevent self-registering as system_admin', () =
       }
     }, API_URL);
     console.log(`S1: Register system_admin → status ${result.status}`);
-    // BUG: currently succeeds (200/201). Should be 400 or 403.
-    if (result.status >= 200 && result.status < 300) {
-      console.log('S1: ⚠️ BUG CONFIRMED — system_admin self-registration SUCCEEDS (should be blocked)');
-    }
-    // Document only; uncomment below when fixed:
-    // expect(result.status).toBeGreaterThanOrEqual(400);
+    // Fixed: backend now rejects system_admin self-registration with 403
+    expect(result.status).toBeGreaterThanOrEqual(400);
   });
 });
 

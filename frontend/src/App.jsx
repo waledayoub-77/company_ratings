@@ -16,6 +16,7 @@ import AdminPanel from './pages/AdminPanel.jsx'
 import WriteReviewPage from './pages/WriteReviewPage.jsx'
 import InternalFeedbackPage from './pages/InternalFeedbackPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
+import NotFoundPage from './pages/NotFoundPage.jsx'
 
 const ROLE_HOME = { employee: '/dashboard', company_admin: '/company-admin', system_admin: '/admin' }
 
@@ -74,6 +75,9 @@ function AppRoutes() {
           <Route path="/company-admin"       element={<RoleRoute role="company_admin"><CompanyAdminDashboard /></RoleRoute>} />
           <Route path="/admin"               element={<RoleRoute role="system_admin"><AdminPanel /></RoleRoute>} />
         </Route>
+
+        {/* 404 catch-all (G31) */}
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </AnimatePresence>
   )

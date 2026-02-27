@@ -19,8 +19,8 @@ const validateRegister = [
   
   body('role')
     .optional()
-    .isIn(['employee', 'company_admin', 'system_admin'])
-    .withMessage('Role must be employee, company_admin, or system_admin'),
+    .isIn(['employee', 'company_admin'])
+    .withMessage('Role must be employee or company_admin'),  // system_admin cannot self-register
   
   // Accept both camelCase (fullName) and snake_case (full_name)
   body('fullName')

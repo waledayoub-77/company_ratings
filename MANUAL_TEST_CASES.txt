@@ -1,0 +1,374 @@
+================================================================================
+  RATEHUB — MANUAL TEST CASES
+  Total: 183 tests across 9 areas
+  Credentials:
+    Employee       : alice@ratehub.com       / Test1234!
+    Company Admin  : tech.admin@ratehub.com  / Test1234!
+    System Admin   : admin@ratehub.com       / Test1234!
+================================================================================
+
+
+────────────────────────────────────────────────────────────────────────────────
+01 — PUBLIC PAGES
+────────────────────────────────────────────────────────────────────────────────
+
+[-- ] G1   Go to /  →  hero section is visible (heading, description, CTA button)
+[-- ] G1   Go to /  →  stats section is visible (numbers like users, reviews, companies)
+[ --] G1   Go to /  →  footer is visible at the bottom of the page
+[-- ] G2   Go to /  →  "Top Rated Companies" section shows real company cards from DB (not empty, not placeholder)
+[ --] G32  Go to /  →  navbar shows "Login" and "Register" links; NO profile dropdown
+[ --] G1   Go to /  →  click "Browse Companies" link  →  navigates to /companies
+
+[-- ] G3   Go to /companies  →  company cards load (at least one card visible)
+[ --] G4   Go to /companies  →  search box is present; type a query and wait 300ms  →  results filter
+[-- ] G4   Go to /companies  →  type "zzz_nomatch" in search  →  empty-state message appears
+[-- ] G5   Go to /companies  →  industry filter dropdown/select is present and clickable
+[not a dropdown why ? ] G6   Go to /companies  →  location filter dropdown/select is present and clickable
+[ --] G7   Go to /companies  →  sort dropdown is present; change sort option  →  list order changes
+[-- ] G8   Go to /companies  →  if more than one page of results, pagination controls appear
+[-- ] G9   Go to /companies  →  type nonsense (e.g. "xqzwvb123") in search  →  "no results" empty state
+
+[-- ] G10  Go to /companies  →  click on any company  →  profile page shows company name, rating, reviews section
+[-- ] G11  Go to /companies/invalid-uuid  →  page shows an error message or "not found", NOT a blank white screen
+[ --] G12  On a company profile that has reviews  →  review sort control (dropdown) is present
+[ --] G13  On a company profile (not logged in)  →  click "Report" on a review  →  sign-in prompt appears (not an error)
+
+[-- ] G29  Go to /dashboard (not logged in)  →  redirected to /login
+[-- ] G29  Go to /company-admin (not logged in)  →  redirected to /login
+[ --] G29  Go to /profile (not logged in)  →  redirected to /login
+[-- ] G30  Go to /admin (not logged in)  →  redirected to /login
+[-- ] G31  Go to /asdfghjkl (random unknown URL)  →  404 page is shown (not a blank white screen)
+
+
+────────────────────────────────────────────────────────────────────────────────
+02 — AUTHENTICATION
+────────────────────────────────────────────────────────────────────────────────
+
+REGISTER (/register)
+[ --] G14  Go to /register  →  heading, email input, password input are all visible
+[-- ] G14  Go to /register  →  select "Employee" role  →  first name and last name fields appear; company name field does NOT appear
+[-- ] G15  Go to /register  →  select "Company Admin" role  →  company name field appears
+[-- ] G16  Go to /register  →  select "Company Admin", fill email and password, leave company name EMPTY, submit  →  validation error appears
+[-- ] G17  Go to /register  →  register with alice@ratehub.com (existing email)  →  "already exists" / "email taken" error appears
+[ --] G18  Go to /register  →  check that "System Admin" is NOT an available role option in the UI  (it should not be selectable)
+[-- ] —    Go to /register  →  click submit with ALL fields empty  →  native browser validation or custom error appears
+[-- ] —    Go to /register  →  "Sign In" / "Already have an account" link is visible and navigates to /login
+
+LOGIN (/login)
+[-- ] G19  Go to /login  →  email input, password input, and "Sign In" button are visible
+[-- ] G19  Login as alice@ratehub.com / Test1234!  →  redirected to /dashboard
+[ loading analytics are stuck on loading analytics same to reviews and settings] G19  Login as tech.admin@ratehub.com / Test1234!  →  redirected to /company-admin
+[-- ] G19  Login as admin@ratehub.com / Test1234!  →  redirected to /admin
+[-- ] G21  Go to /login  →  enter wrong password  →  "Invalid email or password" error message appears
+[-- ] G20  Go to /login  →  login with an account that has NOT verified their email  →  "verify your email" error shown  (⚠️ may behave differently if no unverified test account exists)
+[-- ] G22  Go to /login  →  login with a suspended account  →  "suspended" / "account disabled" error shown  (requires a suspended test account in DB)
+[-- ] —    Go to /login  →  "Forgot password?" link is visible and navigates to /forgot-password
+[-- ] —    Go to /login  →  "Create one" / "Register" link is visible and navigates to /register
+[-- ] —    Login as employee  →  go to /login again  →  redirected away to /dashboard (already logged in)
+[ --] —    Login as company_admin  →  go to /login again  →  redirected away to /company-admin
+[-- ] —    Login as system_admin  →  go to /login again  →  redirected away to /admin
+[-- ] —    Login as employee  →  go to /register  →  redirected away to /dashboard (already logged in)
+[-- ] —    Login as company_admin  →  go to /register  →  redirected away to /company-admin
+[-- ] —    Login as system_admin  →  go to /register  →  redirected away to /admin
+
+FORGOT PASSWORD (/forgot-password)
+-[-- ] —    Go to /forgot-password  →  email input and submit button are visible
+[-- ] G23  Go to /forgot-password  →  "Back to login" link is visible and works
+[-- ] G23  Go to /forgot-password  →  enter alice@ratehub.com and submit  →  "Check your inbox" or "email sent" message appears
+[-- ] G23  Go to /forgot-password  →  enter unknown@nobody.com and submit  →  same "check your inbox" message (no "email not found" leak)
+
+RESET PASSWORD (/reset-password/:token)
+[i changed my password once so i enter a second time to the same reset password link and redirect me to reset password page it shouldnt + when i write invalid token it redirect me also to reset password ] G24  Go to /reset-password/invalidtoken123  →  error message shown, NOT a blank page
+[-- ] G25  Go to /reset-password/anytoken  →  password strength indicator is visible as you type
+
+VERIFY EMAIL (/verify-email/:token)
+[ --] G26  Go to /verify-email/<VALID_TOKEN_FROM_DB>  →  success message or redirect to login  (requires a real token from email_verification_tokens table)
+[-- ] G27  Go to /verify-email/fakeinvalidtoken999  →  error message shown (not a blank page)
+[-- ] G28  Go to /verify-email/fakeinvalidtoken999 twice  →  page renders without crashing (React StrictMode double-call)
+
+LOGOUT
+[ --] E4   Login as employee  →  click logout (profile dropdown → Logout)  →  redirected to /login; rh_access token cleared from localStorage
+
+
+────────────────────────────────────────────────────────────────────────────────
+03 — EMPLOYEE DASHBOARD
+────────────────────────────────────────────────────────────────────────────────
+
+DASHBOARD & NAVBAR
+[-- ] E1   Login as alice  →  automatically lands on /dashboard
+[ --] E2   On /dashboard  →  navbar shows "Companies" link; shows "Dashboard" or employee-specific links; does NOT show "Admin Panel" or "Company Admin"
+[ --] E3   On /dashboard  →  profile dropdown (top right) shows Alice's real name and email (not placeholder "JD" or "Jane Cooper")
+[ --] E5   On /dashboard  →  stats cards show real numbers (reviews written, rating given, etc.) — NOT all zeros (if alice has activity)
+[-- ] E6   On /dashboard  →  recent activity section shows entries sorted by date (newest first)
+[-- ] —    On /dashboard  →  a heading (e.g. "Dashboard") is visible
+
+EMPLOYMENT REQUESTS
+[ --] E7   On /dashboard  →  click "Employment" tab  →  "Request Verification" button OR "Employment History" section is visible
+[ --] E8   On /dashboard → Employment tab  →  company search/autocomplete input is present; type a company name  →  suggestions appear
+[-- ] E7   On /dashboard → Employment tab  →  fill in company and dates, submit employment request  →  success message or request appears in list
+[ --] E9   On /dashboard → Employment tab  →  submit another request at the SAME company while one is pending  →  duplicate error shown
+[ --] E10  On /dashboard → Employment tab  →  if a pending request exists, click "Cancel"  →  request removed from list
+[-- ] E11  On /dashboard → Employment tab  →  employment history table shows statuses: pending / approved / ended (whichever apply)
+[ no its not and still verified ] E35  On /dashboard → Employment tab  →  click "End Employment" on an approved employment  →  status changes to "ended"
+[-- ] E36  On /dashboard → Employment tab  →  after ending an employment, submit a new request at the same company  →  allowed (no duplicate error)
+
+REVIEWS
+[ --] E12  Go to /companies/:id/review for a company you are NOT verified at  →  "not a verified employee" message (cannot write review)
+[-- ] E13  Go to /companies/:id/review for a company you ARE verified at  →  review form is visible
+[ --] E14  On the review form  →  try to submit with 0 stars or very short text  →  validation error shown
+[-- ] E16  On the review form  →  submit a review for a company you ALREADY reviewed  →  duplicate error shown
+[-- ] E17  On /dashboard → Reviews tab  →  a recent review has an "Edit" button (review is within the edit window)
+[ it works but why using alert you should make a popup forit ] E20  On /dashboard → Reviews tab  →  click "Delete" on a review  →  review is removed from the list
+[-- ] E21  On /dashboard → Reviews tab  →  star ratings shown next to reviews display the correct star count (not always 0)  (⚠️ known visual bug may exist)
+note::!!!!!! : i can report my self when i submit a review check if this true !!!!!!!!!!!!!
+
+
+FEEDBACK
+[ --] E22  On /dashboard  →  click "Feedback" tab  →  category score cards OR "no feedback yet" empty state is visible
+[no coworkers found maybe this company dont have more than 1 employee ] —    Go to /dashboard/feedback  →  internal feedback page loads (send feedback to coworkers)
+[ --] E23  On /dashboard/feedback  →  select a coworker, fill in ratings/comment, submit  →  success message
+[-- ] E24  On /dashboard/feedback  →  submit feedback to the same coworker a second time in the same quarter  →  "quarterly limit" error shown
+[ ] E25  On /dashboard/feedback (received feedback list)  →  "Report" button is visible on feedback items
+
+note : i didnt get an email to tell me that someone gave me feedback 
+
+NOTIFICATIONS
+[ --] E31  On /dashboard  →  notification bell icon (🔔) is visible in the navbar
+[ --] E31  On /dashboard  →  click the notification bell  →  notifications dropdown/panel opens
+[-- ] E32  In the notifications panel  →  "Mark all as read" button works (unread count changes or items marked)
+
+ROLE REDIRECTS
+[-- ] E33  Login as employee  →  go to /admin  →  redirected away (to /dashboard, NOT /admin)
+[-- ] E34  Login as employee  →  go to /company-admin  →  redirected away (to /dashboard, NOT /company-admin)
+
+
+────────────────────────────────────────────────────────────────────────────────
+04 — COMPANY ADMIN DASHBOARD
+────────────────────────────────────────────────────────────────────────────────
+
+DASHBOARD & NAVBAR
+[ ] C1   Login as tech.admin@ratehub.com  →  automatically lands on /company-admin
+[ ] C2   On /company-admin  →  navbar shows "Companies" link and "Company Admin" link; does NOT show "Dashboard", "Feedback", or "Admin Panel"
+[ ] C3   On /company-admin  →  page shows REAL company name (not hardcoded "Stripe Dashboard" or similar placeholder)
+[ ] C4   If company_admin account has no associated company in DB  →  shows an error message, NOT an infinite loading spinner  (⚠️ may need a special account to test)
+
+ANALYTICS TAB
+[ ] C5   On /company-admin → Analytics tab  →  stat cards show real numbers (total reviews, avg rating, employees, etc.)
+[ ] C6   On /company-admin → Analytics tab  →  area chart or bar chart renders visually with data (not blank/empty chart)
+
+EMPLOYMENT REQUESTS TAB
+[ ] C7   On /company-admin → Requests tab  →  pending requests list OR empty state shown
+[ ] C8   On /company-admin → Requests tab  →  click "Approve" on a pending request  →  status changes to approved
+[ ] C9   On /company-admin → Requests tab  →  click "Reject" on a pending request  →  request is removed or marked rejected
+[ ] C10  On /company-admin → Requests tab  →  search field filters the list as you type
+
+REVIEWS TAB
+[ ] C11  On /company-admin → Reviews tab  →  reviews list OR "no reviews" empty state is shown
+[ ] C12  On /company-admin → Reviews tab  →  star ratings shown on reviews are correct (not all showing 0 stars)  (⚠️ known potential bug)
+
+TEAM FEEDBACK TAB
+[ ] C13  On /company-admin → Feedback tab  →  category averages (teamwork, communication, etc.) OR empty state shown
+
+SETTINGS TAB
+[ ] C14  On /company-admin → Settings tab  →  form fields are pre-filled with REAL company data (name, description, etc.)
+[ ] C15  On /company-admin → Settings tab  →  change company description, click Save  →  success message shown
+[ ] C16  On /company-admin → Settings tab  →  if save fails (e.g. network error)  →  user-facing error shown, NOT a silent failure  (⚠️ hard to test manually without dev tools)
+
+REVIEW ACCESS
+[ ] C17  Login as company_admin  →  go to /companies/:id/review  →  should be blocked / unable to write a review (company admins are not employees)  (⚠️ may be a known bug where form is accessible)
+
+PROFILE & ROLE REDIRECTS
+[ ] C18  Login as company_admin  →  go to /profile  →  profile page loads with real data
+[ ] C19  Login as company_admin  →  go to /admin  →  redirected to /company-admin (not /admin)
+[ ] C20  Login as company_admin  →  go to /dashboard  →  redirected to /company-admin (not /dashboard)
+[ ] C21  On a company profile page (/companies/:id)  →  verified employees section is visible
+
+
+────────────────────────────────────────────────────────────────────────────────
+05 — SYSTEM ADMIN PANEL
+────────────────────────────────────────────────────────────────────────────────
+
+PANEL & NAVBAR
+[ ] A1   Login as admin@ratehub.com  →  automatically lands on /admin
+[ ] A2   On /admin  →  navbar shows "Companies" and "Admin Panel"; does NOT show "Dashboard", "Feedback", or "Company Admin"
+[ ] A3   On /admin → Overview tab  →  real platform stats shown (total users, companies, reviews, reports)
+
+REPORTS TAB
+[ ] A4   On /admin → Reports tab  →  reports list OR "no reports" empty state shown
+[ ] A5   On /admin → Reports tab  →  click "Remove Review" on a report  →  report resolved, review removed
+[ ] A6   On /admin → Reports tab  →  click "Dismiss Report" on a report  →  report dismissed, review still visible
+
+COMPANIES TAB
+[ ] A7   On /admin → Companies tab  →  unverified companies list OR empty state shown
+[ ] A8   On /admin → Companies tab  →  click "Verify" on a company  →  status changes to approved/verified
+[ ] A9   On /admin → Companies tab  →  click "Reject" on a company  →  company removed or status changes to rejected
+
+USERS TAB
+[ ] A10  On /admin → Users tab  →  user list is shown with real users
+[ ] A11  On /admin → Users tab  →  type an email in the search box  →  list filters to matching users
+[ ] A12  On /admin → Users tab  →  click "Suspend" on a user  →  user status changes to suspended
+[ ] A13  On /admin → Users tab  →  click "Unsuspend" / "Restore" on a suspended user  →  user reactivated
+[ ] A14  Suspend a user  →  while their session is active, try to access a protected API  →  should get 403 "Account Suspended" (now fixed — per-request check)
+[ ] A15  On /admin → Users tab  →  click "Delete" on a user  →  user removed from list
+[ ] A16  On /admin → Users tab  →  select multiple users with checkboxes, click bulk "Suspend"  →  all selected users suspended
+[ ] A17  On /admin → Users tab  →  trigger a delete/action error  →  error shown inline on page (NOT a browser alert() popup)  (⚠️ hard to force manually)
+
+AUDIT LOGS TAB
+[ ] A18  On /admin → Audit Logs tab  →  log entries shown with columns: action, admin who did it, date
+[ ] A19  On /admin → Audit Logs tab or Users tab  →  admin can manually override/approve any employment request
+
+ROLE REDIRECTS
+[ ] A20  Login as system_admin  →  go to /dashboard  →  redirected to /admin
+[ ] A21  Login as system_admin  →  go to /company-admin  →  redirected to /admin
+
+
+────────────────────────────────────────────────────────────────────────────────
+06 — PROFILE PAGE (/profile)
+────────────────────────────────────────────────────────────────────────────────
+
+VIEW & EDIT
+[ ] E26  Login as alice  →  go to /profile  →  real name (Alice's name) and email shown (NOT "Jane Cooper" or placeholder)
+[ ] E27  On /profile  →  click "Edit" button  →  full name input appears; change the name, click "Save Changes"  →  name updated
+[ ] E27  On /profile  →  click "Edit" button  →  bio field appears; update bio, save  →  bio updated
+[ ] E27  On /profile  →  click "Edit" button  →  job title / current position field appears; update it, save  →  position updated
+
+CHANGE PASSWORD
+[ ] E28  On /profile  →  change password section is visible (current/new/confirm fields)
+[ ] E28  On /profile  →  enter wrong current password, submit  →  "incorrect password" error shown
+[ ] E28  On /profile  →  enter new password and a DIFFERENT confirm password, submit  →  "passwords don't match" error shown
+
+ACCOUNT ACTIONS
+[ ] E29  On /profile  →  "Deactivate Account" button is visible; click it  →  confirmation dialog shown (does NOT immediately deactivate)
+[ ] E30  On /profile  →  "Delete Account" button is visible; click it  →  confirmation dialog shown (does NOT immediately delete)
+
+ALL ROLES
+[ ] —    Login as tech.admin@ratehub.com  →  go to /profile  →  profile shows real company admin data (not placeholder)
+[ ] —    Login as admin@ratehub.com  →  go to /profile  →  profile shows real system admin data (not placeholder)
+
+
+────────────────────────────────────────────────────────────────────────────────
+07 — ROUTE GUARDS
+────────────────────────────────────────────────────────────────────────────────
+
+UNAUTHENTICATED → always redirected to /login
+[ ] —    /dashboard   (not logged in)  →  /login
+[ ] —    /company-admin  (not logged in)  →  /login
+[ ] —    /admin  (not logged in)  →  /login
+[ ] —    /profile  (not logged in)  →  /login
+[ ] —    /companies/:id/review  (not logged in)  →  /login
+
+WRONG ROLE REDIRECTS
+[ ] E33  Employee on /admin  →  redirected (should NOT be on /admin)
+[ ] E34  Employee on /company-admin  →  redirected (should NOT be on /company-admin)
+[ ] C19  Company Admin on /admin  →  redirected to /company-admin
+[ ] C20  Company Admin on /dashboard  →  redirected to /company-admin
+[ ] A20  System Admin on /dashboard  →  redirected to /admin
+[ ] A21  System Admin on /company-admin  →  redirected to /admin
+
+ALREADY LOGGED IN → redirected away from auth pages
+[ ] —    Employee on /login  →  redirected to /dashboard
+[ ] —    Employee on /register  →  redirected to /dashboard
+[ ] —    Company Admin on /login  →  redirected to /company-admin
+[ ] —    Company Admin on /register  →  redirected to /company-admin
+[ ] —    System Admin on /login  →  redirected to /admin
+[ ] —    System Admin on /register  →  redirected to /admin
+
+
+────────────────────────────────────────────────────────────────────────────────
+08 — SECURITY
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] S1   POST /api/auth/register with body { role: "system_admin", ... }  →  should return 400 or 403 (FIXED — backend now blocks it)
+         (To test: open DevTools → Network, or use curl/Postman)
+         curl -X POST http://localhost:5000/api/auth/register \
+           -H "Content-Type: application/json" \
+           -d '{"email":"hack@test.com","password":"Test1234!","role":"system_admin","firstName":"A","lastName":"B"}'
+         Expected: HTTP 400 or 403
+
+[ ] S2   Login as employee  →  call GET /api/admin/users with that token  →  403 returned
+         curl -H "Authorization: Bearer <EMPLOYEE_TOKEN>" http://localhost:5000/api/admin/users
+         Expected: 403
+
+[ ] S2   Login as employee  →  call GET /api/admin/analytics with that token  →  403 returned
+
+[ ] S3   Login as company_admin  →  call GET /api/admin/analytics with that token  →  403 returned
+[ ] S3   Login as company_admin  →  call GET /api/admin/users with that token  →  403 returned
+
+[ ] S4   Login as company_admin  →  PATCH /api/companies/<OTHER_COMPANY_ID> with that token  →  403 or 404
+[ ] S5   Login as company_admin  →  DELETE /api/companies/<OTHER_COMPANY_ID> with that token  →  403 or 404
+[ ] S6   Login as company_admin  →  PATCH /api/employments/<OTHER_EMPLOYMENT_ID>/approve  →  403 or 404
+
+[ ] S7   Login as employee  →  open DevTools → Application → localStorage  →  key "rh_access" exists with a JWT value
+[ ] S7   Login as employee  →  press F5 to hard refresh  →  still on /dashboard (session persists via token rehydration)
+[ ] S8   Login as employee  →  in DevTools console: localStorage.removeItem('rh_user'); localStorage.removeItem('rh_access'); localStorage.removeItem('rh_refresh')  →  navigate to /dashboard  →  redirected to /login
+
+[ ] S9   Login as employee  →  go to write a review  →  paste <script>alert("XSS")</script> in the review text field  →  submit  →  NO alert() popup fires
+[ ] S10  Go to /register as company_admin  →  enter <script>alert("XSS")</script> as company name  →  submit  →  NO alert() popup fires
+
+[ ] S11  Send 15 rapid POST requests to /api/auth/login with wrong credentials  →  after ~5 attempts, should receive HTTP 429  (⚠️ rate limiting is disabled in development mode — will NOT trigger in dev)
+         for i in $(seq 1 15); do curl -s -o /dev/null -w "%{http_code}\n" -X POST http://localhost:5000/api/auth/login -H "Content-Type: application/json" -d '{"email":"test@test.com","password":"wrong"}'; done
+
+
+────────────────────────────────────────────────────────────────────────────────
+09 — CROSS-ROLE & EDGE CASES
+────────────────────────────────────────────────────────────────────────────────
+
+SESSION REHYDRATION
+[ ] X1   Login as employee  →  close tab  →  open /dashboard in a new tab  →  still logged in (not redirected to /login)
+[ ] X1   Login as company_admin  →  press F5  →  stays on /company-admin
+[ ] X1   Login as system_admin  →  press F5  →  stays on /admin
+
+LOGOUT EFFECTS
+[ ] X2   Login as employee in Tab A  →  logout in Tab A  →  in Tab B (or after navigating)  →  protected routes redirect to /login
+
+EMPTY STATES
+[ ] X3   Find a company with 0 reviews  →  company profile page shows "No reviews yet" (no crash, no blank section)
+[ ] X4   Find a company with 0 verified employees  →  employees section shows "no employees" gracefully (no crash)
+
+MOBILE RESPONSIVE
+[ ] X5   Resize browser to 375×667 (mobile)  →  go to /  →  layout adapts (no horizontal scroll, readable)
+[ ] X5   Resize to mobile  →  go to /companies  →  company cards stack vertically and are readable
+[ ] X5   Resize to mobile  →  go to /companies  →  hamburger (☰) menu button is visible in the navbar
+[ ] X5   Resize to mobile  →  login as employee  →  go to /dashboard  →  dashboard renders without crash or overflow
+
+LOADING STATES
+[ ] X6   Go to /companies  →  briefly (may require throttling network in DevTools)  →  skeleton/loading placeholder visible before cards appear
+
+END EMPLOYMENT FLOW
+[ ] X7   Login as employee with an approved employment  →  end the employment  →  the "Edit review" button on that company's review is gone / review editing is blocked
+[ ] X8   Login as employee  →  end employment at a company  →  submit a new employment request at the same company  →  allowed (no "already employed" error)
+
+
+────────────────────────────────────────────────────────────────────────────────
+SUMMARY
+────────────────────────────────────────────────────────────────────────────────
+
+Total test cases:  183
+
+Automated result (as of last run):
+  ✅  142 passed
+  ⏭️   41 skipped  (need seed data: companies with reviews, suspended account,
+                    verify token, or specific employment states)
+  ❌    0 failed
+  Exit code: 0
+
+Skipped tests require:
+  - G10/G12/G13  → a company with at least 1 existing review in DB
+  - G22          → a pre-suspended test account (add SUSPENDED_EMAIL + SUSPENDED_PASSWORD to e2e/.env)
+  - G26          → a real verify token (grab from email_verification_tokens table in Supabase)
+  - Some E-tests → alice must have approved employment at a specific company
+
+Bugs fixed so far:
+  ✅  S1  — system_admin self-registration now blocked (403)
+  ✅  A14 — suspended users now blocked per-request (not just at token refresh)
+  ✅  G31 — unknown URLs now show 404 page (NotFoundPage catch-all route added)
+  ✅  G17 — duplicate email 409 response correct; UI shows the error message
+
+Remaining known issues (not yet fixed):
+  ⚠️  G17  — UI may not always surface the duplicate-email error visually (Supabase email_verified state)
+  ⚠️  S11  — Rate limiting intentionally disabled in NODE_ENV=development
+  ⚠️  C4   — company_admin with no company shows infinite loader
+  ⚠️  C12/E21 — star ratings may display as 0 in some tab views
+  ⚠️  C16  — offline/network-error save may fail silently
+  ⚠️  C17  — company_admin can access write-review form (should be blocked)
+================================================================================

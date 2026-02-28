@@ -703,6 +703,9 @@ function EmploymentTab({ employments, refetch }) {
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge variant={config.badge}>{config.label}</Badge>
+                          {(emp.verification_status ?? emp.status) === 'approved' && emp.is_current === false && (
+                            <Badge variant="danger">Ended</Badge>
+                          )}
                           {(emp.verification_status ?? emp.status) === 'approved' && emp.is_current && (
                             <button
                               onClick={() => {
@@ -739,6 +742,12 @@ function EmploymentTab({ employments, refetch }) {
                           <span className="flex items-center gap-1 text-emerald-600">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                             Current
+                          </span>
+                        )}
+                        {!emp.is_current && (emp.verification_status ?? emp.status) === 'approved' && (
+                          <span className="flex items-center gap-1 text-red-500">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                            Ended
                           </span>
                         )}
                       </div>
@@ -858,6 +867,7 @@ function ReviewsTab({ reviews, employments = [], refetch }) {
   const [editText, setEditText] = useState('')
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null)
   const [error, setError] = useState('')
 
   const handleEditStart = (review) => {
@@ -882,10 +892,10 @@ function ReviewsTab({ reviews, employments = [], refetch }) {
   }
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this review?')) return
     setDeleting(id)
     try {
       await deleteReview(id)
+      setConfirmDeleteId(null)
       await refetch()
     } catch (err) {
       setError(err?.message ?? 'Failed to delete review.')
@@ -1000,7 +1010,7 @@ function ReviewsTab({ reviews, employments = [], refetch }) {
                         </button>
                       )}
                       <button
-                        onClick={() => handleDelete(review.id)}
+                        onClick={() => setConfirmDeleteId(confirmDeleteId === review.id ? null : review.id)}
                         disabled={deleting === review.id}
                         className="flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-700 transition-colors disabled:opacity-50"
                       >
@@ -1009,6 +1019,22 @@ function ReviewsTab({ reviews, employments = [], refetch }) {
                       </button>
                     </div>
                   </div>
+                  {/* Inline delete confirmation */}
+                  {confirmDeleteId === review.id && (
+                    <div className="mt-3 bg-red-50 border border-red-200 rounded-xl p-3 flex items-center justify-between">
+                      <p className="text-xs text-red-700">Are you sure you want to delete this review?</p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleDelete(review.id)}
+                          disabled={deleting === review.id}
+                          className="h-7 px-3 bg-red-600 text-white text-[11px] font-medium rounded-md hover:bg-red-700 disabled:opacity-50"
+                        >
+                          {deleting === review.id ? 'Deleting…' : 'Yes, Delete'}
+                        </button>
+                        <button onClick={() => setConfirmDeleteId(null)} className="h-7 px-3 text-[11px] text-navy-500 hover:text-navy-700">Cancel</button>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </div>

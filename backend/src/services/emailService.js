@@ -133,6 +133,18 @@ function reportResolutionTemplate(decision) {
   `;
 }
 
+function feedbackReceivedTemplate(recipientName, senderName, companyName) {
+  return `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px;">
+      <h2 style="color:#4f46e5;">New Peer Feedback 💬</h2>
+      <p>Hi <strong>${recipientName}</strong>,</p>
+      <p>You have received new peer feedback from <strong>${senderName || 'a colleague'}</strong> at <strong>${companyName}</strong>.</p>
+      <p>Log in to your RateHub dashboard to view the full feedback.</p>
+      <p style="color:#888;font-size:13px;">— The RateHub Team</p>
+    </div>
+  `;
+}
+
 // ─── SEND FUNCTIONS ───────────────────────────────────────────────────────────
 
 async function sendWelcomeEmail({ to, name }) {
@@ -219,6 +231,14 @@ async function sendReportResolutionEmail({ to, decision }) {
   });
 }
 
+async function sendFeedbackReceivedEmail({ to, recipientName, senderName, companyName }) {
+  return sendEmail({
+    to,
+    subject: 'You received new peer feedback — RateHub',
+    html: feedbackReceivedTemplate(recipientName, senderName, companyName),
+  });
+}
+
 module.exports = {
   sendWelcomeEmail,
   sendVerifyEmail,
@@ -230,4 +250,5 @@ module.exports = {
   sendAccountUnsuspendedEmail,
   sendAccountDeletedEmail,
   sendReportResolutionEmail,
+  sendFeedbackReceivedEmail,
 };

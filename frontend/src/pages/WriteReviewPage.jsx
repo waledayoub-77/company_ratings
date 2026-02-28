@@ -21,6 +21,12 @@ export default function WriteReviewPage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
+    if (user?.role === 'company_admin' || user?.role === 'system_admin') {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [user, navigate])
+
+  useEffect(() => {
     getCompanyById(id)
       .then(res => setCompanyName(res?.data?.name ?? res?.name ?? ''))
       .catch(() => {})

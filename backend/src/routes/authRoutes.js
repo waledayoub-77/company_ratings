@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, refresh, logout, getMe, updateMe, verifyEmail, forgotPassword, resetPassword, changePassword, deactivateAccount, deleteAccount } = require('../controllers/authController');
+const { register, login, refresh, logout, getMe, updateMe, verifyEmail, forgotPassword, resetPassword, changePassword, deactivateAccount, deleteAccount, validateResetToken } = require('../controllers/authController');
 const { validateRegister, validateLogin } = require('../utils/validators');
 const { validate } = require('../middlewares/validateMiddleware');
 const { authLimiter } = require('../middlewares/rateLimiter');
@@ -13,6 +13,7 @@ router.post('/refresh-token', authLimiter, refresh);
 router.get('/verify-email/:token', verifyEmail);
 router.post('/forgot-password', authLimiter, forgotPassword);
 router.post('/reset-password/:token', resetPassword);
+router.get('/reset-password/:token/validate', validateResetToken);
 
 // Protected routes
 router.post('/logout', requireAuth, logout);

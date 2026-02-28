@@ -121,12 +121,13 @@ const loginUser = async ({ email, password }) => {
     fullName = emp?.full_name || fullName;
   } else if (user.role === 'company_admin') {
     const { data: company } = await supabase
-      .from('companies').select('name').eq('user_id', user.id).is('deleted_at', null).maybeSingle();
+      .from('companies').select('id, name').eq('user_id', user.id).is('deleted_at', null).maybeSingle();
     fullName = company?.name || fullName;
+    var companyId = company?.id || null;
   }
 
   return {
-    user: { id: user.id, email: user.email, role: user.role, fullName, emailVerified: user.email_verified },
+    user: { id: user.id, email: user.email, role: user.role, fullName, emailVerified: user.email_verified, ...(companyId ? { companyId } : {}) },
     access_token: accessToken,
     refresh_token: refreshToken,
     accessToken,
@@ -218,11 +219,12 @@ const getMe = async (userId) => {
   } else if (user.role === 'company_admin') {
     const { data: company } = await supabase
       .from('companies')
-      .select('name')
+      .select('id, name')
       .eq('user_id', userId)
       .is('deleted_at', null)
       .maybeSingle();
     fullName = company?.name || fullName;
+    var companyId = company?.id || null;
   }
   // system_admin: fullName comes from users.full_name (set above)
 
@@ -232,6 +234,7 @@ const getMe = async (userId) => {
     role: user.role,
     fullName,
     employeeId,
+    ...(companyId ? { companyId } : {}),
     emailVerified: user.email_verified,
     isActive: user.is_active,
     createdAt: user.created_at,
@@ -399,6 +402,20 @@ const changePassword = async (userId, { currentPassword, newPassword }) => {
     .eq('user_id', userId);
 };
 
-module.exports = { registerUser, loginUser, refreshToken, logout, getMe, updateMe, verifyEmail, forgotPassword, resetPassword, changePassword };
+module.exports = { registerUser, loginUser, refreshToken, logout, getMe, updateMe, verifyEmail, forgotPassword, resetPassword, changePassword, validateResetToken };
+
+// ─── VALIDATE RESET TOKEN ─────────────────────────────────────────────────────
+async function validateResetToken(token) {
+  const { data: record } = await supabase
+    .from('password_reset_tokens')
+    .select('id, used_at, expires_at')
+    .eq('token', token)
+    .maybeSingle();
+
+  if (!record) return { valid: false, reason: 'Invalid reset link.' };
+  if (record.used_at) return { valid: false, reason: 'This reset link has already been used.' };
+  if (new Date(record.expires_at) < new Date()) return { valid: false, reason: 'This reset link has expired.' };
+  return { valid: true };
+}
 
 //baraa

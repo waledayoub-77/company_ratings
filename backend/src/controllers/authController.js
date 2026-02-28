@@ -168,6 +168,15 @@ const deleteAccount = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, refresh, logout, getMe, updateMe, verifyEmail, forgotPassword, resetPassword, changePassword, deactivateAccount, deleteAccount };
+const validateResetToken = async (req, res, next) => {
+  try {
+    const result = await authService.validateResetToken(req.params.token);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { register, login, refresh, logout, getMe, updateMe, verifyEmail, forgotPassword, resetPassword, changePassword, deactivateAccount, deleteAccount, validateResetToken };
 
 //baraa

@@ -49,6 +49,11 @@ export async function apiResetPassword(token, password) {
   })
 }
 
+/** GET /auth/reset-password/:token/validate */
+export async function apiValidateResetToken(token) {
+  return request(`/auth/reset-password/${token}/validate`)
+}
+
 // ─── Protected (auth required) ───────────────────────────────────────────────
 
 /** POST /auth/logout */

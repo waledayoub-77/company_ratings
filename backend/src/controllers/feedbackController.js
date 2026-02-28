@@ -1,5 +1,6 @@
 const feedbackService = require("../services/feedbackService");
 const { createNotification } = require('../services/notificationService');
+const { sendFeedbackReceivedEmail } = require('../services/emailService');
 const supabase = require('../config/database');
 
 // UUID validation helper — accepts any UUID version (v1–v5), not just v4
@@ -183,7 +184,7 @@ exports.createFeedback = async (req, res) => {
         .single();
       const { data: ratedEmp } = await supabase
         .from('employees')
-        .select('user_id')
+        .select('user_id, full_name')
         .eq('id', ratedEmployeeId)
         .single();
       if (ratedEmp?.user_id) {
@@ -194,6 +195,17 @@ exports.createFeedback = async (req, res) => {
           message: `${reviewerEmp?.full_name || 'A coworker'} submitted feedback for you (Q${quarter} ${year}).`,
           link: '/profile',
         });
+        // Send email notification (non-blocking)
+        const { data: ratedUser } = await supabase.from('users').select('email').eq('id', ratedEmp.user_id).maybeSingle();
+        if (ratedUser?.email) {
+          const { data: companyRow } = await supabase.from('companies').select('name').eq('id', companyId).maybeSingle();
+          sendFeedbackReceivedEmail({
+            to: ratedUser.email,
+            recipientName: ratedEmp.full_name || 'Employee',
+            senderName: reviewerEmp?.full_name || 'A coworker',
+            companyName: companyRow?.name || 'your company',
+          }).catch(emailErr => console.error('Feedback email failed (non-fatal):', emailErr.message));
+        }
       }
     } catch (_) {}
 

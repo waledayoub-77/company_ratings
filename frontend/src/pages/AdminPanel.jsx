@@ -32,6 +32,8 @@ import {
   unsuspendUser,
   deleteUser,
   getAuditLogs,
+  bulkSuspendUsers,
+  rejectCompany,
 } from '../api/admin.js'
 
 /* ─── Helpers ─── */
@@ -267,7 +269,7 @@ function ReportsTab() {
 
             <div className="flex items-center gap-2 pt-3 border-t border-navy-50">
               <button
-                onClick={() => handleAction(report.id, 'remove')}
+                onClick={() => handleAction(report.id, 'resolved')}
                 disabled={working === report.id}
                 className="h-9 px-4 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors flex items-center gap-1.5 disabled:opacity-50"
               >
@@ -275,7 +277,7 @@ function ReportsTab() {
                 Remove Review
               </button>
               <button
-                onClick={() => handleAction(report.id, 'dismiss')}
+                onClick={() => handleAction(report.id, 'dismissed')}
                 disabled={working === report.id}
                 className="h-9 px-4 border border-navy-200 text-navy-600 text-xs font-medium rounded-lg hover:bg-navy-50 transition-colors flex items-center gap-1.5 disabled:opacity-50"
               >
@@ -315,6 +317,19 @@ function CompaniesTab() {
       setCompanies(prev => prev.map(c => c.id === id ? { ...c, is_verified: true } : c))
     } catch (e) {
       alert(e?.message || 'Verification failed')
+    } finally {
+      setWorking(null)
+    }
+  }
+
+  const handleReject = async (id) => {
+    if (!window.confirm('Reject (un-verify) this company?')) return
+    setWorking(id)
+    try {
+      await rejectCompany(id)
+      setCompanies(prev => prev.map(c => c.id === id ? { ...c, is_verified: false } : c))
+    } catch (e) {
+      alert(e?.message || 'Rejection failed')
     } finally {
       setWorking(null)
     }
@@ -373,19 +388,24 @@ function CompaniesTab() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="text-xs text-navy-300">{new Date(company.created_at).toLocaleDateString()}</span>
-                    {!company.is_verified && (
-                      <button
-                        onClick={() => handleVerify(company.id)}
-                        disabled={working === company.id}
-                        className="h-8 px-3 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-1.5 disabled:opacity-50"
-                      >
-                        {working === company.id
-                          ? <Loader2 size={12} className="animate-spin" />
-                          : <BadgeCheck size={13} />
-                        }
-                        Verify
-                      </button>
-                    )}
+                    {working === company.id
+                      ? <Loader2 size={14} className="animate-spin text-navy-400" />
+                      : !company.is_verified ? (
+                        <button
+                          onClick={() => handleVerify(company.id)}
+                          className="h-8 px-3 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-1.5"
+                        >
+                          <BadgeCheck size={13} /> Verify
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleReject(company.id)}
+                          className="h-8 px-3 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors flex items-center gap-1.5"
+                        >
+                          <Ban size={13} /> Reject
+                        </button>
+                      )
+                    }
                   </div>
                 </div>
               </div>
@@ -403,6 +423,12 @@ function UsersTab() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch]   = useState('')
   const [working, setWorking] = useState(null)
+  const [suspendTarget, setSuspendTarget] = useState(null) // user id being suspended
+  const [suspendReason, setSuspendReason] = useState('')
+  const [selectedIds, setSelectedIds] = useState(new Set())
+  const [bulkReason, setBulkReason] = useState('')
+  const [showBulk, setShowBulk] = useState(false)
+  const [bulkWorking, setBulkWorking] = useState(false)
 
   const load = useCallback((q = '') => {
     setLoading(true)
@@ -419,11 +445,23 @@ function UsersTab() {
     return () => clearTimeout(t)
   }, [search, load])
 
-  const handleSuspend = async (id, isActive) => {
+  const handleSuspend = async (id) => {
+    if (!suspendReason.trim()) return
     setWorking(id)
     try {
-      if (isActive) { await suspendUser(id) } else { await unsuspendUser(id) }
-      setUsers(prev => prev.map(u => u.id === id ? { ...u, is_active: !isActive } : u))
+      await suspendUser(id, { reason: suspendReason.trim() })
+      setUsers(prev => prev.map(u => u.id === id ? { ...u, is_active: false } : u))
+      setSuspendTarget(null)
+      setSuspendReason('')
+    } catch (e) { alert(e?.message || 'Action failed') }
+    finally { setWorking(null) }
+  }
+
+  const handleUnsuspend = async (id) => {
+    setWorking(id)
+    try {
+      await unsuspendUser(id)
+      setUsers(prev => prev.map(u => u.id === id ? { ...u, is_active: true } : u))
     } catch (e) { alert(e?.message || 'Action failed') }
     finally { setWorking(null) }
   }
@@ -438,21 +476,73 @@ function UsersTab() {
     finally { setWorking(null) }
   }
 
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  const handleBulkSuspend = async () => {
+    if (!bulkReason.trim() || selectedIds.size === 0) return
+    setBulkWorking(true)
+    try {
+      await bulkSuspendUsers([...selectedIds])
+      setUsers(prev => prev.map(u => selectedIds.has(u.id) ? { ...u, is_active: false } : u))
+      setSelectedIds(new Set())
+      setShowBulk(false)
+      setBulkReason('')
+    } catch (e) { alert(e?.message || 'Bulk suspend failed') }
+    finally { setBulkWorking(false) }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <h2 className="text-lg font-semibold text-navy-900">User Management</h2>
-        <div className="relative w-64">
-          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-navy-400" />
-          <input
-            type="text"
-            placeholder="Search by name or email…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full h-10 rounded-xl border border-navy-200 bg-white pl-10 pr-4 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
-          />
+        <div className="flex items-center gap-2">
+          {selectedIds.size > 0 && (
+            <button
+              onClick={() => setShowBulk(!showBulk)}
+              className="h-10 px-4 bg-amber-600 text-white text-xs font-medium rounded-xl hover:bg-amber-700 transition-colors flex items-center gap-1.5"
+            >
+              <Ban size={13} />
+              Suspend {selectedIds.size} Selected
+            </button>
+          )}
+          <div className="relative w-64">
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-navy-400" />
+            <input
+              type="text"
+              placeholder="Search by name or email…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full h-10 rounded-xl border border-navy-200 bg-white pl-10 pr-4 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
+            />
+          </div>
         </div>
       </div>
+
+      {/* Bulk suspend reason panel */}
+      {showBulk && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
+          <p className="text-sm font-semibold text-amber-800">Bulk suspend {selectedIds.size} user(s)</p>
+          <input
+            type="text"
+            placeholder="Reason for suspension (required)"
+            value={bulkReason}
+            onChange={e => setBulkReason(e.target.value)}
+            className="w-full h-9 rounded-lg border border-amber-300 bg-white px-3 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+          />
+          <div className="flex gap-2">
+            <button onClick={handleBulkSuspend} disabled={!bulkReason.trim() || bulkWorking} className="h-8 px-4 bg-amber-600 text-white text-xs font-medium rounded-lg hover:bg-amber-700 disabled:opacity-50">
+              {bulkWorking ? 'Suspending…' : 'Confirm Bulk Suspend'}
+            </button>
+            <button onClick={() => { setShowBulk(false); setBulkReason('') }} className="h-8 px-4 text-xs text-navy-500 hover:text-navy-700">Cancel</button>
+          </div>
+        </div>
+      )}
 
       {loading ? <Spinner /> : (
         <div className="bg-white rounded-2xl border border-navy-100/50 overflow-hidden">
@@ -463,6 +553,17 @@ function UsersTab() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-navy-100/50">
+                    <th className="text-left px-4 py-4 w-10">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.size === users.filter(u => u.is_active && u.role !== 'system_admin').length && selectedIds.size > 0}
+                        onChange={e => {
+                          if (e.target.checked) setSelectedIds(new Set(users.filter(u => u.is_active && u.role !== 'system_admin').map(u => u.id)))
+                          else setSelectedIds(new Set())
+                        }}
+                        className="w-4 h-4 rounded border-navy-300 text-navy-600 focus:ring-navy-500/30"
+                      />
+                    </th>
                     <th className="text-left text-xs font-semibold text-navy-400 uppercase tracking-wider px-6 py-4">User</th>
                     <th className="text-left text-xs font-semibold text-navy-400 uppercase tracking-wider px-6 py-4">Role</th>
                     <th className="text-left text-xs font-semibold text-navy-400 uppercase tracking-wider px-6 py-4">Status</th>
@@ -473,13 +574,24 @@ function UsersTab() {
                 <tbody>
                   {users.map(u => (
                     <tr key={u.id} className="border-b border-navy-50 last:border-0 hover:bg-navy-50/30 transition-colors">
+                      <td className="px-4 py-4">
+                        {u.role !== 'system_admin' && u.is_active && (
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(u.id)}
+                            onChange={() => toggleSelect(u.id)}
+                            className="w-4 h-4 rounded border-navy-300 text-navy-600 focus:ring-navy-500/30"
+                          />
+                        )}
+                      </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-navy-400 to-navy-600 flex items-center justify-center shrink-0">
-                            <span className="text-white text-xs font-semibold">{u.email?.[0]?.toUpperCase() ?? '?'}</span>
+                            <span className="text-white text-xs font-semibold">{(u.full_name || u.email)?.[0]?.toUpperCase() ?? '?'}</span>
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-navy-900 truncate max-w-[180px]">{u.email}</p>
+                            {u.full_name && <p className="text-sm font-semibold text-navy-900 truncate max-w-[180px]">{u.full_name}</p>}
+                            <p className={`text-sm ${u.full_name ? 'text-navy-400 text-xs' : 'font-medium text-navy-900'} truncate max-w-[180px]`}>{u.email}</p>
                             {!u.email_verified && <p className="text-[10px] text-amber-500">Email unverified</p>}
                           </div>
                         </div>
@@ -501,15 +613,23 @@ function UsersTab() {
                             ? <Loader2 size={14} className="animate-spin text-navy-400" />
                             : (
                               <>
-                                <button
-                                  onClick={() => handleSuspend(u.id, u.is_active)}
-                                  title={u.is_active ? 'Suspend' : 'Unsuspend'}
-                                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                                    u.is_active ? 'text-navy-400 hover:bg-amber-50 hover:text-amber-600' : 'text-navy-400 hover:bg-emerald-50 hover:text-emerald-600'
-                                  }`}
-                                >
-                                  {u.is_active ? <Ban size={14} /> : <CheckCircle2 size={14} />}
-                                </button>
+                                {u.is_active ? (
+                                  <button
+                                    onClick={() => { setSuspendTarget(suspendTarget === u.id ? null : u.id); setSuspendReason('') }}
+                                    title="Suspend"
+                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-navy-400 hover:bg-amber-50 hover:text-amber-600 transition-colors"
+                                  >
+                                    <Ban size={14} />
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handleUnsuspend(u.id)}
+                                    title="Unsuspend"
+                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-navy-400 hover:bg-emerald-50 hover:text-emerald-600 transition-colors"
+                                  >
+                                    <CheckCircle2 size={14} />
+                                  </button>
+                                )}
                                 <button
                                   onClick={() => handleDelete(u.id)}
                                   className="w-8 h-8 rounded-lg flex items-center justify-center text-navy-400 hover:bg-red-50 hover:text-red-600 transition-colors"
@@ -519,6 +639,28 @@ function UsersTab() {
                               </>
                             )}
                         </div>
+                        {/* Inline suspend reason input */}
+                        {suspendTarget === u.id && (
+                          <div className="mt-2 text-left space-y-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                            <input
+                              type="text"
+                              placeholder="Reason for suspension"
+                              value={suspendReason}
+                              onChange={e => setSuspendReason(e.target.value)}
+                              className="w-full h-8 rounded-lg border border-amber-300 bg-white px-2 text-xs placeholder:text-navy-300 focus:outline-none"
+                            />
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => handleSuspend(u.id)}
+                                disabled={!suspendReason.trim()}
+                                className="h-7 px-3 bg-amber-600 text-white text-[11px] font-medium rounded-md hover:bg-amber-700 disabled:opacity-50"
+                              >
+                                Confirm
+                              </button>
+                              <button onClick={() => { setSuspendTarget(null); setSuspendReason('') }} className="h-7 px-3 text-[11px] text-navy-500 hover:text-navy-700">Cancel</button>
+                            </div>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}

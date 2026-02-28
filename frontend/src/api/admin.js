@@ -111,6 +111,13 @@ export async function verifyCompany(id) {
   return authRequest(`/admin/companies/${id}/verify`, { method: 'PATCH' })
 }
 
+/**
+ * PATCH /admin/companies/:id/reject
+ */
+export async function rejectCompany(id) {
+  return authRequest(`/admin/companies/${id}/reject`, { method: 'PATCH' })
+}
+
 // ─── Employment override ──────────────────────────────────────────────────────
 
 /**

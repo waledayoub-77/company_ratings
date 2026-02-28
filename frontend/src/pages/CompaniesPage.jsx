@@ -25,6 +25,13 @@ const industries = [
   'Telecommunications', 'Automotive', 'Aerospace', 'Pharmaceuticals',
   'Legal', 'Marketing & Advertising', 'Construction', 'Hospitality',
 ]
+const locations = [
+  'All Locations', 'San Francisco', 'New York', 'Los Angeles', 'Chicago',
+  'Seattle', 'Austin', 'Boston', 'Denver', 'Washington DC', 'Atlanta',
+  'Dallas', 'Miami', 'Portland', 'San Diego', 'Phoenix', 'Philadelphia',
+  'Minneapolis', 'Detroit', 'Houston', 'Nashville', 'Charlotte',
+  'San Jose', 'Remote',
+]
 const sortOptions = [
   { label: 'Highest Rated',  sortBy: 'overall_rating', sortOrder: 'desc' },
   { label: 'Most Reviewed',  sortBy: 'total_reviews',  sortOrder: 'desc' },
@@ -58,7 +65,7 @@ export default function CompaniesPage() {
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [industry, setIndustry] = useState('All Industries')
-  const [locationFilter, setLocationFilter] = useState('')
+  const [locationFilter, setLocationFilter] = useState('All Locations')
   const [sort, setSort] = useState('Highest Rated')
   const [showFilters, setShowFilters] = useState(false)
   const [ratingFilter, setRatingFilter] = useState(0)
@@ -89,7 +96,7 @@ export default function CompaniesPage() {
         const params = { page, limit: LIMIT, sortBy: s.sortBy, sortOrder: s.sortOrder }
         if (debouncedSearch) params.search = debouncedSearch
         if (industry !== 'All Industries') params.industry = industry
-        if (locationFilter) params.location = locationFilter
+        if (locationFilter && locationFilter !== 'All Locations') params.location = locationFilter
         if (ratingFilter > 0) params.minRating = ratingFilter
 
         const res = await getCompanies(params)
@@ -108,7 +115,7 @@ export default function CompaniesPage() {
 
   const activeFilters = [
     industry !== 'All Industries' && industry,
-    locationFilter && `📍 ${locationFilter}`,
+    locationFilter !== 'All Locations' && `📍 ${locationFilter}`,
     ratingFilter > 0 && `${ratingFilter}+ stars`,
   ].filter(Boolean)
 
@@ -157,16 +164,7 @@ export default function CompaniesPage() {
           <div className="mb-8 p-6 rounded-2xl bg-white border border-navy-100/50 shadow-sm">
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <SelectFilter label="Industry" value={industry} options={industries} onChange={setIndustry} />
-              <div className="space-y-1.5">
-                <label className="block text-[13px] font-medium text-navy-700">Location</label>
-                <input
-                  type="text"
-                  value={locationFilter}
-                  onChange={(e) => setLocationFilter(e.target.value)}
-                  placeholder="e.g. San Francisco"
-                  className="w-full h-10 rounded-xl border border-navy-200 bg-white pl-3 pr-3 text-sm text-navy-700 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
-                />
-              </div>
+              <SelectFilter label="Location" value={locationFilter} options={locations} onChange={setLocationFilter} />
               <SelectFilter label="Sort by" value={sort} options={sortOptions.map(s => s.label)} onChange={setSort} />
               <div className="space-y-1.5">
                 <label className="block text-[13px] font-medium text-navy-700">Min Rating</label>
@@ -199,13 +197,13 @@ export default function CompaniesPage() {
                 {f}
                 <X size={12} className="cursor-pointer hover:text-navy-900" onClick={() => {
                   if (f === industry) setIndustry('All Industries')
-                  if (typeof f === 'string' && f.startsWith('📍')) setLocationFilter('')
+                  if (typeof f === 'string' && f.startsWith('📍')) setLocationFilter('All Locations')
                   if (typeof f === 'string' && f.includes('stars')) setRatingFilter(0)
                 }} />
               </span>
             ))}
             <button
-              onClick={() => { setIndustry('All Industries'); setLocationFilter(''); setRatingFilter(0) }}
+              onClick={() => { setIndustry('All Industries'); setLocationFilter('All Locations'); setRatingFilter(0) }}
               className="text-xs text-navy-500 hover:text-navy-700 transition-colors"
             >
               Clear all

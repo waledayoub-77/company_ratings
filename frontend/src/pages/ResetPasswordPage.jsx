@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Lock, Eye, EyeOff, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react'
-import { apiResetPassword } from '../api/auth'
+import { apiResetPassword, apiValidateResetToken } from '../api/auth'
 
 function getStrength(pwd) {
   let score = 0
@@ -28,6 +28,22 @@ export default function ResetPasswordPage() {
   const [loading,     setLoading]     = useState(false)
   const [error,       setError]       = useState('')
   const [done,        setDone]        = useState(false)
+  const [tokenValid,  setTokenValid]  = useState(null) // null = checking, true/false = result
+  const [tokenError,  setTokenError]  = useState('')
+
+  // Validate token on mount
+  useEffect(() => {
+    apiValidateResetToken(token)
+      .then(res => {
+        const data = res?.data ?? res
+        if (data?.valid) { setTokenValid(true) }
+        else { setTokenValid(false); setTokenError(data?.reason || 'Invalid or expired reset link.') }
+      })
+      .catch(err => {
+        setTokenValid(false)
+        setTokenError(err?.message || 'Invalid or expired reset link.')
+      })
+  }, [token])
 
   const strength     = getStrength(password)
   const mismatch     = confirm.length > 0 && password !== confirm
@@ -68,7 +84,23 @@ export default function ResetPasswordPage() {
             </span>
           </Link>
 
-          {!done ? (
+          {tokenValid === null ? (
+            <div className="text-center py-12">
+              <div className="w-8 h-8 border-2 border-navy-300 border-t-navy-900 rounded-full animate-spin mx-auto mb-4" />
+              <p className="text-sm text-navy-500">Validating reset link…</p>
+            </div>
+          ) : tokenValid === false ? (
+            <div className="text-center py-12 space-y-4">
+              <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mx-auto">
+                <AlertCircle size={28} className="text-red-500" />
+              </div>
+              <h1 className="text-xl font-serif font-bold text-navy-900">Invalid Reset Link</h1>
+              <p className="text-sm text-navy-500">{tokenError}</p>
+              <Link to="/login" className="inline-flex items-center gap-2 h-10 px-6 bg-navy-900 text-white text-sm font-medium rounded-xl hover:bg-navy-800 transition-all mt-2">
+                Back to Login
+              </Link>
+            </div>
+          ) : !done ? (
             <>
               <h1 className="text-2xl md:text-3xl font-serif font-bold text-navy-900 tracking-tight">
                 Reset your password

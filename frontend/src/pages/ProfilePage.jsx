@@ -702,6 +702,15 @@ function SettingsSection() {
     if (form.new.length < 8) {
       return setError('New password must be at least 8 characters.')
     }
+    if (!/[A-Z]/.test(form.new)) {
+      return setError('New password must contain at least one uppercase letter.')
+    }
+    if (!/[0-9]/.test(form.new)) {
+      return setError('New password must contain at least one number.')
+    }
+    if (!/[^A-Za-z0-9]/.test(form.new)) {
+      return setError('New password must contain at least one special character.')
+    }
     if (form.new === form.current) {
       return setError('New password must be different from your current password.')
     }

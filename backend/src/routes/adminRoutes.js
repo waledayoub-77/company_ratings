@@ -23,6 +23,7 @@ router.delete('/admin/users/:id', requireAuth, requireSystemAdmin, adminControll
 // ─── ADMIN: COMPANIES ─────────────────────────────────────────────────────────
 router.get('/admin/companies', requireAuth, requireSystemAdmin, adminController.getAdminCompanies);
 router.patch('/admin/companies/:id/verify', requireAuth, requireSystemAdmin, adminController.verifyCompany);
+router.patch('/admin/companies/:id/reject', requireAuth, requireSystemAdmin, adminController.rejectCompany);
 
 // ─── ADMIN: EMPLOYMENT OVERRIDE ───────────────────────────────────────────────
 router.patch('/admin/employments/:id/override', requireAuth, requireSystemAdmin, adminController.overrideEmployment);

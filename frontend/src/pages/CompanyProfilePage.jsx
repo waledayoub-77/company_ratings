@@ -19,7 +19,7 @@ import StarRating from '../components/ui/StarRating.jsx'
 import Badge from '../components/ui/Badge.jsx'
 import Reveal from '../components/ui/Reveal.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
-import { getCompanyById, getCompanyReviews, getCompanyAnalytics } from '../api/companies'
+import { getCompanyById, getCompanyReviews, getCompanyAnalytics, getCompanyEmployees } from '../api/companies'
 import { submitReport } from '../api/admin'
 
 /* ─── Helpers ─── */
@@ -66,6 +66,10 @@ export default function CompanyProfilePage() {
   const [reportSubmitting, setReportSubmitting] = useState(false)
   const [reportSuccess, setReportSuccess] = useState(null)
   const [reportError, setReportError] = useState(null)
+
+  // Employees state
+  const [employees, setEmployees] = useState([])
+  const [employeesLoading, setEmployeesLoading] = useState(false)
 
   // Fetch company + analytics
   useEffect(() => {
@@ -114,6 +118,16 @@ export default function CompanyProfilePage() {
 
   // Reset review page when sort changes
   useEffect(() => { setReviewPage(1) }, [sortReviews])
+
+  // Fetch employees (only if logged in)
+  useEffect(() => {
+    if (!user) return
+    setEmployeesLoading(true)
+    getCompanyEmployees(id)
+      .then(res => setEmployees(res?.data ?? []))
+      .catch(() => setEmployees([]))
+      .finally(() => setEmployeesLoading(false))
+  }, [id, user])
 
   // Handle report submit
   const handleReport = async (reviewId) => {
@@ -401,6 +415,8 @@ export default function CompanyProfilePage() {
                       <div />
                       {reportSuccess === review.id ? (
                         <span className="text-xs text-emerald-600 font-medium">Report submitted</span>
+                      ) : review.employee_id && user?.employeeId && review.employee_id === user.employeeId ? (
+                        <span className="text-xs text-navy-300">Your review</span>
                       ) : (
                       <button
                         onClick={() => {
@@ -488,8 +504,41 @@ export default function CompanyProfilePage() {
             </div>
             )}
           </div>
+
+          {/* ─── Employees Section ─── */}
+          {user && (
+            <div className="mt-10">
+              <h2 className="text-lg font-semibold text-navy-900 mb-4">Verified Employees</h2>
+              {employeesLoading ? (
+                <div className="flex justify-center py-8"><Loader2 size={24} className="animate-spin text-navy-400" /></div>
+              ) : employees.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-navy-100/50 py-8 text-center text-sm text-navy-400">
+                  No verified employees to display.
+                </div>
+              ) : (
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {employees.map((emp, i) => (
+                    <Reveal key={emp.id} delay={i * 0.04}>
+                      <div className="bg-white rounded-2xl border border-navy-100/50 p-4 flex items-center gap-3 hover:border-navy-200 transition-all">
+                        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-navy-400 to-navy-600 flex items-center justify-center shrink-0">
+                          <span className="text-white text-xs font-semibold">
+                            {(emp.fullName || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-navy-900 truncate">{emp.fullName}</p>
+                          <p className="text-xs text-navy-400 truncate">{emp.position}{emp.department ? ` · ${emp.department}` : ''}</p>
+                        </div>
+                      </div>
+                    </Reveal>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
+    </div>
     </div>
   )
 }

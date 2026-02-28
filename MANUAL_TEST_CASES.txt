@@ -128,7 +128,7 @@ FEEDBACK
 [no coworkers found maybe this company dont have more than 1 employee ] —    Go to /dashboard/feedback  →  internal feedback page loads (send feedback to coworkers)
 [ --] E23  On /dashboard/feedback  →  select a coworker, fill in ratings/comment, submit  →  success message
 [-- ] E24  On /dashboard/feedback  →  submit feedback to the same coworker a second time in the same quarter  →  "quarterly limit" error shown
-[ ] E25  On /dashboard/feedback (received feedback list)  →  "Report" button is visible on feedback items
+[-- ] E25  On /dashboard/feedback (received feedback list)  →  "Report" button is visible on feedback items
 
 note : i didnt get an email to tell me that someone gave me feedback 
 
@@ -147,41 +147,42 @@ ROLE REDIRECTS
 ────────────────────────────────────────────────────────────────────────────────
 
 DASHBOARD & NAVBAR
-[ ] C1   Login as tech.admin@ratehub.com  →  automatically lands on /company-admin
-[ ] C2   On /company-admin  →  navbar shows "Companies" link and "Company Admin" link; does NOT show "Dashboard", "Feedback", or "Admin Panel"
-[ ] C3   On /company-admin  →  page shows REAL company name (not hardcoded "Stripe Dashboard" or similar placeholder)
-[ ] C4   If company_admin account has no associated company in DB  →  shows an error message, NOT an infinite loading spinner  (⚠️ may need a special account to test)
+[ like i said above the analytics stuck on loading analytics same for reviews and settings] C1   Login as tech.admin@ratehub.com  →  automatically lands on /company-admin
+[ --] C2   On /company-admin  →  navbar shows "Companies" link and "Company Admin" link; does NOT show "Dashboard", "Feedback", or "Admin Panel"
+[no it shows dashboard dashboard  ] C3   On /company-admin  →  page shows REAL company name (not hardcoded "Stripe Dashboard" or similar placeholder)
+[i dont understand this  ] C4   If company_admin account has no associated company in DB  →  shows an error message, NOT an infinite loading spinner  (⚠️ may need a special account to test)
 
 ANALYTICS TAB
-[ ] C5   On /company-admin → Analytics tab  →  stat cards show real numbers (total reviews, avg rating, employees, etc.)
-[ ] C6   On /company-admin → Analytics tab  →  area chart or bar chart renders visually with data (not blank/empty chart)
+[ stuck on loading analytics ] C5   On /company-admin → Analytics tab  →  stat cards show real numbers (total reviews, avg rating, employees, etc.)
+[ stuck on loading analytics] C6   On /company-admin → Analytics tab  →  area chart or bar chart renders visually with data (not blank/empty chart)
 
 EMPLOYMENT REQUESTS TAB
-[ ] C7   On /company-admin → Requests tab  →  pending requests list OR empty state shown
-[ ] C8   On /company-admin → Requests tab  →  click "Approve" on a pending request  →  status changes to approved
-[ ] C9   On /company-admin → Requests tab  →  click "Reject" on a pending request  →  request is removed or marked rejected
-[ ] C10  On /company-admin → Requests tab  →  search field filters the list as you type
+[-- ] C7   On /company-admin → Requests tab  →  pending requests list OR empty state shown
+[-- ] C8   On /company-admin → Requests tab  →  click "Approve" on a pending request  →  status changes to approved
+[-- ] C9   On /company-admin → Requests tab  →  click "Reject" on a pending request  →  request is removed or marked rejected
+[-- ] C10  On /company-admin → Requests tab  →  search field filters the list as you type
 
 REVIEWS TAB
-[ ] C11  On /company-admin → Reviews tab  →  reviews list OR "no reviews" empty state is shown
-[ ] C12  On /company-admin → Reviews tab  →  star ratings shown on reviews are correct (not all showing 0 stars)  (⚠️ known potential bug)
+[ stuck on loading reviews] C11  On /company-admin → Reviews tab  →  reviews list OR "no reviews" empty state is shown
+[ stuck on loading review] C12  On /company-admin → Reviews tab  →  star ratings shown on reviews are correct (not all showing 0 stars)  (⚠️ known potential bug)
 
 TEAM FEEDBACK TAB
-[ ] C13  On /company-admin → Feedback tab  →  category averages (teamwork, communication, etc.) OR empty state shown
+[-- ] C13  On /company-admin → Feedback tab  →  category averages (teamwork, communication, etc.) OR empty state shown
+note : also how should the commpany get feedbacks i dont see an option 
 
 SETTINGS TAB
-[ ] C14  On /company-admin → Settings tab  →  form fields are pre-filled with REAL company data (name, description, etc.)
-[ ] C15  On /company-admin → Settings tab  →  change company description, click Save  →  success message shown
-[ ] C16  On /company-admin → Settings tab  →  if save fails (e.g. network error)  →  user-facing error shown, NOT a silent failure  (⚠️ hard to test manually without dev tools)
+[ stuck on loading settings ] C14  On /company-admin → Settings tab  →  form fields are pre-filled with REAL company data (name, description, etc.)
+[ stuck on loading settings] C15  On /company-admin → Settings tab  →  change company description, click Save  →  success message shown
+[stuck on loading settings ] C16  On /company-admin → Settings tab  →  if save fails (e.g. network error)  →  user-facing error shown, NOT a silent failure  (⚠️ hard to test manually without dev tools)
 
 REVIEW ACCESS
-[ ] C17  Login as company_admin  →  go to /companies/:id/review  →  should be blocked / unable to write a review (company admins are not employees)  (⚠️ may be a known bug where form is accessible)
+[when i try to submit a review it blocks me and error message shown insufficient permissions so we need to change this message to something better or block all review page  ] C17  Login as company_admin  →  go to /companies/:id/review  →  should be blocked / unable to write a review (company admins are not employees)  (⚠️ may be a known bug where form is accessible)
 
 PROFILE & ROLE REDIRECTS
-[ ] C18  Login as company_admin  →  go to /profile  →  profile page loads with real data
-[ ] C19  Login as company_admin  →  go to /admin  →  redirected to /company-admin (not /admin)
-[ ] C20  Login as company_admin  →  go to /dashboard  →  redirected to /company-admin (not /dashboard)
-[ ] C21  On a company profile page (/companies/:id)  →  verified employees section is visible
+[ --] C18  Login as company_admin  →  go to /profile  →  profile page loads with real data
+[ --] C19  Login as company_admin  →  go to /admin  →  redirected to /company-admin (not /admin)
+[-- ] C20  Login as company_admin  →  go to /dashboard  →  redirected to /company-admin (not /dashboard)
+[ no its not ] C21  On a company profile page (/companies/:id)  →  verified employees section is visible
 
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -189,37 +190,37 @@ PROFILE & ROLE REDIRECTS
 ────────────────────────────────────────────────────────────────────────────────
 
 PANEL & NAVBAR
-[ ] A1   Login as admin@ratehub.com  →  automatically lands on /admin
-[ ] A2   On /admin  →  navbar shows "Companies" and "Admin Panel"; does NOT show "Dashboard", "Feedback", or "Company Admin"
-[ ] A3   On /admin → Overview tab  →  real platform stats shown (total users, companies, reviews, reports)
+[-- ] A1   Login as admin@ratehub.com  →  automatically lands on /admin
+[-- ] A2   On /admin  →  navbar shows "Companies" and "Admin Panel"; does NOT show "Dashboard", "Feedback", or "Company Admin"
+[-- ] A3   On /admin → Overview tab  →  real platform stats shown (total users, companies, reviews, reports)
 
 REPORTS TAB
-[ ] A4   On /admin → Reports tab  →  reports list OR "no reports" empty state shown
-[ ] A5   On /admin → Reports tab  →  click "Remove Review" on a report  →  report resolved, review removed
-[ ] A6   On /admin → Reports tab  →  click "Dismiss Report" on a report  →  report dismissed, review still visible
+[-- ] A4   On /admin → Reports tab  →  reports list OR "no reports" empty state shown
+[-- ] A5   On /admin → Reports tab  →  click "Remove Review" on a report  →  report resolved, review removed
+[ when i tried it a alert showsup and tells me invalid action must be dismissed, resolved ] A6   On /admin → Reports tab  →  click "Dismiss Report" on a report  →  report dismissed, review still visible
 
 COMPANIES TAB
-[ ] A7   On /admin → Companies tab  →  unverified companies list OR empty state shown
-[ ] A8   On /admin → Companies tab  →  click "Verify" on a company  →  status changes to approved/verified
-[ ] A9   On /admin → Companies tab  →  click "Reject" on a company  →  company removed or status changes to rejected
+[-- ] A7   On /admin → Companies tab  →  unverified companies list OR empty state shown
+[-- ] A8   On /admin → Companies tab  →  click "Verify" on a company  →  status changes to approved/verified
+[no reject option  ] A9   On /admin → Companies tab  →  click "Reject" on a company  →  company removed or status changes to rejected
 
 USERS TAB
-[ ] A10  On /admin → Users tab  →  user list is shown with real users
-[ ] A11  On /admin → Users tab  →  type an email in the search box  →  list filters to matching users
-[ ] A12  On /admin → Users tab  →  click "Suspend" on a user  →  user status changes to suspended
-[ ] A13  On /admin → Users tab  →  click "Unsuspend" / "Restore" on a suspended user  →  user reactivated
-[ ] A14  Suspend a user  →  while their session is active, try to access a protected API  →  should get 403 "Account Suspended" (now fixed — per-request check)
-[ ] A15  On /admin → Users tab  →  click "Delete" on a user  →  user removed from list
-[ ] A16  On /admin → Users tab  →  select multiple users with checkboxes, click bulk "Suspend"  →  all selected users suspended
-[ ] A17  On /admin → Users tab  →  trigger a delete/action error  →  error shown inline on page (NOT a browser alert() popup)  (⚠️ hard to force manually)
+[-- but its better to show the username and under the username the email ] A10  On /admin → Users tab  →  user list is shown with real users
+[-- ] A11  On /admin → Users tab  →  type an email in the search box  →  list filters to matching users
+[ no its not a alert popup shows reason is required] A12  On /admin → Users tab  →  click "Suspend" on a user  →  user status changes to suspended
+[ --] A13  On /admin → Users tab  →  click "Unsuspend" / "Restore" on a suspended user  →  user reactivated
+[i dont understand ] A14  Suspend a user  →  while their session is active, try to access a protected API  →  should get 403 "Account Suspended" (now fixed — per-request check)
+[-- ] A15  On /admin → Users tab  →  click "Delete" on a user  →  user removed from list
+[there is no select multiple user and checkboxes and bulk suspend ] A16  On /admin → Users tab  →  select multiple users with checkboxes, click bulk "Suspend"  →  all selected users suspended
+[ i dont understand] A17  On /admin → Users tab  →  trigger a delete/action error  →  error shown inline on page (NOT a browser alert() popup)  (⚠️ hard to force manually)
 
 AUDIT LOGS TAB
-[ ] A18  On /admin → Audit Logs tab  →  log entries shown with columns: action, admin who did it, date
-[ ] A19  On /admin → Audit Logs tab or Users tab  →  admin can manually override/approve any employment request
+[-- ] A18  On /admin → Audit Logs tab  →  log entries shown with columns: action, admin who did it, date
+[ not its not  and i think it shouldnt ] A19  On /admin → Audit Logs tab or Users tab  →  admin can manually override/approve any employment request
 
 ROLE REDIRECTS
-[ ] A20  Login as system_admin  →  go to /dashboard  →  redirected to /admin
-[ ] A21  Login as system_admin  →  go to /company-admin  →  redirected to /admin
+[-- ] A20  Login as system_admin  →  go to /dashboard  →  redirected to /admin
+[ --] A21  Login as system_admin  →  go to /company-admin  →  redirected to /admin
 
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -227,51 +228,53 @@ ROLE REDIRECTS
 ────────────────────────────────────────────────────────────────────────────────
 
 VIEW & EDIT
-[ ] E26  Login as alice  →  go to /profile  →  real name (Alice's name) and email shown (NOT "Jane Cooper" or placeholder)
-[ ] E27  On /profile  →  click "Edit" button  →  full name input appears; change the name, click "Save Changes"  →  name updated
-[ ] E27  On /profile  →  click "Edit" button  →  bio field appears; update bio, save  →  bio updated
-[ ] E27  On /profile  →  click "Edit" button  →  job title / current position field appears; update it, save  →  position updated
+[ --] E26  Login as alice  →  go to /profile  →  real name (Alice's name) and email shown (NOT "Jane Cooper" or placeholder)
+[ --] E27  On /profile  →  click "Edit" button  →  full name input appears; change the name, click "Save Changes"  →  name updated
+[-- ] E27  On /profile  →  click "Edit" button  →  bio field appears; update bio, save  →  bio updated
+[-- ] E27  On /profile  →  click "Edit" button  →  job title / current position field appears; update it, save  →  position updated
 
 CHANGE PASSWORD
-[ ] E28  On /profile  →  change password section is visible (current/new/confirm fields)
-[ ] E28  On /profile  →  enter wrong current password, submit  →  "incorrect password" error shown
-[ ] E28  On /profile  →  enter new password and a DIFFERENT confirm password, submit  →  "passwords don't match" error shown
+[ --] E28  On /profile  →  change password section is visible (current/new/confirm fields)
+[ --] E28  On /profile  →  enter wrong current password, submit  →  "incorrect password" error shown
+[ --] E28  On /profile  →  enter new password and a DIFFERENT confirm password, submit  →  "passwords don't match" error shown
+note : when i cahnge the password it allows me to enter a password like 12121212
+
 
 ACCOUNT ACTIONS
-[ ] E29  On /profile  →  "Deactivate Account" button is visible; click it  →  confirmation dialog shown (does NOT immediately deactivate)
-[ ] E30  On /profile  →  "Delete Account" button is visible; click it  →  confirmation dialog shown (does NOT immediately delete)
+[-- ] E29  On /profile  →  "Deactivate Account" button is visible; click it  →  confirmation dialog shown (does NOT immediately deactivate)
+[-- ] E30  On /profile  →  "Delete Account" button is visible; click it  →  confirmation dialog shown (does NOT immediately delete)
 
 ALL ROLES
-[ ] —    Login as tech.admin@ratehub.com  →  go to /profile  →  profile shows real company admin data (not placeholder)
-[ ] —    Login as admin@ratehub.com  →  go to /profile  →  profile shows real system admin data (not placeholder)
+[ --] —    Login as tech.admin@ratehub.com  →  go to /profile  →  profile shows real company admin data (not placeholder)
+[-- ] —    Login as admin@ratehub.com  →  go to /profile  →  profile shows real system admin data (not placeholder)
 
-
+note: in profile there is a notifications preferencess check if its really working 
 ────────────────────────────────────────────────────────────────────────────────
 07 — ROUTE GUARDS
 ────────────────────────────────────────────────────────────────────────────────
 
 UNAUTHENTICATED → always redirected to /login
-[ ] —    /dashboard   (not logged in)  →  /login
-[ ] —    /company-admin  (not logged in)  →  /login
-[ ] —    /admin  (not logged in)  →  /login
-[ ] —    /profile  (not logged in)  →  /login
-[ ] —    /companies/:id/review  (not logged in)  →  /login
+[ --] —    /dashboard   (not logged in)  →  /login
+[-- ] —    /company-admin  (not logged in)  →  /login
+[-- ] —    /admin  (not logged in)  →  /login
+[-- ] —    /profile  (not logged in)  →  /login
+[ --] —    /companies/:id/review  (not logged in)  →  /login
 
 WRONG ROLE REDIRECTS
-[ ] E33  Employee on /admin  →  redirected (should NOT be on /admin)
-[ ] E34  Employee on /company-admin  →  redirected (should NOT be on /company-admin)
-[ ] C19  Company Admin on /admin  →  redirected to /company-admin
-[ ] C20  Company Admin on /dashboard  →  redirected to /company-admin
-[ ] A20  System Admin on /dashboard  →  redirected to /admin
-[ ] A21  System Admin on /company-admin  →  redirected to /admin
+[ --] E33  Employee on /admin  →  redirected (should NOT be on /admin)
+[-- ] E34  Employee on /company-admin  →  redirected (should NOT be on /company-admin)
+[-- ] C19  Company Admin on /admin  →  redirected to /company-admin
+[-- ] C20  Company Admin on /dashboard  →  redirected to /company-admin
+[-- ] A20  System Admin on /dashboard  →  redirected to /admin
+[-- ] A21  System Admin on /company-admin  →  redirected to /admin
 
 ALREADY LOGGED IN → redirected away from auth pages
-[ ] —    Employee on /login  →  redirected to /dashboard
-[ ] —    Employee on /register  →  redirected to /dashboard
-[ ] —    Company Admin on /login  →  redirected to /company-admin
-[ ] —    Company Admin on /register  →  redirected to /company-admin
-[ ] —    System Admin on /login  →  redirected to /admin
-[ ] —    System Admin on /register  →  redirected to /admin
+[ --] —    Employee on /login  →  redirected to /dashboard
+[-- ] —    Employee on /register  →  redirected to /dashboard
+[-- ] —    Company Admin on /login  →  redirected to /company-admin
+[-- ] —    Company Admin on /register  →  redirected to /company-admin
+[-- ] —    System Admin on /login  →  redirected to /admin
+[ --] —    System Admin on /register  →  redirected to /admin
 
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -308,35 +311,35 @@ ALREADY LOGGED IN → redirected away from auth pages
 [ ] S11  Send 15 rapid POST requests to /api/auth/login with wrong credentials  →  after ~5 attempts, should receive HTTP 429  (⚠️ rate limiting is disabled in development mode — will NOT trigger in dev)
          for i in $(seq 1 15); do curl -s -o /dev/null -w "%{http_code}\n" -X POST http://localhost:5000/api/auth/login -H "Content-Type: application/json" -d '{"email":"test@test.com","password":"wrong"}'; done
 
-
+you make the security test
 ────────────────────────────────────────────────────────────────────────────────
 09 — CROSS-ROLE & EDGE CASES
 ────────────────────────────────────────────────────────────────────────────────
 
 SESSION REHYDRATION
-[ ] X1   Login as employee  →  close tab  →  open /dashboard in a new tab  →  still logged in (not redirected to /login)
-[ ] X1   Login as company_admin  →  press F5  →  stays on /company-admin
-[ ] X1   Login as system_admin  →  press F5  →  stays on /admin
+[-- ] X1   Login as employee  →  close tab  →  open /dashboard in a new tab  →  still logged in (not redirected to /login)
+[ no it redirects me to login in third time] X1   Login as company_admin  →  press F5  →  stays on /company-admin
+[ no its redirects me to login in third time ] X1   Login as system_admin  →  press F5  →  stays on /admin
 
 LOGOUT EFFECTS
-[ ] X2   Login as employee in Tab A  →  logout in Tab A  →  in Tab B (or after navigating)  →  protected routes redirect to /login
+[ --] X2   Login as employee in Tab A  →  logout in Tab A  →  in Tab B (or after navigating)  →  protected routes redirect to /login
 
 EMPTY STATES
-[ ] X3   Find a company with 0 reviews  →  company profile page shows "No reviews yet" (no crash, no blank section)
-[ ] X4   Find a company with 0 verified employees  →  employees section shows "no employees" gracefully (no crash)
+[ --] X3   Find a company with 0 reviews  →  company profile page shows "No reviews yet" (no crash, no blank section)
+[ i dont see a section for employees for a specific company ] X4   Find a company with 0 verified employees  →  employees section shows "no employees" gracefully (no crash)
 
 MOBILE RESPONSIVE
-[ ] X5   Resize browser to 375×667 (mobile)  →  go to /  →  layout adapts (no horizontal scroll, readable)
-[ ] X5   Resize to mobile  →  go to /companies  →  company cards stack vertically and are readable
-[ ] X5   Resize to mobile  →  go to /companies  →  hamburger (☰) menu button is visible in the navbar
-[ ] X5   Resize to mobile  →  login as employee  →  go to /dashboard  →  dashboard renders without crash or overflow
+[-- ] X5   Resize browser to 375×667 (mobile)  →  go to /  →  layout adapts (no horizontal scroll, readable)
+[-- ] X5   Resize to mobile  →  go to /companies  →  company cards stack vertically and are readable
+[-- ] X5   Resize to mobile  →  go to /companies  →  hamburger (☰) menu button is visible in the navbar
+[ --] X5   Resize to mobile  →  login as employee  →  go to /dashboard  →  dashboard renders without crash or overflow
 
 LOADING STATES
-[ ] X6   Go to /companies  →  briefly (may require throttling network in DevTools)  →  skeleton/loading placeholder visible before cards appear
+[-- ] X6   Go to /companies  →  briefly (may require throttling network in DevTools)  →  skeleton/loading placeholder visible before cards appear
 
 END EMPLOYMENT FLOW
-[ ] X7   Login as employee with an approved employment  →  end the employment  →  the "Edit review" button on that company's review is gone / review editing is blocked
-[ ] X8   Login as employee  →  end employment at a company  →  submit a new employment request at the same company  →  allowed (no "already employed" error)
+[-- ] X7   Login as employee with an approved employment  →  end the employment  →  the "Edit review" button on that company's review is gone / review editing is blocked
+[ --] X8   Login as employee  →  end employment at a company  →  submit a new employment request at the same company  →  allowed (no "already employed" error)
 
 
 ────────────────────────────────────────────────────────────────────────────────

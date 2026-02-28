@@ -63,8 +63,14 @@ exports.submitReport = async (req, res) => {
     }
 
     // Verify review exists
-    const { data: review } = await supabase.from('company_reviews').select('id').eq('id', reviewId).maybeSingle();
+    const { data: review } = await supabase.from('company_reviews').select('id, employee_id').eq('id', reviewId).maybeSingle();
     if (!review) return res.status(404).json({ success: false, error: { message: 'Review not found', code: 'NOT_FOUND' } });
+
+    // Prevent self-reporting
+    const { data: employee } = await supabase.from('employees').select('id').eq('user_id', reporterId).maybeSingle();
+    if (employee && review.employee_id === employee.id) {
+      return res.status(400).json({ success: false, error: { message: 'You cannot report your own review', code: 'SELF_REPORT' } });
+    }
 
     const { data: report, error } = await supabase
       .from('reported_reviews')
@@ -486,6 +492,37 @@ exports.verifyCompany = async (req, res) => {
     return res.json({ success: true, data: updated });
   } catch (err) {
     console.error('verifyCompany error:', err);
+    return res.status(500).json({ success: false, error: { message: 'Server error', code: 'SERVER_ERROR' } });
+  }
+};
+
+/**
+ * PATCH /api/admin/companies/:id/reject
+ * Reject (unverify) a company
+ */
+exports.rejectCompany = async (req, res) => {
+  try {
+    const adminId = req.user?.userId;
+    const { id } = req.params;
+
+    const { data: company } = await supabase.from('companies').select('id, name, is_verified').eq('id', id).is('deleted_at', null).maybeSingle();
+    if (!company) return res.status(404).json({ success: false, error: { message: 'Company not found', code: 'NOT_FOUND' } });
+    if (!company.is_verified) return res.status(400).json({ success: false, error: { message: 'Company is not verified', code: 'NOT_VERIFIED' } });
+
+    const { data: updated, error } = await supabase
+      .from('companies')
+      .update({ is_verified: false })
+      .eq('id', id)
+      .select()
+      .maybeSingle();
+
+    if (error) throw error;
+
+    await logAudit({ adminId, action: 'company_rejected', targetType: 'company', targetId: id, details: { companyName: company.name } });
+
+    return res.json({ success: true, data: updated });
+  } catch (err) {
+    console.error('rejectCompany error:', err);
     return res.status(500).json({ success: false, error: { message: 'Server error', code: 'SERVER_ERROR' } });
   }
 };

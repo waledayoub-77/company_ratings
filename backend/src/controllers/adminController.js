@@ -166,7 +166,7 @@ exports.getUsers = async (req, res) => {
 
     let query = supabase
       .from('users')
-      .select('id, email, role, is_active, email_verified, created_at', { count: 'exact' })
+      .select('id, email, role, is_active, email_verified, created_at, full_name', { count: 'exact' })
       .eq('is_deleted', false)
       .order('created_at', { ascending: false })
       .range(offset, offset + parseInt(limit) - 1);
@@ -177,10 +177,33 @@ exports.getUsers = async (req, res) => {
     const { data, error, count } = await query;
     if (error) throw error;
 
+    const users = data || [];
+
+    // Enrich with full_name from employees table for users that don't have it in users table
+    const missingNameIds = users.filter(u => !u.full_name).map(u => u.id);
+    let empNameMap = {};
+    if (missingNameIds.length > 0) {
+      const { data: empRows } = await supabase
+        .from('employees')
+        .select('user_id, full_name')
+        .in('user_id', missingNameIds)
+        .is('deleted_at', null);
+      if (empRows) {
+        for (const emp of empRows) {
+          if (emp.full_name) empNameMap[emp.user_id] = emp.full_name;
+        }
+      }
+    }
+
+    const enriched = users.map(u => ({
+      ...u,
+      full_name: u.full_name || empNameMap[u.id] || null,
+    }));
+
     return res.json({
       success: true,
-      data: data || [],
-      pagination: { total: count || 0, page: parseInt(page), limit: parseInt(limit) },
+      data: enriched,
+      pagination: { total: count || 0, page: safePage, limit: safeLimit, pages: Math.ceil((count || 0) / safeLimit) },
     });
   } catch (err) {
     console.error('getUsers error:', err);

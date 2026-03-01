@@ -1,0 +1,209 @@
+﻿================================================================================
+  RATEHUB — MANUAL TEST CASES  (V1 + Baraa Bug-Fix Re-Tests)
+  Total: 183 + 47 re-test cases  =  ~230 tests across 10 areas
+  Credentials:
+    Employee       : bob@ratehub.com         / Test1234!
+    Company Admin  : tech.admin@ratehub.com  / Test1234!
+    System Admin   : admin@ratehub.com       / Test1234!
+================================================================================
+
+
+
+================================================================================
+  RE-TEST CASES — Bugs Fixed & Pending Tests
+  Only contains items that FAILED or were NOT YET TESTED.
+  Passed items have been removed.
+  All credentials same as the header above.
+================================================================================
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 2-B — Remove Review on a report  [DEFERRED — no reviews existed at test time]
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F2-B  Login as admin@ratehub.com  →  /admin → Reports tab
+          →  click "Remove Review" on any pending report
+          →  report status changes to resolved and the review is removed,
+             NO alert() popup
+          (Requires a report linked to a real review to exist in DB)
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 4 — Admin users list shows full name above email  [CODE FIXED — RE-TEST]
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F4-A  Login as admin@ratehub.com  →  /admin → Users tab
+          →  each user row that has a full name shows:
+               - full name in bold (e.g. "Bob Smith") on the first line
+               - email in smaller gray text below it
+          →  rows without a full name show only the email (no crash, no blank)
+          (Was FAIL: email in black, no name — fixed: backend now fetches
+           full_name from users + employees tables)
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 5-C — Bulk suspend with reason  [CODE FIXED — RE-TEST]
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F5-C  Login as admin@ratehub.com  →  /admin → Users tab
+          →  check one or more user checkboxes
+          →  click "Suspend X Selected"
+          →  enter a reason (e.g. "Spam activity") and click "Confirm Bulk Suspend"
+          →  all selected users change to "Suspended" status
+          →  checkboxes deselect and the panel hides
+          (Was FAIL: showed "Reason is required (min 3 chars)" even when reason
+           was typed — fixed: reason is now included in the request body)
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 7-A — End employment with a past date  [CODE FIXED — RE-TEST]
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F7-A  Login as bob@ratehub.com  →  /dashboard → Employment tab
+          →  click "End" on an approved employment
+          →  pick a date BEFORE the employment start date
+          →  click "Confirm End"
+          →  a clear friendly error appears: "End date cannot be before the
+             start date" (NOT a generic 500 server error)
+          (Was FAIL: server returned 500 — fixed: returns 400 with clear message)
+
+[ ] F7-A2 Same flow but pick TODAY's date (or any valid date)
+          →  employment ends successfully, "Ended" badge appears on the card
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 11 — Reset password token validation  [NOT YET FULLY TESTED]
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F11-B Use a reset token that has ALREADY been used
+          HOW: go to /forgot-password → enter bob@ratehub.com → open reset email
+               → submit a new password → open the SAME link again (while logged out)
+          →  page shows "This reset link has already been used."
+          →  the form does NOT appear again
+
+[ ] F11-C Use a valid (unused, unexpired) token  (while logged out)
+          HOW: go to /forgot-password → enter bob@ratehub.com → open reset email
+          →  page shows the reset password form (strength indicator, confirm field)
+          →  fill in a strong password (e.g. Valid2Pass!) and submit
+          →  success message shown
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 12 — Location filter on /companies is a dropdown  [NOT YET TESTED]
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F12-A Go to /companies  →  open the Filters panel
+          →  the Location field is a SELECT dropdown (not a free-text input)
+          →  options include "All Locations", "San Francisco", "New York", etc.
+
+[ ] F12-B Select a specific location from the dropdown
+          →  company results filter to that location only
+
+[ ] F12-C Click "Clear all" filters
+          →  location resets to "All Locations"; all companies shown again
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 13 — Users cannot report their own reviews  [NOT YET TESTED]
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F13-A Login as bob@ratehub.com
+          →  go to the company profile page where bob's review appears
+          →  find bob's own review card
+          →  the "Report" flag button is REPLACED by a "Your review" label
+             (no report button visible on own review)
+
+[ ] F13-B Still logged in as bob
+          →  look at a DIFFERENT employee's review on the same page
+          →  the "Report" flag button IS visible (can report others' reviews)
+
+[ ] F13-C Open DevTools Console and run:
+          fetch('/api/reports', { method:'POST',
+            headers:{'Content-Type':'application/json',
+              'Authorization':'Bearer '+localStorage.getItem('rh_access')},
+            body: JSON.stringify({ reviewId: '<bob-own-review-id>' }) })
+            .then(r=>r.json()).then(console.log)
+          →  response HTTP 400 with self-report error message
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 14 — Verified employees section on company profile  [NOT YET TESTED]
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F14-A Login as any user  →  go to /companies/:id
+          →  scroll below the reviews section
+          →  "Verified Employees" section heading is visible
+          →  if employees exist: cards show name, initials, and position
+          →  if no employees: "No verified employees to display." shown
+
+[ ] F14-B Open the same company profile while NOT logged in
+          →  the "Verified Employees" section is NOT visible
+
+[ ] F14-C Login as tech.admin@ratehub.com  →  go to the company profile
+          →  "Verified Employees" section IS visible with employees listed
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 15 — Feedback triggers in-app notification  [NOT YET TESTED]
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F15-A Login as bob@ratehub.com  →  go to /dashboard → Feedback tab
+          →  select a coworker and submit peer feedback with ratings
+          →  log out, login as the coworker
+          →  click notification bell  →  "New Peer Feedback" notification appears
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 16 — companyId stored in localStorage for company_admin  [NOT YET TESTED]
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F16-A Login as tech.admin@ratehub.com
+          →  open DevTools → Application → Local Storage
+          →  run in console: JSON.parse(localStorage.getItem('rh_user')).companyId
+          →  value is a non-null UUID (not undefined or null)
+
+[ ] F16-B With company_admin logged in, open DevTools Console
+          →  navigate around /company-admin tabs
+          →  NO "company not found" or "undefined companyId" errors in console
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 17 — Feedback email notification  [NOT YET TESTED]
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F17-B Submit peer feedback as bob@ratehub.com to a coworker
+          →  feedback submission succeeds (no 500 error)
+          →  if SMTP is configured: coworker's inbox gets a notification email
+          →  if SMTP is NOT configured: no crash, submission still successful
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 18 — Audit logs record admin actions  [NOT YET TESTED]
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F18-A Login as admin@ratehub.com
+          →  perform any admin action (suspend a user, verify a company)
+          →  go to /admin → Audit Logs tab
+          →  the action appears: action name, admin email, timestamp (newest first)
+
+[ ] F18-B Scroll the audit log
+          →  entries sorted newest-first
+          →  no blank rows or "undefined" values in the table
+
+
+================================================================================
+  RE-TEST SUMMARY
+  Items removed (all passed): F1-A/B/C/D, F2-A, F3-A/B/C, F5-A/B/D,
+    F6-A/B/C, F7-B, F8-A/B/C, F9-A/B, F10-A/B/C/D, F11-A
+  Items remaining: 19 test cases across 9 fix areas
+  Code fixes applied this session:
+    ✅  F4-A  — backend now returns full_name from users + employees tables
+    ✅  F5-C  — bulk suspend now sends reason to backend correctly
+    ✅  F7-A  — end employment validates date range, returns 400 not 500
+
+  How to mark results:
+    [-- ]  =  PASS
+    [ --]  =  PASS with a note / minor observation
+    [FAIL]  =  FAIL — describe what went wrong on the same line
+    [ ]    =  NOT YET TESTED
+================================================================================

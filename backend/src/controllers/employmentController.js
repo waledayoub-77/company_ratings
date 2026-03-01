@@ -106,6 +106,11 @@ exports.endEmployment = async (req, res) => {
       return res.status(400).json({ message: "Employment already ended" });
     }
 
+    // Validate end date is not before start date
+    if (employment.start_date && endDate < employment.start_date) {
+      return res.status(400).json({ message: `End date cannot be before the start date (${employment.start_date}).` });
+    }
+
     const { data: updated, error: upErr } = await supabase
       .from("employments")
       .update({
@@ -117,7 +122,15 @@ exports.endEmployment = async (req, res) => {
       .select()
       .single();
 
-    if (upErr) throw upErr;
+    if (upErr) {
+      console.error("endEmployment DB error:", upErr);
+      // Return friendly message for constraint violations
+      const msg = upErr?.message || '';
+      if (msg.includes('violates check') || msg.includes('constraint')) {
+        return res.status(400).json({ message: "End date is not valid for this employment record." });
+      }
+      throw upErr;
+    }
 
     return res.status(200).json({ data: updated });
   } catch (err) {

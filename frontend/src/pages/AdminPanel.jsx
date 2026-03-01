@@ -324,10 +324,72 @@ function CompaniesTab() {
 function UsersTab() {
   const [search, setSearch] = useState('')
 
-  const filtered = usersList.filter(u =>
-    u.name.toLowerCase().includes(search.toLowerCase()) ||
-    u.email.toLowerCase().includes(search.toLowerCase())
-  )
+  const load = useCallback((q = '') => {
+    setLoading(true)
+    getAdminUsers({ search: q || undefined, limit: 40 })
+      .then(res => setUsers(res?.data ?? []))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    const t = setTimeout(() => load(search), 350)
+    return () => clearTimeout(t)
+  }, [search, load])
+
+  const handleSuspend = async (id) => {
+    if (!suspendReason.trim()) return
+    setWorking(id)
+    try {
+      await suspendUser(id, { reason: suspendReason.trim() })
+      setUsers(prev => prev.map(u => u.id === id ? { ...u, is_active: false } : u))
+      setSuspendTarget(null)
+      setSuspendReason('')
+    } catch (e) { alert(e?.message || 'Action failed') }
+    finally { setWorking(null) }
+  }
+
+  const handleUnsuspend = async (id) => {
+    setWorking(id)
+    try {
+      await unsuspendUser(id)
+      setUsers(prev => prev.map(u => u.id === id ? { ...u, is_active: true } : u))
+    } catch (e) { alert(e?.message || 'Action failed') }
+    finally { setWorking(null) }
+  }
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Permanently delete this user?')) return
+    setWorking(id)
+    try {
+      await deleteUser(id)
+      setUsers(prev => prev.filter(u => u.id !== id))
+    } catch (e) { alert(e?.message || 'Delete failed') }
+    finally { setWorking(null) }
+  }
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  const handleBulkSuspend = async () => {
+    if (!bulkReason.trim() || selectedIds.size === 0) return
+    setBulkWorking(true)
+    try {
+      await bulkSuspendUsers([...selectedIds], bulkReason.trim())
+      setUsers(prev => prev.map(u => selectedIds.has(u.id) ? { ...u, is_active: false } : u))
+      setSelectedIds(new Set())
+      setShowBulk(false)
+      setBulkReason('')
+    } catch (e) { alert(e?.message || 'Bulk suspend failed') }
+    finally { setBulkWorking(false) }
+  }
 
   return (
     <div className="space-y-6">

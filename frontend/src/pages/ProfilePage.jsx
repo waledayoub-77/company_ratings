@@ -723,9 +723,11 @@ function VerificationSection() {
     }
   }
 
-  const isVerified = user?.identity_verified || status?.status === 'approved'
-  const isPending  = status?.status === 'pending'
-  const isRejected = status?.status === 'rejected'
+  // The API returns { identityVerified: bool, requests: [...] }
+  const latestIdentityReq = status?.requests?.find(r => r.verification_type === 'identity')
+  const isVerified = user?.identity_verified || status?.identityVerified
+  const isPending  = latestIdentityReq?.status === 'pending'
+  const isRejected = latestIdentityReq?.status === 'rejected'
 
   return (
     <div className="space-y-6">
@@ -771,7 +773,7 @@ function VerificationSection() {
                   <AlertCircle size={16} className="text-red-500 mt-0.5 shrink-0" />
                   <div>
                     <p className="text-sm font-medium text-red-700">Previous request rejected</p>
-                    {status?.admin_notes && <p className="text-xs text-red-600 mt-0.5">{status.admin_notes}</p>}
+                    {latestIdentityReq?.admin_notes && <p className="text-xs text-red-600 mt-0.5">{latestIdentityReq.admin_notes}</p>}
                     <p className="text-xs text-red-500 mt-1">You can submit a new request below.</p>
                   </div>
                 </div>

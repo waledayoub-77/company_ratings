@@ -253,6 +253,7 @@ export default function CompanyProfilePage() {
                     </div>
                   </div>
 
+                  {(!user || user.role === 'employee') && (
                   <Link
                     to={`/companies/${id}/review`}
                     className="h-11 px-6 bg-navy-900 text-white text-sm font-medium rounded-xl inline-flex items-center gap-2 hover:bg-navy-800 transition-all shadow-sm shadow-navy-900/15"
@@ -260,6 +261,7 @@ export default function CompanyProfilePage() {
                     <PenSquare size={15} />
                     Write a Review
                   </Link>
+                  )}
                 </div>
 
                 <p className="mt-5 text-sm text-navy-600 leading-relaxed max-w-3xl">
@@ -668,39 +670,58 @@ export default function CompanyProfilePage() {
             </div>
             )}
           </div>
+        </div>
 
-          {/* ─── Employees Section ─── */}
-          {user && (
-            <div className="mt-10">
-              <h2 className="text-lg font-semibold text-navy-900 mb-4">Verified Employees</h2>
+        {/* ─── Verified Employees (full-width below the grid) ─── */}
+        {user && (
+          <Reveal delay={0.1}>
+            <div className="mt-10 bg-white rounded-2xl border border-navy-100/50 p-6">
+              <div className="flex items-center gap-3 mb-5 pb-4 border-b border-navy-100/50">
+                <div className="w-8 h-8 rounded-lg bg-navy-50 flex items-center justify-center">
+                  <Users size={16} className="text-navy-500" />
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold text-navy-900">Verified Employees</h2>
+                  <p className="text-xs text-navy-400 mt-0.5">Current verified team members at {company.name}</p>
+                </div>
+              </div>
+
               {employeesLoading ? (
-                <div className="flex justify-center py-8"><Loader2 size={24} className="animate-spin text-navy-400" /></div>
+                <div className="flex justify-center py-6">
+                  <Loader2 size={20} className="animate-spin text-navy-400" />
+                </div>
               ) : employees.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-navy-100/50 py-8 text-center text-sm text-navy-400">
-                  No verified employees to display.
+                <div className="py-8 text-center">
+                  <Users size={28} className="mx-auto text-navy-200 mb-2" />
+                  <p className="text-sm text-navy-400">No verified employees listed yet.</p>
                 </div>
               ) : (
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {employees.map((emp, i) => (
-                    <Reveal key={emp.id} delay={i * 0.04}>
-                      <div className="bg-white rounded-2xl border border-navy-100/50 p-4 flex items-center gap-3 hover:border-navy-200 transition-all">
-                        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-navy-400 to-navy-600 flex items-center justify-center shrink-0">
-                          <span className="text-white text-xs font-semibold">
-                            {(emp.fullName || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                          </span>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {employees.map((emp, i) => {
+                    const initials = (emp.fullName || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+                    const grad = pickGradient(emp.fullName || 'User')
+                    return (
+                      <Reveal key={emp.id} delay={i * 0.03}>
+                        <div className="flex items-center gap-3 p-3 rounded-xl border border-navy-100/50 hover:border-navy-200 hover:bg-navy-50/30 transition-all">
+                          <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center shrink-0 shadow-sm`}>
+                            <span className="text-white text-xs font-bold">{initials}</span>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-navy-900 truncate">{emp.fullName}</p>
+                            <p className="text-xs text-navy-400 truncate leading-relaxed">
+                              {emp.position || 'Employee'}
+                              {emp.department ? <span className="text-navy-300"> · {emp.department}</span> : null}
+                            </p>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-navy-900 truncate">{emp.fullName}</p>
-                          <p className="text-xs text-navy-400 truncate">{emp.position}{emp.department ? ` · ${emp.department}` : ''}</p>
-                        </div>
-                      </div>
-                    </Reveal>
-                  ))}
+                      </Reveal>
+                    )
+                  })}
                 </div>
               )}
             </div>
-          )}
-        </div>
+          </Reveal>
+        )}
       </div>
     </div>
   )

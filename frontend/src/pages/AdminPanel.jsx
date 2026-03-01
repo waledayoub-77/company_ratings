@@ -694,7 +694,7 @@ function VerificationsTab() {
   const load = useCallback(() => {
     setLoading(true)
     getVerificationRequests({ status: filter, limit: 50 })
-      .then(res => setRequests(res?.data?.requests ?? res?.data ?? []))
+      .then(res => setRequests(res?.requests ?? []))
       .catch(() => setRequests([]))
       .finally(() => setLoading(false))
   }, [filter])
@@ -704,7 +704,7 @@ function VerificationsTab() {
   const handleApprove = async (id) => {
     setWorking(id)
     try {
-      await approveVerification(id, { adminNotes: adminNotes[id] || '' })
+      await approveVerification(id, adminNotes[id] || '')
       setRequests(prev => prev.filter(r => r.id !== id))
     } catch (e) { alert(e?.message || 'Approval failed') }
     finally { setWorking(null) }
@@ -714,7 +714,7 @@ function VerificationsTab() {
     if (!adminNotes[id]?.trim()) { alert('Please provide rejection notes'); return }
     setWorking(id)
     try {
-      await rejectVerification(id, { adminNotes: adminNotes[id] })
+      await rejectVerification(id, adminNotes[id])
       setRequests(prev => prev.filter(r => r.id !== id))
     } catch (e) { alert(e?.message || 'Rejection failed') }
     finally { setWorking(null) }

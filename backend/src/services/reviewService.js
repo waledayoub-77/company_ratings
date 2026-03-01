@@ -332,8 +332,39 @@ const getCompanyReviews = async (companyId, filters = {}) => {
     throw new AppError('Failed to fetch reviews', 500);
   }
 
+  // Enrich reviews: attach reply and live helpful_count for each review
+  const reviewIds = (data || []).map(r => r.id);
+  let replyMap = {};
+  let voteCountMap = {};
+
+  if (reviewIds.length > 0) {
+    const [repliesRes, votesRes] = await Promise.all([
+      supabase.from('review_replies').select('*').in('review_id', reviewIds),
+      supabase.from('review_votes').select('review_id').in('review_id', reviewIds),
+    ]);
+
+    (repliesRes.data || []).forEach(reply => {
+      replyMap[reply.review_id] = {
+        id:        reply.id,
+        content:   reply.content,
+        createdAt: reply.created_at,
+        updatedAt: reply.updated_at,
+      };
+    });
+
+    (votesRes.data || []).forEach(vote => {
+      voteCountMap[vote.review_id] = (voteCountMap[vote.review_id] || 0) + 1;
+    });
+  }
+
+  const enrichedReviews = (data || []).map(review => ({
+    ...review,
+    reply:         replyMap[review.id] ?? null,
+    helpful_count: voteCountMap[review.id] ?? review.helpful_count ?? 0,
+  }));
+
   return {
-    reviews: data,
+    reviews: enrichedReviews,
     pagination: {
       total: count,
       page,

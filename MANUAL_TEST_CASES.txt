@@ -1,10 +1,28 @@
 ================================================================================
-  RATEHUB — MANUAL TEST CASES
-  Total: 183 tests across 9 areas
+  RATEHUB — MANUAL TEST CASES  (V1 + Re-test Fixes + V2 Features)
+  Total: ~285 tests across 13 areas
   Credentials:
-    Employee       : alice@ratehub.com       / Test1234!
+    Employee       : bob@ratehub.com         / Test1234!
     Company Admin  : tech.admin@ratehub.com  / Test1234!
     System Admin   : admin@ratehub.com       / Test1234!
+
+  Sections:
+    01  Public Pages               (G1–G32)
+    02  Authentication             (G14–G28)
+    03  Employee Dashboard         (E1–E36)
+    04  Company Admin Dashboard    (C1–C21)
+    05  System Admin Panel         (A1–A21)
+    06  Profile Page               (E26–E30)
+    07  Route Guards
+    08  Security                   (S1–S11)
+    09  Cross-Role & Edge Cases    (X1–X8)
+    10  Re-test: 15 Bug Fixes      (F1–F15)
+    11  V2 – Category Ratings      (V2-R1–R6)
+    12  V2 – Review Interactions   (V2-V1–V5, V2-CR1–CR7)
+    13  V2 – Identity Verification (V2-IV1–IV5, V2-VA1–VA7)
+    14  V2 – Employee of the Month (V2-E1–E7, V2-EV1–EV7)
+    15  V2 – UI Polish             (V2-UI1–UI6)
+    16  V2 – Regression Checks     (V2-REG1–REG6)
 ================================================================================
 
 
@@ -49,14 +67,14 @@ REGISTER (/register)
 [-- ] G14  Go to /register  →  select "Employee" role  →  first name and last name fields appear; company name field does NOT appear
 [-- ] G15  Go to /register  →  select "Company Admin" role  →  company name field appears
 [-- ] G16  Go to /register  →  select "Company Admin", fill email and password, leave company name EMPTY, submit  →  validation error appears
-[-- ] G17  Go to /register  →  register with alice@ratehub.com (existing email)  →  "already exists" / "email taken" error appears
+[-- ] G17  Go to /register  →  register with bob@ratehub.com (existing email)  →  "already exists" / "email taken" error appears
 [ --] G18  Go to /register  →  check that "System Admin" is NOT an available role option in the UI  (it should not be selectable)
 [-- ] —    Go to /register  →  click submit with ALL fields empty  →  native browser validation or custom error appears
 [-- ] —    Go to /register  →  "Sign In" / "Already have an account" link is visible and navigates to /login
 
 LOGIN (/login)
 [-- ] G19  Go to /login  →  email input, password input, and "Sign In" button are visible
-[-- ] G19  Login as alice@ratehub.com / Test1234!  →  redirected to /dashboard
+[-- ] G19  Login as bob@ratehub.com / Test1234!  →  redirected to /dashboard
 [ loading analytics are stuck on loading analytics same to reviews and settings] G19  Login as tech.admin@ratehub.com / Test1234!  →  redirected to /company-admin
 [-- ] G19  Login as admin@ratehub.com / Test1234!  →  redirected to /admin
 [-- ] G21  Go to /login  →  enter wrong password  →  "Invalid email or password" error message appears
@@ -74,7 +92,7 @@ LOGIN (/login)
 FORGOT PASSWORD (/forgot-password)
 -[-- ] —    Go to /forgot-password  →  email input and submit button are visible
 [-- ] G23  Go to /forgot-password  →  "Back to login" link is visible and works
-[-- ] G23  Go to /forgot-password  →  enter alice@ratehub.com and submit  →  "Check your inbox" or "email sent" message appears
+[-- ] G23  Go to /forgot-password  →  enter bob@ratehub.com and submit  →  "Check your inbox" or "email sent" message appears
 [-- ] G23  Go to /forgot-password  →  enter unknown@nobody.com and submit  →  same "check your inbox" message (no "email not found" leak)
 
 RESET PASSWORD (/reset-password/:token)
@@ -95,10 +113,10 @@ LOGOUT
 ────────────────────────────────────────────────────────────────────────────────
 
 DASHBOARD & NAVBAR
-[-- ] E1   Login as alice  →  automatically lands on /dashboard
+[-- ] E1   Login as bob  →  automatically lands on /dashboard
 [ --] E2   On /dashboard  →  navbar shows "Companies" link; shows "Dashboard" or employee-specific links; does NOT show "Admin Panel" or "Company Admin"
-[ --] E3   On /dashboard  →  profile dropdown (top right) shows Alice's real name and email (not placeholder "JD" or "Jane Cooper")
-[ --] E5   On /dashboard  →  stats cards show real numbers (reviews written, rating given, etc.) — NOT all zeros (if alice has activity)
+[ --] E3   On /dashboard  →  profile dropdown (top right) shows Bob's real name and email (not placeholder "JD" or "Jane Cooper")
+[ --] E5   On /dashboard  →  stats cards show real numbers (reviews written, rating given, etc.) — NOT all zeros (if bob has activity)
 [-- ] E6   On /dashboard  →  recent activity section shows entries sorted by date (newest first)
 [-- ] —    On /dashboard  →  a heading (e.g. "Dashboard") is visible
 
@@ -228,7 +246,7 @@ ROLE REDIRECTS
 ────────────────────────────────────────────────────────────────────────────────
 
 VIEW & EDIT
-[ --] E26  Login as alice  →  go to /profile  →  real name (Alice's name) and email shown (NOT "Jane Cooper" or placeholder)
+[ --] E26  Login as bob  →  go to /profile  →  real name (Bob's name) and email shown (NOT "Jane Cooper" or placeholder)
 [ --] E27  On /profile  →  click "Edit" button  →  full name input appears; change the name, click "Save Changes"  →  name updated
 [-- ] E27  On /profile  →  click "Edit" button  →  bio field appears; update bio, save  →  bio updated
 [-- ] E27  On /profile  →  click "Edit" button  →  job title / current position field appears; update it, save  →  position updated
@@ -346,7 +364,7 @@ END EMPLOYMENT FLOW
 SUMMARY
 ────────────────────────────────────────────────────────────────────────────────
 
-Total test cases:  183
+Total test cases:  285
 
 Automated result (as of last run):
   ✅  142 passed
@@ -359,7 +377,7 @@ Skipped tests require:
   - G10/G12/G13  → a company with at least 1 existing review in DB
   - G22          → a pre-suspended test account (add SUSPENDED_EMAIL + SUSPENDED_PASSWORD to e2e/.env)
   - G26          → a real verify token (grab from email_verification_tokens table in Supabase)
-  - Some E-tests → alice must have approved employment at a specific company
+  - Some E-tests → bob must have approved employment at a specific company
 
 Bugs fixed so far:
   ✅  S1  — system_admin self-registration now blocked (403)
@@ -441,7 +459,7 @@ FIX 4 — Admin users list now shows full name
 
 [ ] F4-A  Login as admin@ratehub.com  →  /admin → Users tab
           →  each user row that has a full name shows:
-             - full name in bold (e.g. "Alice Smith") on the first line
+             - full name in bold (e.g. "Bob Smith") on the first line
              - email in smaller gray text below it
           →  rows with no full name show only the email (no crash, no blank)
 
@@ -537,7 +555,7 @@ FIX 9 — Company admin is blocked from the write-review page
 FIX 10 — Strong password enforced on "Change Password"
 ────────────────────────────────────────────────────────────────────────────────
 
-[ ] F10-A Login as alice  →  /profile → Settings section
+[ ] F10-A Login as bob  →  /profile → Settings section
           →  enter current password correctly
           →  new password: "alllowercase1!" (no uppercase)
           →  click Save
@@ -599,18 +617,18 @@ FIX 12 — Location filter is now a dropdown
 FIX 13 — Users cannot report their own reviews
 ────────────────────────────────────────────────────────────────────────────────
 
-[ ] F13-A Login as alice (employee who has written a review)
-          →  go to the company profile page where alice's review appears
-          →  find alice's own review
+[ ] F13-A Login as bob (employee who has written a review)
+          →  go to the company profile page where bob's review appears
+          →  find bob's own review
           →  the "Report" flag button is REPLACED by the label "Your review"
           →  there is NO report button on her own review
 
-[ ] F13-B Still logged in as alice
+[ ] F13-B Still logged in as bob
           →  go to ANOTHER employee's review on the same page
           →  the "Report" flag button IS visible (can report other people's reviews)
 
-[ ] F13-C Extra (API-level): using alice's auth token, POST /api/reports with
-          reviewId = alice's own review id
+[ ] F13-C Extra (API-level): using bob's auth token, POST /api/reports with
+          reviewId = bob's own review id
           →  response should be HTTP 400 with error code "SELF_REPORT"
           (test via DevTools → Network or curl/Postman)
 
@@ -637,7 +655,7 @@ FIX 14 — Verified employees section on company profile
 FIX 15 — Feedback received triggers an email notification
 ────────────────────────────────────────────────────────────────────────────────
 
-[ ] F15-A Login as employee A (e.g. alice)  →  go to /feedback
+[ ] F15-A Login as employee A (e.g. bob)  →  go to /feedback
           →  select a coworker (employee B) and submit peer feedback
           →  check employee B's email inbox
           →  an email from RateHub with subject "You received new peer feedback"
@@ -646,7 +664,7 @@ FIX 15 — Feedback received triggers an email notification
              to the dashboard
 
 [ ] F15-B The in-app notification (bell icon) still works alongside the email:
-          →  after alice submits feedback, login as employee B
+          →  after bob submits feedback, login as employee B
           →  click the notification bell  →  a "New Peer Feedback" notification
              is listed
 
@@ -686,7 +704,7 @@ V2-01 — DATABASE MIGRATION
 V2-02 — CATEGORY RATINGS (Write Review)
 ────────────────────────────────────────────────────────────────────────────────
 
-[ ] V2-R1  Login as employee (alice@ratehub.com) → go to a company's profile
+[ ] V2-R1  Login as employee (bob@ratehub.com) → go to a company's profile
            → click "Write a Review" → the review form shows 6 category sliders:
            Work-Life Balance, Compensation, Management, Culture,
            Career Growth, Facilities
@@ -828,7 +846,7 @@ V2-07 — EMPLOYEE OF THE MONTH — COMPANY ADMIN
 V2-08 — EMPLOYEE OF THE MONTH — EMPLOYEE VOTING
 ────────────────────────────────────────────────────────────────────────────────
 
-[ ] V2-EV1 Login as employee (alice) → go to /dashboard → an "EOTM" tab
+[ ] V2-EV1 Login as employee (bob) → go to /dashboard → an "EOTM" tab
            is visible in the tab bar
 
 [ ] V2-EV2 Click "EOTM" tab → shows the open event for March 2026 with

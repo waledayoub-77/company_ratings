@@ -84,10 +84,10 @@ export async function deleteUser(id) {
  * PATCH /admin/users/bulk-suspend
  * @param {Object} data — userIds: string[]
  */
-export async function bulkSuspendUsers(userIds) {
+export async function bulkSuspendUsers(userIds, reason) {
   return authRequest('/admin/users/bulk-suspend', {
     method: 'PATCH',
-    body:   JSON.stringify({ userIds }),
+    body:   JSON.stringify({ userIds, reason }),
   })
 }
 

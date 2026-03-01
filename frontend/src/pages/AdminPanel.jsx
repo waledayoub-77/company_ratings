@@ -835,6 +835,153 @@ function VerificationsTab() {
   )
 }
 
+/* ─── Users Tab ─── */
+function UsersTab() {
+  const [search, setSearch] = useState('')
+
+  const load = useCallback((q = '') => {
+    setLoading(true)
+    getAdminUsers({ search: q || undefined, limit: 40 })
+      .then(res => setUsers(res?.data ?? []))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    const t = setTimeout(() => load(search), 350)
+    return () => clearTimeout(t)
+  }, [search, load])
+
+  const handleSuspend = async (id) => {
+    if (!suspendReason.trim()) return
+    setWorking(id)
+    try {
+      await suspendUser(id, { reason: suspendReason.trim() })
+      setUsers(prev => prev.map(u => u.id === id ? { ...u, is_active: false } : u))
+      setSuspendTarget(null)
+      setSuspendReason('')
+    } catch (e) { alert(e?.message || 'Action failed') }
+    finally { setWorking(null) }
+  }
+
+  const handleUnsuspend = async (id) => {
+    setWorking(id)
+    try {
+      await unsuspendUser(id)
+      setUsers(prev => prev.map(u => u.id === id ? { ...u, is_active: true } : u))
+    } catch (e) { alert(e?.message || 'Action failed') }
+    finally { setWorking(null) }
+  }
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Permanently delete this user?')) return
+    setWorking(id)
+    try {
+      await deleteUser(id)
+      setUsers(prev => prev.filter(u => u.id !== id))
+    } catch (e) { alert(e?.message || 'Delete failed') }
+    finally { setWorking(null) }
+  }
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  const handleBulkSuspend = async () => {
+    if (!bulkReason.trim() || selectedIds.size === 0) return
+    setBulkWorking(true)
+    try {
+      await bulkSuspendUsers([...selectedIds], bulkReason.trim())
+      setUsers(prev => prev.map(u => selectedIds.has(u.id) ? { ...u, is_active: false } : u))
+      setSelectedIds(new Set())
+      setShowBulk(false)
+      setBulkReason('')
+    } catch (e) { alert(e?.message || 'Bulk suspend failed') }
+    finally { setBulkWorking(false) }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="text-lg font-semibold text-navy-900">User Management</h2>
+        <div className="relative w-64">
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-navy-400" />
+          <input
+            type="text"
+            placeholder="Search users..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full h-10 rounded-xl border border-navy-200 bg-white pl-10 pr-4 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
+          />
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-navy-100/50 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-navy-100/50">
+                <th className="text-left text-xs font-semibold text-navy-400 uppercase tracking-wider px-6 py-4">User</th>
+                <th className="text-left text-xs font-semibold text-navy-400 uppercase tracking-wider px-6 py-4">Role</th>
+                <th className="text-left text-xs font-semibold text-navy-400 uppercase tracking-wider px-6 py-4">Status</th>
+                <th className="text-left text-xs font-semibold text-navy-400 uppercase tracking-wider px-6 py-4">Reviews</th>
+                <th className="text-left text-xs font-semibold text-navy-400 uppercase tracking-wider px-6 py-4">Joined</th>
+                <th className="text-right text-xs font-semibold text-navy-400 uppercase tracking-wider px-6 py-4">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(user => (
+                <tr key={user.id} className="border-b border-navy-50 last:border-0 hover:bg-navy-50/30 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-navy-400 to-navy-600 flex items-center justify-center">
+                        <span className="text-white text-xs font-semibold">
+                          {user.name.split(' ').map(n => n[0]).join('')}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-navy-900">{user.name}</p>
+                        <p className="text-xs text-navy-400">{user.email}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <Badge variant={user.role === 'Company Admin' ? 'info' : 'default'}>{user.role}</Badge>
+                  </td>
+                  <td className="px-6 py-4">
+                    <Badge variant={user.status === 'active' ? 'success' : 'danger'}>{user.status}</Badge>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-navy-600">{user.reviews}</td>
+                  <td className="px-6 py-4 text-xs text-navy-400">{new Date(user.joined).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <button className="w-8 h-8 rounded-lg flex items-center justify-center text-navy-400 hover:bg-navy-50 hover:text-navy-600 transition-colors">
+                        <Eye size={14} />
+                      </button>
+                      <button className="w-8 h-8 rounded-lg flex items-center justify-center text-navy-400 hover:bg-amber-50 hover:text-amber-600 transition-colors">
+                        <Ban size={14} />
+                      </button>
+                      <button className="w-8 h-8 rounded-lg flex items-center justify-center text-navy-400 hover:bg-red-50 hover:text-red-600 transition-colors">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ─── Audit Tab ─── */
 function AuditTab() {
   const [entries, setEntries] = useState([])

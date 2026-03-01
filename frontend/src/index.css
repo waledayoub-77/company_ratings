@@ -117,4 +117,34 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
+
+  /* Section header accent bar */
+  .section-header {
+    position: relative;
+    padding-left: 1rem;
+  }
+  .section-header::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.15em;
+    bottom: 0.15em;
+    width: 3px;
+    border-radius: 2px;
+    background: linear-gradient(to bottom, #4988C4, #BDE8F5);
+  }
+
+  /* Glass card effect */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(212, 230, 245, 0.5);
+  }
+
+  /* Section divider */
+  .section-divider {
+    height: 1px;
+    background: linear-gradient(to right, transparent, #d4e6f5, transparent);
+    margin: 2rem 0;
+  }
 }

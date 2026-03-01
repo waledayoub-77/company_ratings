@@ -42,3 +42,39 @@ export async function updateReview(id, data) {
 export async function deleteReview(id) {
   return authRequest(`/reviews/${id}`, { method: 'DELETE' })
 }
+
+// ─── Review Interactions ──────────────────────────────────────────────────────
+
+/** POST /reviews/:id/reply */
+export async function createReviewReply(reviewId, content) {
+  return authRequest(`/reviews/${reviewId}/reply`, {
+    method: 'POST',
+    body: JSON.stringify({ content }),
+  })
+}
+
+/** PATCH /reviews/replies/:id */
+export async function updateReviewReply(replyId, content) {
+  return authRequest(`/reviews/replies/${replyId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ content }),
+  })
+}
+
+/** DELETE /reviews/replies/:id */
+export async function deleteReviewReply(replyId) {
+  return authRequest(`/reviews/replies/${replyId}`, { method: 'DELETE' })
+}
+
+/** POST /reviews/:id/vote */
+export async function toggleReviewVote(reviewId, voteType = 'helpful') {
+  return authRequest(`/reviews/${reviewId}/vote`, {
+    method: 'POST',
+    body: JSON.stringify({ voteType }),
+  })
+}
+
+/** GET /reviews/:id/category-ratings */
+export async function getReviewCategoryRatings(reviewId) {
+  return request(`/reviews/${reviewId}/category-ratings`)
+}

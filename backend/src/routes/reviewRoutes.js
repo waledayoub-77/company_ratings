@@ -1,7 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const reviewController = require('../controllers/reviewController');
-const { requireAuth } = require('../middlewares/authMiddleware');
+const reviewInteractionController = require('../controllers/reviewInteractionController');
+const { requireAuth, optionalAuth } = require('../middlewares/authMiddleware');
 const { requireEmployee } = require('../middlewares/roleMiddleware');
 const { validateReview } = require('../utils/validators');
 const { validate } = require('../middlewares/validateMiddleware');
@@ -46,5 +47,21 @@ router.delete(
   requireAuth,
   reviewController.deleteReview
 );
+
+// ─── Review Interactions ──────────────────────────────────────────────────────
+// POST /reviews/:id/reply - Company admin replies to review
+router.post('/:id/reply', requireAuth, reviewInteractionController.createReply);
+
+// PATCH /reviews/replies/:id - Update a reply
+router.patch('/replies/:id', requireAuth, reviewInteractionController.updateReply);
+
+// DELETE /reviews/replies/:id - Delete a reply
+router.delete('/replies/:id', requireAuth, reviewInteractionController.deleteReply);
+
+// POST /reviews/:id/vote - Toggle helpful/unhelpful vote
+router.post('/:id/vote', requireAuth, reviewInteractionController.toggleVote);
+
+// GET /reviews/:id/category-ratings - Get category ratings for a review
+router.get('/:id/category-ratings', reviewInteractionController.getCategoryRatings);
 
 module.exports = router;

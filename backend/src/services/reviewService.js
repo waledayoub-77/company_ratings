@@ -2,6 +2,7 @@
 const supabase = require('../config/database');
 const { AppError } = require('../middlewares/errorHandler');
 const checkVerifiedEmployment = require('../helpers/checkVerifiedEmployment');
+const { saveCategoryRatings, updateCategoryRatings, recalcCompanyCategoryAverages } = require('./categoryRatingService');
 
 /**
  * Check if user already reviewed this company
@@ -60,7 +61,9 @@ const createReview = async (reviewData, userId) => {
     companyId,
     overallRating = reviewData.rating,
     content       = reviewData.reviewText,
-    isAnonymous
+    isAnonymous,
+    departureReason,
+    categoryRatings,
   } = reviewData;
 
   // First get employee ID from user ID
@@ -116,6 +119,7 @@ const createReview = async (reviewData, userId) => {
       content,
       is_anonymous: isAnonymous || false,
       can_edit_until: canEditUntil,
+      departure_reason: departureReason || null,
     })
     .select()
     .single();
@@ -123,6 +127,12 @@ const createReview = async (reviewData, userId) => {
   if (error) {
     console.error('❌ Supabase error in createReview:', error);
     throw new AppError('Failed to create review', 500);
+  }
+
+  // Save category ratings if provided
+  if (categoryRatings && Object.keys(categoryRatings).length > 0) {
+    await saveCategoryRatings(data.id, categoryRatings);
+    await recalcCompanyCategoryAverages(companyId);
   }
 
   // Recalculate company rating
@@ -187,7 +197,7 @@ const updateReview = async (reviewId, updates, userId) => {
     throw new AppError('You cannot edit a review after ending your employment at this company', 403);
   }
 
-  const { overallRating, content } = updates;
+  const { overallRating, content, categoryRatings } = updates;
 
   // Update review
   const { data, error } = await supabase
@@ -204,6 +214,12 @@ const updateReview = async (reviewId, updates, userId) => {
   if (error) {
     console.error('❌ Supabase error in updateReview:', error);
     throw new AppError('Failed to update review', 500);
+  }
+
+  // Update category ratings if provided
+  if (categoryRatings && Object.keys(categoryRatings).length > 0) {
+    await updateCategoryRatings(reviewId, categoryRatings);
+    await recalcCompanyCategoryAverages(review.company_id);
   }
 
   // Recalculate company rating if overall_rating changed

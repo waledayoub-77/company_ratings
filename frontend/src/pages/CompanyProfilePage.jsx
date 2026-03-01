@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -14,6 +14,14 @@ import {
   ChevronRight,
   AlertCircle,
   Loader2,
+  ThumbsUp,
+  MessageSquare,
+  Heart,
+  TrendingUp,
+  Users,
+  Briefcase,
+  Sparkles,
+  Send,
 } from 'lucide-react'
 import StarRating from '../components/ui/StarRating.jsx'
 import Badge from '../components/ui/Badge.jsx'
@@ -21,6 +29,16 @@ import Reveal from '../components/ui/Reveal.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { getCompanyById, getCompanyReviews, getCompanyAnalytics, getCompanyEmployees } from '../api/companies'
 import { submitReport } from '../api/admin'
+import { toggleReviewVote, createReviewReply } from '../api/reviews'
+
+const CATEGORY_META = {
+  work_life_balance: { label: 'Work-Life Balance', icon: Heart, color: 'bg-pink-500' },
+  compensation:      { label: 'Compensation',     icon: TrendingUp, color: 'bg-emerald-500' },
+  management:        { label: 'Management',        icon: Users, color: 'bg-blue-500' },
+  culture:           { label: 'Culture',            icon: Sparkles, color: 'bg-violet-500' },
+  career_growth:     { label: 'Career Growth',     icon: Briefcase, color: 'bg-amber-500' },
+  facilities:        { label: 'Facilities',         icon: Building2, color: 'bg-cyan-500' },
+}
 
 /* ─── Helpers ─── */
 const GRADIENTS = [
@@ -66,6 +84,9 @@ export default function CompanyProfilePage() {
   const [reportSubmitting, setReportSubmitting] = useState(false)
   const [reportSuccess, setReportSuccess] = useState(null)
   const [reportError, setReportError] = useState(null)
+  const [replyingTo, setReplyingTo] = useState(null)
+  const [replyContent, setReplyContent] = useState('')
+  const [replySubmitting, setReplySubmitting] = useState(false)
 
   // Employees state
   const [employees, setEmployees] = useState([])
@@ -305,6 +326,42 @@ export default function CompanyProfilePage() {
                     <span className="font-semibold text-navy-900">{company.total_reviews}</span>
                   </div>
                 </div>
+
+                {/* Category Averages */}
+                {company.category_averages && Object.keys(company.category_averages).length > 0 && (
+                  <div className="mt-8 pt-6 border-t border-navy-100/50">
+                    <h3 className="section-header text-xs font-semibold uppercase tracking-wider text-navy-400 mb-4">
+                      Category Breakdown
+                    </h3>
+                    <div className="space-y-3">
+                      {Object.entries(company.category_averages).map(([key, avg]) => {
+                        const meta = CATEGORY_META[key]
+                        if (!meta) return null
+                        const pct = (avg / 10) * 100
+                        return (
+                          <div key={key}>
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="flex items-center gap-1.5">
+                                <meta.icon size={11} className="text-navy-400" />
+                                <span className="text-xs text-navy-600">{meta.label}</span>
+                              </div>
+                              <span className="text-xs font-bold text-navy-800">{avg}/10</span>
+                            </div>
+                            <div className="h-1.5 bg-navy-50 rounded-full overflow-hidden">
+                              <motion.div
+                                className={`h-full rounded-full ${meta.color}`}
+                                initial={{ width: 0 }}
+                                whileInView={{ width: `${pct}%` }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 0.6 }}
+                              />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </Reveal>
           </div>
@@ -313,7 +370,7 @@ export default function CompanyProfilePage() {
           <div className="lg:col-span-8 order-1 lg:order-2">
             {/* Sort & filter bar */}
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-serif font-semibold text-navy-900">
+              <h2 className="section-header text-xl font-serif font-semibold text-navy-900">
                 Employee Reviews
               </h2>
               <div className="relative">
@@ -410,9 +467,67 @@ export default function CompanyProfilePage() {
                       {review.content}
                     </p>
 
-                    {/* Review footer */}
+                    {/* Departure reason tag */}
+                    {review.departure_reason && review.departure_reason !== 'still_employed' && (
+                      <div className="mt-3">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-navy-400 bg-navy-50 px-2.5 py-1 rounded-full border border-navy-100">
+                          <Briefcase size={10} />
+                          Left: {review.departure_reason.replace(/_/g, ' ')}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Company reply */}
+                    {review.reply && (
+                      <div className="mt-4 bg-blue-50/50 rounded-xl p-4 border border-blue-100/50">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-6 h-6 rounded-md bg-blue-500 flex items-center justify-center">
+                            <Building2 size={12} className="text-white" />
+                          </div>
+                          <span className="text-xs font-semibold text-blue-800">Company Response</span>
+                          {review.reply.updatedAt && review.reply.updatedAt !== review.reply.createdAt && (
+                            <span className="text-[10px] text-blue-400">(edited)</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-navy-600 leading-relaxed">{review.reply.content}</p>
+                      </div>
+                    )}
+
+                    {/* Review footer — votes + actions */}
                     <div className="mt-5 pt-4 border-t border-navy-50 flex items-center justify-between">
-                      <div />
+                      <div className="flex items-center gap-3">
+                        {/* Helpful vote button */}
+                        <button
+                          onClick={async () => {
+                            if (!user) { navigate('/login'); return }
+                            try {
+                              const res = await toggleReviewVote(review.id, 'helpful')
+                              // Update local helpful count
+                              setReviews(prev => prev.map(r => {
+                                if (r.id !== review.id) return r
+                                const delta = res?.data?.action === 'removed' ? -1 : res?.data?.action === 'added' ? 1 : 0
+                                return { ...r, helpful_count: Math.max(0, (r.helpful_count || 0) + delta) }
+                              }))
+                            } catch {}
+                          }}
+                          className="flex items-center gap-1.5 text-xs text-navy-400 hover:text-navy-700 transition-colors group"
+                        >
+                          <ThumbsUp size={13} className="group-hover:text-emerald-500 transition-colors" />
+                          Helpful{(review.helpful_count || 0) > 0 ? ` (${review.helpful_count})` : ''}
+                        </button>
+
+                        {/* Reply button (company admin only, if no reply exists) */}
+                        {user?.role === 'company_admin' && user?.companyId === company?.id && !review.reply && (
+                          <button
+                            onClick={() => setReplyingTo(replyingTo === review.id ? null : review.id)}
+                            className="flex items-center gap-1.5 text-xs text-navy-400 hover:text-blue-600 transition-colors"
+                          >
+                            <MessageSquare size={13} />
+                            Reply
+                          </button>
+                        )}
+                      </div>
+
                       {reportSuccess === review.id ? (
                         <span className="text-xs text-emerald-600 font-medium">Report submitted</span>
                       ) : review.employee_id && user?.employeeId && review.employee_id === user.employeeId ? (
@@ -431,6 +546,55 @@ export default function CompanyProfilePage() {
                       </button>
                       )}
                     </div>
+
+                    {/* Inline reply form (company admin) */}
+                    {replyingTo === review.id && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        className="mt-4 p-4 bg-blue-50/50 rounded-xl border border-blue-100"
+                      >
+                        <p className="text-xs font-medium text-blue-700 mb-2">Reply as Company Admin</p>
+                        <textarea
+                          value={replyContent}
+                          onChange={e => setReplyContent(e.target.value)}
+                          placeholder="Write a professional response (min 10 characters)..."
+                          className="w-full h-20 rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs text-navy-700 resize-none mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        />
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={async () => {
+                              if (replyContent.trim().length < 10) return
+                              setReplySubmitting(true)
+                              try {
+                                const res = await createReviewReply(review.id, replyContent.trim())
+                                setReviews(prev => prev.map(r => r.id === review.id ? {
+                                  ...r,
+                                  reply: { content: replyContent.trim(), createdAt: new Date().toISOString() }
+                                } : r))
+                                setReplyingTo(null)
+                                setReplyContent('')
+                              } catch (err) {
+                                alert(err?.message || 'Failed to post reply')
+                              } finally {
+                                setReplySubmitting(false)
+                              }
+                            }}
+                            disabled={replyContent.trim().length < 10 || replySubmitting}
+                            className="h-8 px-4 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                          >
+                            <Send size={11} />
+                            {replySubmitting ? 'Posting...' : 'Post Reply'}
+                          </button>
+                          <button
+                            onClick={() => { setReplyingTo(null); setReplyContent('') }}
+                            className="h-8 px-4 text-xs text-navy-500 hover:text-navy-700 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
 
                     {/* Inline report form */}
                     {reportingId === review.id && (

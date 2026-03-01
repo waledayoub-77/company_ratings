@@ -45,6 +45,8 @@ export default function PageHeader({ tag, title, subtitle, children, align = 'le
           {children && <div className="mt-6">{children}</div>}
         </motion.div>
       </div>
+      {/* Gradient divider */}
+      <div className="mt-8 h-px bg-gradient-to-r from-transparent via-navy-200 to-transparent" />
     </div>
   )
 }

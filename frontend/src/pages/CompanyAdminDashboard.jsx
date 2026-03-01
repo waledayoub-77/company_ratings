@@ -15,6 +15,9 @@ import {
   ChevronDown,
   Loader2,
   AlertCircle,
+  Award,
+  Trophy,
+  Calendar,
 } from 'lucide-react'
 import {
   BarChart,
@@ -37,6 +40,7 @@ import { useAuth } from '../context/AuthContext'
 import { getCompanyStats, getCompanyAnalytics, getCompanyReviews, getCompanyById, updateCompany } from '../api/companies'
 import { getPendingEmployments, approveEmployment, rejectEmployment, getAllEmploymentsForAdmin } from '../api/employments'
 import { getFeedbackReceived } from '../api/feedback'
+import { createEotmEvent, closeEotmEvent, getCompanyEotmEvents, getEotmNominees, getCompanyEotmWinners } from '../api/eotm'
 
 export default function CompanyAdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview')
@@ -65,6 +69,7 @@ export default function CompanyAdminDashboard() {
     { id: 'overview', label: 'Analytics', icon: BarChart3 },
     { id: 'requests', label: 'Requests', icon: Users, badge: pendingCount || null },
     { id: 'reviews', label: 'Reviews', icon: FileText },
+    { id: 'eotm', label: 'EOTM', icon: Award },
     { id: 'feedback', label: 'Team Feedback', icon: MessageSquare },
     { id: 'settings', label: 'Settings', icon: Settings },
   ]
@@ -110,6 +115,7 @@ export default function CompanyAdminDashboard() {
         {activeTab === 'overview'  && <AnalyticsTab companyId={companyId} />}
         {activeTab === 'requests'  && <RequestsTab companyId={companyId} onCountChange={setPendingCount} />}
         {activeTab === 'reviews'   && <ReviewsListTab companyId={companyId} />}
+        {activeTab === 'eotm'      && <EotmTab companyId={companyId} />}
         {activeTab === 'feedback'  && <TeamFeedbackTab />}
         {activeTab === 'settings'  && <SettingsTab companyId={companyId} onNameChange={setCompanyName} />}
       </div>
@@ -604,6 +610,227 @@ function TeamFeedbackTab() {
           </div>
         </div>
       </Reveal>
+    </div>
+  )
+}
+
+/* ─── EOTM Tab ─── */
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
+
+function EotmTab({ companyId }) {
+  const [events, setEvents]     = useState([])
+  const [winners, setWinners]   = useState([])
+  const [loading, setLoading]   = useState(true)
+  const [creating, setCreating] = useState(false)
+  const [closing, setClosing]   = useState(null)
+  const [newMonth, setNewMonth] = useState(new Date().getMonth() + 1)
+  const [newYear, setNewYear]   = useState(new Date().getFullYear())
+  const [nominees, setNominees] = useState({}) // { eventId: [...] }
+  const [expanded, setExpanded] = useState(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [evRes, winRes] = await Promise.all([
+        getCompanyEotmEvents(companyId),
+        getCompanyEotmWinners(companyId),
+      ])
+      setEvents(evRes?.data?.events ?? evRes?.data ?? [])
+      setWinners(winRes?.data?.winners ?? winRes?.data ?? [])
+    } catch {}
+    finally { setLoading(false) }
+  }, [companyId])
+
+  useEffect(() => { if (companyId) load() }, [companyId, load])
+
+  const handleCreate = async () => {
+    setCreating(true)
+    try {
+      await createEotmEvent({ month: newMonth, year: newYear })
+      await load()
+    } catch (e) { alert(e?.message || 'Failed to create event') }
+    finally { setCreating(false) }
+  }
+
+  const handleClose = async (eventId) => {
+    setClosing(eventId)
+    try {
+      await closeEotmEvent(eventId)
+      await load()
+    } catch (e) { alert(e?.message || 'Failed to close event') }
+    finally { setClosing(null) }
+  }
+
+  const toggleNominees = async (eventId) => {
+    if (expanded === eventId) { setExpanded(null); return }
+    setExpanded(eventId)
+    if (!nominees[eventId]) {
+      try {
+        const res = await getEotmNominees(eventId)
+        setNominees(prev => ({ ...prev, [eventId]: res?.data?.nominees ?? res?.data ?? [] }))
+      } catch { setNominees(prev => ({ ...prev, [eventId]: [] })) }
+    }
+  }
+
+  if (loading) return <div className="py-20 text-center text-navy-400 text-sm"><Loader2 size={20} className="animate-spin mx-auto" /></div>
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-navy-900">Employee of the Month</h2>
+      </div>
+
+      {/* Create new event */}
+      <Reveal>
+        <div className="bg-white rounded-2xl border border-navy-100/50 p-6">
+          <h3 className="text-sm font-semibold text-navy-900 mb-4 flex items-center gap-2">
+            <Award size={16} className="text-amber-500" />
+            Create New EOTM Event
+          </h3>
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <label className="text-xs font-medium text-navy-600 block mb-1">Month</label>
+              <select
+                value={newMonth}
+                onChange={e => setNewMonth(Number(e.target.value))}
+                className="h-10 rounded-xl border border-navy-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500"
+              >
+                {MONTHS.map((m, i) => <option key={i} value={i+1}>{m}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-navy-600 block mb-1">Year</label>
+              <input
+                type="number"
+                value={newYear}
+                onChange={e => setNewYear(Number(e.target.value))}
+                min={2024}
+                max={2030}
+                className="h-10 w-24 rounded-xl border border-navy-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500"
+              />
+            </div>
+            <button
+              onClick={handleCreate}
+              disabled={creating}
+              className="h-10 px-5 bg-navy-900 text-white text-xs font-semibold rounded-xl hover:bg-navy-800 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+            >
+              {creating ? <Loader2 size={13} className="animate-spin" /> : <Award size={13} />}
+              {creating ? 'Creating…' : 'Create Event'}
+            </button>
+          </div>
+        </div>
+      </Reveal>
+
+      {/* Active events */}
+      {events.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-xs font-semibold uppercase tracking-widest text-navy-400">Events</h3>
+          {events.map((ev, i) => (
+            <Reveal key={ev.id} delay={i * 0.05}>
+              <div className="bg-white rounded-2xl border border-navy-100/50 p-5 hover:border-navy-200 transition-all">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${ev.status === 'open' ? 'bg-emerald-100' : 'bg-navy-100'}`}>
+                      <Calendar size={16} className={ev.status === 'open' ? 'text-emerald-600' : 'text-navy-500'} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-navy-900">
+                        {MONTHS[(ev.month ?? 1) - 1]} {ev.year}
+                      </p>
+                      <p className="text-xs text-navy-400">{ev.total_votes ?? 0} votes cast</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={ev.status === 'open' ? 'success' : 'default'}>{ev.status}</Badge>
+                    <button
+                      onClick={() => toggleNominees(ev.id)}
+                      className="h-8 px-3 text-xs font-medium text-navy-500 border border-navy-200 rounded-lg hover:bg-navy-50 transition-colors"
+                    >
+                      {expanded === ev.id ? 'Hide' : 'View'} Nominees
+                    </button>
+                    {ev.status === 'open' && (
+                      <button
+                        onClick={() => handleClose(ev.id)}
+                        disabled={closing === ev.id}
+                        className="h-8 px-3 bg-amber-600 text-white text-xs font-medium rounded-lg hover:bg-amber-700 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        {closing === ev.id ? <Loader2 size={12} className="animate-spin" /> : <Trophy size={12} />}
+                        Close &amp; Declare Winner
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Nominees list */}
+                <AnimatePresence>
+                  {expanded === ev.id && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mt-4 pt-4 border-t border-navy-100 space-y-2">
+                        {(nominees[ev.id] ?? []).length === 0 ? (
+                          <p className="text-xs text-navy-400 text-center py-3">No votes yet</p>
+                        ) : (nominees[ev.id] ?? []).map((nom, j) => (
+                          <div key={j} className="flex items-center justify-between bg-navy-50/50 rounded-xl px-4 py-2.5">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-navy-400 to-navy-600 flex items-center justify-center">
+                                <span className="text-white text-xs font-semibold">{(nom.full_name || '?')[0].toUpperCase()}</span>
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-navy-900">{nom.full_name ?? 'Unknown'}</p>
+                                <p className="text-xs text-navy-400">{nom.position ?? ''}</p>
+                              </div>
+                            </div>
+                            <span className="text-sm font-bold text-navy-700">{nom.vote_count ?? 0} votes</span>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Winner display */}
+                {ev.status === 'closed' && ev.winner_name && (
+                  <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center gap-3">
+                    <Trophy size={16} className="text-amber-600" />
+                    <p className="text-sm text-amber-800 font-medium">
+                      Winner: <strong>{ev.winner_name}</strong>
+                    </p>
+                  </div>
+                )}
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      )}
+
+      {/* Past winners */}
+      {winners.length > 0 && (
+        <Reveal delay={0.1}>
+          <div className="bg-white rounded-2xl border border-navy-100/50 p-6">
+            <h3 className="text-sm font-semibold text-navy-900 mb-4 flex items-center gap-2">
+              <Trophy size={16} className="text-amber-500" />
+              Hall of Fame
+            </h3>
+            <div className="grid sm:grid-cols-3 gap-3">
+              {winners.map((w, i) => (
+                <div key={i} className="bg-amber-50/50 rounded-xl p-4 text-center border border-amber-100/50">
+                  <div className="w-12 h-12 mx-auto rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mb-2">
+                    <span className="text-white font-bold text-sm">{(w.employee_name || '?')[0].toUpperCase()}</span>
+                  </div>
+                  <p className="text-sm font-semibold text-navy-900">{w.employee_name ?? 'Unknown'}</p>
+                  <p className="text-xs text-navy-400 mt-0.5">
+                    {MONTHS[(w.month ?? 1) - 1]} {w.year}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Reveal>
+      )}
     </div>
   )
 }

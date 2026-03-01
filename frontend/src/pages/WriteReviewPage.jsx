@@ -1,11 +1,34 @@
 import { useState, useEffect } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Eye, EyeOff, CheckCircle2, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, CheckCircle2, AlertCircle, Briefcase, TrendingUp, Users, Heart, Building, Sparkles } from 'lucide-react'
 import StarRating from '../components/ui/StarRating.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { getCompanyById } from '../api/companies.js'
 import { createReview } from '../api/reviews.js'
+
+const CATEGORIES = [
+  { key: 'work_life_balance', label: 'Work-Life Balance', icon: Heart,       color: 'from-pink-500 to-rose-500' },
+  { key: 'compensation',      label: 'Compensation & Benefits', icon: TrendingUp, color: 'from-emerald-500 to-teal-500' },
+  { key: 'management',        label: 'Management Quality', icon: Users,      color: 'from-blue-500 to-indigo-500' },
+  { key: 'culture',           label: 'Company Culture', icon: Sparkles,    color: 'from-violet-500 to-purple-500' },
+  { key: 'career_growth',     label: 'Career Growth', icon: Briefcase,   color: 'from-amber-500 to-orange-500' },
+  { key: 'facilities',        label: 'Facilities & Environment', icon: Building, color: 'from-cyan-500 to-blue-500' },
+]
+
+const DEPARTURE_REASONS = [
+  { value: '', label: 'Select (optional)' },
+  { value: 'still_employed', label: 'Still employed here' },
+  { value: 'better_opportunity', label: 'Found a better opportunity' },
+  { value: 'laid_off', label: 'Laid off / Downsized' },
+  { value: 'contract_ended', label: 'Contract ended' },
+  { value: 'relocated', label: 'Relocated' },
+  { value: 'career_change', label: 'Career change' },
+  { value: 'management_issues', label: 'Management issues' },
+  { value: 'compensation', label: 'Inadequate compensation' },
+  { value: 'work_life_balance', label: 'Poor work-life balance' },
+  { value: 'other', label: 'Other / Prefer not to say' },
+]
 
 export default function WriteReviewPage() {
   const { id } = useParams()
@@ -19,6 +42,8 @@ export default function WriteReviewPage() {
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [categoryRatings, setCategoryRatings] = useState({})
+  const [departureReason, setDepartureReason] = useState('')
 
   useEffect(() => {
     if (user?.role === 'company_admin' || user?.role === 'system_admin') {
@@ -45,7 +70,14 @@ export default function WriteReviewPage() {
     setLoading(true)
     setError('')
     try {
-      await createReview({ companyId: id, overallRating: rating, content: review, isAnonymous: anonymous })
+      await createReview({
+        companyId: id,
+        overallRating: rating,
+        content: review,
+        isAnonymous: anonymous,
+        categoryRatings: Object.keys(categoryRatings).length > 0 ? categoryRatings : undefined,
+        departureReason: departureReason || undefined,
+      })
       setSubmitted(true)
     } catch (err) {
       const msg = err?.message ?? ''
@@ -183,6 +215,83 @@ export default function WriteReviewPage() {
                   {charCount}/2,000
                 </span>
               </div>
+            </div>
+
+            {/* Category Ratings */}
+            <div className="bg-white rounded-2xl border border-navy-100/50 p-6">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="text-sm font-semibold text-navy-900">Category Ratings</h3>
+                <span className="text-[11px] text-navy-300 font-medium">Optional</span>
+              </div>
+              <p className="text-xs text-navy-400 mb-5">
+                Rate specific aspects on a scale of 1–10 to help others understand your experience better.
+              </p>
+              <div className="grid sm:grid-cols-2 gap-4">
+                {CATEGORIES.map(cat => {
+                  const val = categoryRatings[cat.key] || 0
+                  return (
+                    <div key={cat.key} className="bg-ice-50 rounded-xl p-4 border border-navy-50">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className={`w-7 h-7 rounded-lg bg-gradient-to-br ${cat.color} flex items-center justify-center`}>
+                          <cat.icon size={14} className="text-white" />
+                        </div>
+                        <span className="text-xs font-semibold text-navy-700">{cat.label}</span>
+                        {val > 0 && (
+                          <span className="ml-auto text-sm font-bold text-navy-900">{val}/10</span>
+                        )}
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="10"
+                        value={val}
+                        onChange={e => {
+                          const v = parseInt(e.target.value)
+                          setCategoryRatings(prev => {
+                            if (v === 0) {
+                              const next = { ...prev }
+                              delete next[cat.key]
+                              return next
+                            }
+                            return { ...prev, [cat.key]: v }
+                          })
+                        }}
+                        className="w-full h-2 rounded-full appearance-none cursor-pointer accent-navy-600"
+                        style={{
+                          background: val > 0
+                            ? `linear-gradient(to right, #1e3a5f ${val * 10}%, #e2e8f0 ${val * 10}%)`
+                            : '#e2e8f0'
+                        }}
+                      />
+                      <div className="flex justify-between mt-1">
+                        <span className="text-[10px] text-navy-300">1</span>
+                        <span className="text-[10px] text-navy-300">5</span>
+                        <span className="text-[10px] text-navy-300">10</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Departure Reason */}
+            <div className="bg-white rounded-2xl border border-navy-100/50 p-6">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="text-sm font-semibold text-navy-900">Employment Status</h3>
+                <span className="text-[11px] text-navy-300 font-medium">Optional</span>
+              </div>
+              <p className="text-xs text-navy-400 mb-4">
+                Why did you leave this company? This helps others understand the context of your review.
+              </p>
+              <select
+                value={departureReason}
+                onChange={e => setDepartureReason(e.target.value)}
+                className="w-full sm:w-72 h-10 rounded-xl border border-navy-200 bg-white px-3 text-sm text-navy-700 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
+              >
+                {DEPARTURE_REASONS.map(r => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
+              </select>
             </div>
 
             {/* Anonymous toggle */}

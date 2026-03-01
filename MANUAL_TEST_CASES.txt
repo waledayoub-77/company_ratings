@@ -375,3 +375,282 @@ Remaining known issues (not yet fixed):
   ⚠️  C16  — offline/network-error save may fail silently
   ⚠️  C17  — company_admin can access write-review form (should be blocked)
 ================================================================================
+
+
+================================================================================
+  RE-TEST CASES — 15 FIXES (committed locally, not yet pushed)
+  Re-test only the specific items that were broken during manual testing.
+  All credentials same as above.
+================================================================================
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 1 — CompanyAdmin dashboard tabs no longer stuck on loading
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F1-A  Login as tech.admin@ratehub.com  →  /company-admin  →  Analytics tab
+          shows real stat cards (total reviews, avg rating, employee count)
+          instead of a permanent loading spinner
+
+[ ] F1-B  Login as tech.admin@ratehub.com  →  /company-admin  →  Reviews tab
+          shows the company's reviews list (or "no reviews" empty state)
+          instead of a permanent loading spinner
+
+[ ] F1-C  Login as tech.admin@ratehub.com  →  /company-admin  →  Settings tab
+          shows form fields PRE-FILLED with real company name, description, etc.
+          instead of a permanent loading spinner
+
+[ ] F1-D  Login as tech.admin@ratehub.com  →  /company-admin  →  page heading
+          shows the REAL company name (e.g. "TechCorp Dashboard")
+          NOT "Dashboard Dashboard"
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 2 — Report dismiss / resolve actions work correctly
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F2-A  Login as admin@ratehub.com  →  /admin → Reports tab
+          →  click "Dismiss Report" on any pending report
+          →  report status changes to dismissed (row updated or removed), NO alert popup
+
+[ ] F2-B  Login as admin@ratehub.com  →  /admin → Reports tab
+          →  click "Remove Review" on any pending report
+          →  report status changes to resolved and the review is removed, NO alert popup
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 3 — Suspend user now requires a reason
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F3-A  Login as admin@ratehub.com  →  /admin → Users tab
+          →  click the suspend (🚫) icon on an active user
+          →  an inline reason input and "Confirm" / "Cancel" buttons appear
+             (NOT immediately suspended, NOT an alert popup)
+
+[ ] F3-B  With the inline reason form open, click "Confirm" WITHOUT typing a reason
+          →  confirm button is DISABLED or nothing happens (reason is required)
+
+[ ] F3-C  With the inline reason form open, type a reason (e.g. "Spam activity")
+          →  click "Confirm"
+          →  user status changes to "Suspended" in the table row
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 4 — Admin users list now shows full name
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F4-A  Login as admin@ratehub.com  →  /admin → Users tab
+          →  each user row that has a full name shows:
+             - full name in bold (e.g. "Alice Smith") on the first line
+             - email in smaller gray text below it
+          →  rows with no full name show only the email (no crash, no blank)
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 5 — Bulk suspend UI (checkboxes + "Suspend X Selected" button)
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F5-A  Login as admin@ratehub.com  →  /admin → Users tab
+          →  each active, non-system_admin user row has a checkbox on the left
+
+[ ] F5-B  Check one or more checkboxes
+          →  a yellow "Suspend X Selected" button appears in the top-right area
+
+[ ] F5-C  Click "Suspend X Selected"
+          →  a bulk-reason form panel appears below the button
+          →  enter a reason and click "Confirm Bulk Suspend"
+          →  all selected users change to "Suspended" status
+          →  checkboxes deselect and the panel hides
+
+[ ] F5-D  Click the header checkbox (top row)
+          →  all eligible active users are selected simultaneously
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 6 — Reject Company button added
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F6-A  Login as admin@ratehub.com  →  /admin → Companies tab
+          →  an UNVERIFIED company shows a green "Verify" button (existing behaviour)
+
+[ ] F6-B  Click "Verify" on an unverified company
+          →  its badge changes to "Verified"
+          →  the button changes to a red "Reject" button
+
+[ ] F6-C  Click "Reject" on a verified company
+          →  a browser confirm dialog appears ("Reject (un-verify) this company?")
+          →  click OK
+          →  badge changes back to "Unverified"
+          →  button changes back to green "Verify"
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 7 — "Ended" badge shown after ending employment
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F7-A  Login as employee with an approved (is_current = true) employment
+          →  /dashboard → Employment tab
+          →  click "End" on the approved employment
+          →  confirm the end date
+          →  the card now shows an "Ended" red badge ALONGSIDE the existing "Approved" badge
+             (NOT showing "Verified / Current" any more)
+
+[ ] F7-B  On the same card after ending
+          →  the green "Current" dot and label are GONE
+          →  a red "Ended" dot and label appear in the dates row
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 8 — Delete review uses inline confirmation (no window.confirm)
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F8-A  Login as employee  →  /dashboard → Reviews tab
+          →  click "Delete" on a review
+          →  a red banner/panel appears INLINE inside the review card
+             with the text "Are you sure you want to delete this review?"
+             and "Yes, Delete" / "Cancel" buttons
+             (NO native browser confirm() popup)
+
+[ ] F8-B  Click "Cancel" in the inline confirmation
+          →  the confirmation panel disappears; review is NOT deleted
+
+[ ] F8-C  Click "Yes, Delete" in the inline confirmation
+          →  review is removed from the list without a page reload
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 9 — Company admin is blocked from the write-review page
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F9-A  Login as tech.admin@ratehub.com (company_admin)
+          →  navigate directly to /companies/<any-valid-id>/review
+          →  immediately redirected to /company-admin (NOT showing the review form)
+          →  NO "insufficient permissions" error message on the review page
+
+[ ] F9-B  Login as admin@ratehub.com (system_admin)
+          →  navigate directly to /companies/<any-valid-id>/review
+          →  immediately redirected (to /admin or /dashboard)
+          →  NOT showing the review form
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 10 — Strong password enforced on "Change Password"
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F10-A Login as alice  →  /profile → Settings section
+          →  enter current password correctly
+          →  new password: "alllowercase1!" (no uppercase)
+          →  click Save
+          →  validation error: "must contain at least one uppercase letter"
+
+[ ] F10-B Same section
+          →  new password: "NoNumbers!!!" (no digit)
+          →  click Save
+          →  validation error: "must contain at least one number"
+
+[ ] F10-C Same section
+          →  new password: "NoSpecial1A" (no special character)
+          →  click Save
+          →  validation error: "must contain at least one special character"
+
+[ ] F10-D Same section
+          →  new password: "Valid1Pass!" (uppercase + number + special, ≥8 chars)
+          →  click Save
+          →  password changes successfully (success message shown)
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 11 — Reset password page validates token on load
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F11-A Go to /reset-password/invalidtoken123
+          →  page briefly shows "Validating reset link…" spinner
+          →  then shows an error state: "Invalid Reset Link" heading and an
+             explanatory message (NOT the password form with fields)
+
+[ ] F11-B Use a reset token that has ALREADY been used (submit the password reset
+          form once, then open the same link again in a new tab)
+          →  second visit shows "This reset link has already been used." message
+          →  NOT the form again
+
+[ ] F11-C Use a valid (unused, unexpired) token
+          →  page shows the reset password form (strength indicator, confirm field)
+          →  fill in a valid password and submit  →  success
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 12 — Location filter is now a dropdown
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F12-A Go to /companies  →  click the "Filters" button
+          →  the Location field is a SELECT dropdown (not a free-text input)
+          →  it contains options like "All Locations", "San Francisco", "New York", etc.
+
+[ ] F12-B Select "San Francisco" from the location dropdown
+          →  company results filter to only show companies in San Francisco
+          →  active filter badge "📍 San Francisco" appears above the results
+
+[ ] F12-C Click "Clear all" filters
+          →  location resets to "All Locations"
+          →  all companies are shown again
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 13 — Users cannot report their own reviews
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F13-A Login as alice (employee who has written a review)
+          →  go to the company profile page where alice's review appears
+          →  find alice's own review
+          →  the "Report" flag button is REPLACED by the label "Your review"
+          →  there is NO report button on her own review
+
+[ ] F13-B Still logged in as alice
+          →  go to ANOTHER employee's review on the same page
+          →  the "Report" flag button IS visible (can report other people's reviews)
+
+[ ] F13-C Extra (API-level): using alice's auth token, POST /api/reports with
+          reviewId = alice's own review id
+          →  response should be HTTP 400 with error code "SELF_REPORT"
+          (test via DevTools → Network or curl/Postman)
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 14 — Verified employees section on company profile
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F14-A Login as any user  →  go to a company profile page (/companies/:id)
+          →  scroll below the reviews section
+          →  "Verified Employees" section heading is visible
+          →  if employees exist: cards show employee initials, name, and position
+          →  if no employees: "No verified employees to display." empty state shown
+
+[ ] F14-B Go to the SAME company profile page while NOT logged in
+          →  "Verified Employees" section is NOT visible (section hidden for guests)
+
+[ ] F14-C (This was the failing test C21) Login as tech.admin@ratehub.com
+          →  go to the company's own profile page
+          →  "Verified Employees" section IS visible with any current employees listed
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 15 — Feedback received triggers an email notification
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F15-A Login as employee A (e.g. alice)  →  go to /feedback
+          →  select a coworker (employee B) and submit peer feedback
+          →  check employee B's email inbox
+          →  an email from RateHub with subject "You received new peer feedback"
+             should arrive (may take a few seconds)
+          →  email body mentions employee A's name, the company name, and links
+             to the dashboard
+
+[ ] F15-B The in-app notification (bell icon) still works alongside the email:
+          →  after alice submits feedback, login as employee B
+          →  click the notification bell  →  a "New Peer Feedback" notification
+             is listed
+
+================================================================================
+  RE-TEST SUMMARY
+  Total new re-tests:  15 fixes  ×  avg 3 cases each  =  ~47 test cases above
+================================================================================

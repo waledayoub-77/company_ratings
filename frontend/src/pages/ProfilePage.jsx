@@ -20,6 +20,8 @@ import {
   EyeOff,
   AlertCircle,
   Loader2,
+  ShieldCheck,
+  Upload,
 } from 'lucide-react'
 import PageHeader from '../components/ui/PageHeader.jsx'
 import Badge from '../components/ui/Badge.jsx'
@@ -33,6 +35,7 @@ import { getEmployeeProfile, updateEmployeeProfile } from '../api/employees'
 import { getMyEmployments } from '../api/employments'
 import { getMyReviews } from '../api/reviews'
 import { getFeedbackGiven, getFeedbackReceived } from '../api/feedback'
+import { submitIdentityVerification, getVerificationStatus } from '../api/verification'
 
 export default function ProfilePage() {
   const { user, updateUser, logout } = useAuth()
@@ -231,6 +234,7 @@ export default function ProfilePage() {
     { id: 'profile',    label: 'Profile',    icon: User      },
     ...(!isAdmin ? [{ id: 'employment', label: 'Employment', icon: Briefcase }] : []),
     ...(!isAdmin ? [{ id: 'activity',   label: 'Activity',   icon: FileText  }] : []),
+    { id: 'verification', label: 'Verification', icon: ShieldCheck },
     { id: 'settings',   label: 'Settings',   icon: Shield    },
   ]
 
@@ -340,6 +344,18 @@ export default function ProfilePage() {
                   transition={{ duration: 0.25 }}
                 >
                   <ActivitySection stats={activityStats} />
+                </motion.div>
+              )}
+
+              {activeSection === 'verification' && (
+                <motion.div
+                  key="verification"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <VerificationSection />
                 </motion.div>
               )}
 
@@ -669,6 +685,130 @@ function ActivitySection({ stats }) {
           </Reveal>
         ))}
       </div>
+    </div>
+  )
+}
+
+/* ─── Verification Section ─── */
+function VerificationSection() {
+  const { user } = useAuth()
+  const [status, setStatus]     = useState(null)
+  const [loading, setLoading]   = useState(true)
+  const [docUrl, setDocUrl]     = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted]   = useState(false)
+  const [error, setError]       = useState('')
+
+  useEffect(() => {
+    getVerificationStatus()
+      .then(res => setStatus(res?.data ?? null))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  const handleSubmit = async () => {
+    if (!docUrl.trim()) { setError('Please provide a document URL'); return }
+    setSubmitting(true)
+    setError('')
+    try {
+      await submitIdentityVerification({ documentUrl: docUrl.trim() })
+      setSubmitted(true)
+      // Reload status
+      const res = await getVerificationStatus()
+      setStatus(res?.data ?? null)
+    } catch (e) {
+      setError(e?.message || 'Submission failed')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const isVerified = user?.identity_verified || status?.status === 'approved'
+  const isPending  = status?.status === 'pending'
+  const isRejected = status?.status === 'rejected'
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-navy-900 flex items-center gap-2">
+          <ShieldCheck size={20} className="text-blue-500" />
+          Identity Verification
+        </h2>
+        {isVerified && (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-200">
+            <CheckCircle2 size={12} />
+            Verified
+          </span>
+        )}
+      </div>
+
+      <Reveal>
+        <div className="bg-white rounded-2xl border border-navy-100/50 p-6">
+          {loading ? (
+            <div className="py-8 text-center">
+              <Loader2 size={20} className="animate-spin mx-auto text-navy-400" />
+            </div>
+          ) : isVerified ? (
+            <div className="text-center py-6">
+              <div className="w-16 h-16 mx-auto rounded-full bg-emerald-100 flex items-center justify-center mb-4">
+                <ShieldCheck size={28} className="text-emerald-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-navy-900 mb-1">Identity Verified</h3>
+              <p className="text-sm text-navy-500">Your identity has been verified by a system administrator. You now have a verified badge on your profile.</p>
+            </div>
+          ) : isPending ? (
+            <div className="text-center py-6">
+              <div className="w-16 h-16 mx-auto rounded-full bg-amber-100 flex items-center justify-center mb-4">
+                <Loader2 size={28} className="text-amber-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-navy-900 mb-1">Verification Pending</h3>
+              <p className="text-sm text-navy-500">Your verification request is being reviewed. This usually takes 1-2 business days.</p>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {isRejected && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+                  <AlertCircle size={16} className="text-red-500 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-red-700">Previous request rejected</p>
+                    {status?.admin_notes && <p className="text-xs text-red-600 mt-0.5">{status.admin_notes}</p>}
+                    <p className="text-xs text-red-500 mt-1">You can submit a new request below.</p>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <h3 className="text-sm font-semibold text-navy-900 mb-2">Verify Your Identity</h3>
+                <p className="text-xs text-navy-500 mb-4">
+                  Submit a link to a government-issued ID (passport, driver's license, national ID). The document will be reviewed by an administrator.
+                </p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-medium text-navy-600 block mb-1">Document URL</label>
+                    <input
+                      type="url"
+                      placeholder="https://drive.google.com/... or any accessible link"
+                      value={docUrl}
+                      onChange={e => { setDocUrl(e.target.value); setError('') }}
+                      className="w-full h-10 rounded-xl border border-navy-200 bg-white px-4 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
+                    />
+                  </div>
+                  {error && <p className="text-xs text-red-500">{error}</p>}
+                  {submitted && <p className="text-xs text-emerald-600 font-medium">Request submitted successfully!</p>}
+                  <button
+                    onClick={handleSubmit}
+                    disabled={submitting || !docUrl.trim()}
+                    className="h-10 px-6 bg-navy-900 text-white text-sm font-medium rounded-xl hover:bg-navy-800 transition-colors flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {submitting ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                    {submitting ? 'Submitting…' : 'Submit for Verification'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </Reveal>
     </div>
   )
 }

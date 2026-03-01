@@ -17,6 +17,8 @@ import {
   Loader2,
   RefreshCw,
   BadgeCheck,
+  ShieldCheck,
+  Eye,
 } from 'lucide-react'
 import PageHeader from '../components/ui/PageHeader.jsx'
 import Badge from '../components/ui/Badge.jsx'
@@ -35,6 +37,11 @@ import {
   bulkSuspendUsers,
   rejectCompany,
 } from '../api/admin.js'
+import {
+  getVerificationRequests,
+  approveVerification,
+  rejectVerification,
+} from '../api/verification.js'
 
 /* ─── Helpers ─── */
 function timeAgo(dateStr) {
@@ -77,6 +84,7 @@ export default function AdminPanel() {
     { id: 'reports',   label: 'Reports',   icon: Flag,     badge: (analytics?.pendingReports ?? 0) > 0 ? analytics.pendingReports : null },
     { id: 'companies', label: 'Companies', icon: Building2 },
     { id: 'users',     label: 'Users',     icon: Users     },
+    { id: 'verifications', label: 'Verifications', icon: ShieldCheck },
     { id: 'audit',     label: 'Audit Log', icon: Activity  },
   ]
 
@@ -122,6 +130,7 @@ export default function AdminPanel() {
         {activeTab === 'reports'   && <ReportsTab   />}
         {activeTab === 'companies' && <CompaniesTab />}
         {activeTab === 'users'     && <UsersTab     />}
+        {activeTab === 'verifications' && <VerificationsTab />}
         {activeTab === 'audit'     && <AuditTab     />}
       </div>
     </div>
@@ -670,6 +679,158 @@ function UsersTab() {
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+/* ─── Verifications Tab ─── */
+function VerificationsTab() {
+  const [requests, setRequests] = useState([])
+  const [loading, setLoading]   = useState(true)
+  const [working, setWorking]   = useState(null)
+  const [filter, setFilter]     = useState('pending')
+  const [adminNotes, setAdminNotes] = useState({})
+
+  const load = useCallback(() => {
+    setLoading(true)
+    getVerificationRequests({ status: filter, limit: 50 })
+      .then(res => setRequests(res?.data?.requests ?? res?.data ?? []))
+      .catch(() => setRequests([]))
+      .finally(() => setLoading(false))
+  }, [filter])
+
+  useEffect(() => { load() }, [load])
+
+  const handleApprove = async (id) => {
+    setWorking(id)
+    try {
+      await approveVerification(id, { adminNotes: adminNotes[id] || '' })
+      setRequests(prev => prev.filter(r => r.id !== id))
+    } catch (e) { alert(e?.message || 'Approval failed') }
+    finally { setWorking(null) }
+  }
+
+  const handleReject = async (id) => {
+    if (!adminNotes[id]?.trim()) { alert('Please provide rejection notes'); return }
+    setWorking(id)
+    try {
+      await rejectVerification(id, { adminNotes: adminNotes[id] })
+      setRequests(prev => prev.filter(r => r.id !== id))
+    } catch (e) { alert(e?.message || 'Rejection failed') }
+    finally { setWorking(null) }
+  }
+
+  const typeLabel = (t) => t === 'identity' ? 'Identity' : 'Company Doc'
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="text-lg font-semibold text-navy-900">
+          Verification Requests
+          <span className="text-sm font-normal text-navy-400 ml-2">({requests.length})</span>
+        </h2>
+        <div className="flex items-center gap-2">
+          {['pending', 'approved', 'rejected'].map(s => (
+            <button
+              key={s}
+              onClick={() => setFilter(s)}
+              className={`h-8 px-3 text-xs font-medium rounded-lg transition-colors ${
+                filter === s
+                  ? 'bg-navy-900 text-white'
+                  : 'bg-navy-50 text-navy-500 hover:text-navy-700'
+              }`}
+            >
+              {s.charAt(0).toUpperCase() + s.slice(1)}
+            </button>
+          ))}
+          <button onClick={load} className="p-2 rounded-lg text-navy-400 hover:text-navy-700 hover:bg-navy-50 transition-colors">
+            <RefreshCw size={14} />
+          </button>
+        </div>
+      </div>
+
+      {loading ? <Spinner /> : requests.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-navy-100/50 py-16 text-center text-sm text-navy-400">
+          <ShieldCheck size={28} className="mx-auto mb-3 text-emerald-400" />
+          No {filter} verification requests.
+        </div>
+      ) : requests.map((req, i) => (
+        <Reveal key={req.id} delay={i * 0.05}>
+          <div className="bg-white rounded-2xl border border-navy-100/50 p-6 hover:border-navy-200 transition-all">
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shrink-0">
+                  <ShieldCheck size={18} className="text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-navy-900">
+                    {req.user?.full_name ?? req.user?.email ?? 'Unknown User'}
+                  </p>
+                  <p className="text-xs text-navy-400 mt-0.5">
+                    {req.user?.email} · {typeLabel(req.type)} · {timeAgo(req.created_at)}
+                  </p>
+                </div>
+              </div>
+              <Badge variant={req.status === 'pending' ? 'warning' : req.status === 'approved' ? 'success' : 'danger'}>
+                {req.status}
+              </Badge>
+            </div>
+
+            {/* Document link */}
+            {req.document_url && (
+              <div className="bg-navy-50 rounded-xl p-3 mb-3 flex items-center gap-2">
+                <Eye size={13} className="text-navy-400" />
+                <a
+                  href={req.document_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-navy-600 hover:text-navy-900 underline truncate"
+                >
+                  View submitted document
+                </a>
+              </div>
+            )}
+
+            {/* Admin notes input (for pending) */}
+            {req.status === 'pending' && (
+              <>
+                <input
+                  type="text"
+                  placeholder="Admin notes (required for rejection)…"
+                  value={adminNotes[req.id] ?? ''}
+                  onChange={e => setAdminNotes(n => ({ ...n, [req.id]: e.target.value }))}
+                  className="w-full h-9 rounded-xl border border-navy-200 bg-white px-3 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all mb-3"
+                />
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleApprove(req.id)}
+                    disabled={working === req.id}
+                    className="h-9 px-4 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {working === req.id ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => handleReject(req.id)}
+                    disabled={working === req.id}
+                    className="h-9 px-4 border border-red-200 text-red-600 text-xs font-medium rounded-lg hover:bg-red-50 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    <Ban size={13} />
+                    Reject
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* Admin notes display (for resolved) */}
+            {req.admin_notes && req.status !== 'pending' && (
+              <p className="text-xs text-navy-500 mt-2">
+                <strong>Admin notes:</strong> {req.admin_notes}
+              </p>
+            )}
+          </div>
+        </Reveal>
+      ))}
     </div>
   )
 }

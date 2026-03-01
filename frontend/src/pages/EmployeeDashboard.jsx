@@ -30,6 +30,7 @@ import { getMyReviews, updateReview, deleteReview } from '../api/reviews.js'
 import { getMyEmployments, requestEmployment, endEmployment, cancelEmployment } from '../api/employments.js'
 import { getFeedbackReceived, reportFeedback } from '../api/feedback.js'
 import { getCompanies } from '../api/companies.js'
+import { getCompanyEotmEvents, getEotmNominees, castEotmVote, getCompanyEotmWinners } from '../api/eotm.js'
 
 const statusConfig = {
   approved: { icon: CheckCircle2, color: 'text-emerald-500', badge: 'success', label: 'Verified' },
@@ -81,6 +82,7 @@ export default function EmployeeDashboard() {
     { id: 'employment', label: 'Employment' },
     { id: 'reviews',    label: 'My Reviews' },
     { id: 'feedback',   label: 'Feedback'   },
+    { id: 'eotm',       label: 'EOTM'       },
   ]
 
   return (
@@ -125,6 +127,7 @@ export default function EmployeeDashboard() {
             {activeTab === 'employment' && <EmploymentTab employments={employments} refetch={refetchEmployments} />}
             {activeTab === 'reviews'    && <ReviewsTab    reviews={reviews} employments={employments} refetch={refetchReviews} />}
             {activeTab === 'feedback'   && <FeedbackTab   feedback={feedback} />}
+            {activeTab === 'eotm'       && <EotmVoteTab   employments={employments} />}
           </>
         )}
       </div>
@@ -1247,6 +1250,184 @@ function FeedbackTab({ feedback }) {
           )
         })}
       </div>
+    </div>
+  )
+}
+
+/* ─── EOTM Vote Tab ─── */
+const EOTM_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
+
+function EotmVoteTab({ employments }) {
+  const approvedEmployments = employments.filter(e => (e.verification_status ?? e.status) === 'approved')
+  const [selectedCompany, setSelectedCompany] = useState(approvedEmployments[0]?.company_id ?? null)
+  const [events, setEvents]     = useState([])
+  const [nominees, setNominees] = useState({})
+  const [winners, setWinners]   = useState([])
+  const [loading, setLoading]   = useState(true)
+  const [voting, setVoting]     = useState(null)
+  const [expanded, setExpanded] = useState(null)
+
+  useEffect(() => {
+    if (!selectedCompany) { setLoading(false); return }
+    setLoading(true)
+    Promise.all([
+      getCompanyEotmEvents(selectedCompany),
+      getCompanyEotmWinners(selectedCompany),
+    ])
+      .then(([evRes, winRes]) => {
+        setEvents(evRes?.data?.events ?? evRes?.data ?? [])
+        setWinners(winRes?.data?.winners ?? winRes?.data ?? [])
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [selectedCompany])
+
+  const loadNominees = async (eventId) => {
+    if (expanded === eventId) { setExpanded(null); return }
+    setExpanded(eventId)
+    if (!nominees[eventId]) {
+      try {
+        const res = await getEotmNominees(eventId)
+        setNominees(prev => ({ ...prev, [eventId]: res?.data?.nominees ?? res?.data ?? [] }))
+      } catch { setNominees(prev => ({ ...prev, [eventId]: [] })) }
+    }
+  }
+
+  const handleVote = async (eventId, nomineeId) => {
+    setVoting(nomineeId)
+    try {
+      await castEotmVote(eventId, { nomineeId })
+      // Refresh nominees
+      const res = await getEotmNominees(eventId)
+      setNominees(prev => ({ ...prev, [eventId]: res?.data?.nominees ?? res?.data ?? [] }))
+    } catch (e) { alert(e?.message || 'Vote failed') }
+    finally { setVoting(null) }
+  }
+
+  if (approvedEmployments.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border border-navy-100/50 p-12 text-center">
+        <Award size={28} className="mx-auto mb-3 text-navy-200" />
+        <p className="text-sm text-navy-400">You need a verified employment to participate in EOTM voting.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="text-lg font-semibold text-navy-900 flex items-center gap-2">
+          <Award size={20} className="text-amber-500" />
+          Employee of the Month
+        </h2>
+        {approvedEmployments.length > 1 && (
+          <select
+            value={selectedCompany ?? ''}
+            onChange={e => setSelectedCompany(e.target.value)}
+            className="h-9 rounded-xl border border-navy-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-navy-500/20"
+          >
+            {approvedEmployments.map(emp => (
+              <option key={emp.company_id ?? emp.companyId} value={emp.company_id ?? emp.companyId}>
+                {emp.companies?.name ?? emp.company_name ?? 'Company'}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="py-16 text-center"><Loader2 size={20} className="animate-spin mx-auto text-navy-400" /></div>
+      ) : events.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-navy-100/50 p-12 text-center">
+          <Award size={28} className="mx-auto mb-3 text-navy-200" />
+          <p className="text-sm text-navy-400">No EOTM events for this company yet.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {events.filter(ev => ev.status === 'open').map((ev, i) => (
+            <Reveal key={ev.id} delay={i * 0.05}>
+              <div className="bg-white rounded-2xl border border-navy-100/50 p-5 hover:border-navy-200 transition-all">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="text-sm font-semibold text-navy-900">
+                      {EOTM_MONTHS[(ev.month ?? 1) - 1]} {ev.year}
+                    </p>
+                    <p className="text-xs text-navy-400">{ev.total_votes ?? 0} total votes</p>
+                  </div>
+                  <Badge variant="success">Open for Voting</Badge>
+                </div>
+                <button
+                  onClick={() => loadNominees(ev.id)}
+                  className="text-xs text-navy-500 hover:text-navy-700 font-medium transition-colors"
+                >
+                  {expanded === ev.id ? 'Hide Nominees' : 'View & Vote'}
+                </button>
+
+                <AnimatePresence>
+                  {expanded === ev.id && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mt-4 pt-4 border-t border-navy-100 space-y-2">
+                        {(nominees[ev.id] ?? []).length === 0 ? (
+                          <p className="text-xs text-navy-400 text-center py-3">No nominees yet. Cast the first vote!</p>
+                        ) : (nominees[ev.id] ?? []).map((nom, j) => (
+                          <div key={j} className="flex items-center justify-between bg-navy-50/50 rounded-xl px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+                                <span className="text-white text-xs font-bold">{(nom.full_name || '?')[0].toUpperCase()}</span>
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-navy-900">{nom.full_name ?? 'Unknown'}</p>
+                                <p className="text-xs text-navy-400">{nom.vote_count ?? 0} votes</p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => handleVote(ev.id, nom.employee_id)}
+                              disabled={voting === nom.employee_id}
+                              className="h-8 px-3 border border-amber-300 text-amber-700 text-xs font-medium rounded-lg hover:bg-amber-50 transition-colors disabled:opacity-50"
+                            >
+                              {voting === nom.employee_id ? <Loader2 size={11} className="animate-spin" /> : 'Vote'}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      )}
+
+      {/* Past winners */}
+      {winners.length > 0 && (
+        <Reveal delay={0.1}>
+          <div className="bg-white rounded-2xl border border-navy-100/50 p-6">
+            <h3 className="text-sm font-semibold text-navy-900 mb-4 flex items-center gap-2">
+              <Award size={16} className="text-amber-500" />
+              Past Winners
+            </h3>
+            <div className="grid sm:grid-cols-3 gap-3">
+              {winners.map((w, i) => (
+                <div key={i} className="bg-amber-50/50 rounded-xl p-4 text-center border border-amber-100/50">
+                  <div className="w-10 h-10 mx-auto rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mb-2">
+                    <span className="text-white font-bold text-xs">{(w.employee_name || '?')[0].toUpperCase()}</span>
+                  </div>
+                  <p className="text-sm font-semibold text-navy-900">{w.employee_name ?? 'Unknown'}</p>
+                  <p className="text-xs text-navy-400 mt-0.5">
+                    {EOTM_MONTHS[(w.month ?? 1) - 1]} {w.year}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Reveal>
+      )}
     </div>
   )
 }

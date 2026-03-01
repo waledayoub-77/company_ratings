@@ -1296,7 +1296,7 @@ function EotmVoteTab({ employments }) {
   const handleVote = async (eventId, nomineeId) => {
     setVoting(nomineeId)
     try {
-      await castEotmVote(eventId, { nomineeId })
+      await castEotmVote(eventId, nomineeId)
       // Refresh nominees
       const res = await getEotmNominees(eventId)
       setNominees(prev => ({ ...prev, [eventId]: res?.data?.nominees ?? res?.data ?? [] }))

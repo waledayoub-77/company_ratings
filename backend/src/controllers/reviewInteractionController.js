@@ -31,7 +31,7 @@ const deleteReply = async (req, res, next) => {
 // POST /api/reviews/:id/vote
 const toggleVote = async (req, res, next) => {
   try {
-    const data = await voteService.toggleVote(req.params.id, req.user.userId, req.body.voteType || 'helpful');
+    const data = await voteService.toggleVote(req.params.id, req.user.userId);
     res.json({ success: true, data });
   } catch (err) { next(err); }
 };

@@ -1,16 +1,27 @@
 const supabase = require("../config/database");
 
 // GET /api/employees/:id  (guest allowed, privacy enforced)
+// Accepts either the employees.id or the employees.user_id as param
 exports.getEmployeeProfile = async (req, res) => {
   try {
-    const employeeId = req.params.id;
+    const paramId = req.params.id;
 
-    const { data: employee, error } = await supabase
+    // Try lookup by employees.id first, then by user_id
+    let { data: employee, error } = await supabase
       .from("employees")
       .select("id, user_id, full_name, current_position, bio, skills, profile_visibility, created_at, updated_at")
-      .eq("id", employeeId)
+      .eq("id", paramId)
       .is("deleted_at", null)
       .maybeSingle();
+
+    if (!employee) {
+      ({ data: employee, error } = await supabase
+        .from("employees")
+        .select("id, user_id, full_name, current_position, bio, skills, profile_visibility, created_at, updated_at")
+        .eq("user_id", paramId)
+        .is("deleted_at", null)
+        .maybeSingle());
+    }
 
     if (error) throw error;
     if (!employee) return res.status(404).json({ message: "Employee not found" });
@@ -38,9 +49,10 @@ exports.getEmployeeProfile = async (req, res) => {
 };
 
 // PATCH /api/employees/:id  (owner only; system_admin optional)
+// Accepts either the employees.id or the employees.user_id as param
 exports.updateEmployeeProfile = async (req, res) => {
   try {
-    const employeeId = req.params.id;
+    const paramId = req.params.id;
 
     const viewerUserId = req.user?.userId;
     const viewerRole = req.user?.role;
@@ -49,13 +61,22 @@ exports.updateEmployeeProfile = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    // Fetch to check ownership
-    const { data: existing, error: findErr } = await supabase
+    // Try lookup by employees.id first, then by user_id
+    let { data: existing, error: findErr } = await supabase
       .from("employees")
       .select("id, user_id")
-      .eq("id", employeeId)
+      .eq("id", paramId)
       .is("deleted_at", null)
       .maybeSingle();
+
+    if (!existing) {
+      ({ data: existing, error: findErr } = await supabase
+        .from("employees")
+        .select("id, user_id")
+        .eq("user_id", paramId)
+        .is("deleted_at", null)
+        .maybeSingle());
+    }
 
     if (findErr) throw findErr;
     if (!existing) return res.status(404).json({ message: "Employee not found" });
@@ -96,7 +117,7 @@ exports.updateEmployeeProfile = async (req, res) => {
     const { data: updated, error: updErr } = await supabase
       .from("employees")
       .update(update)
-      .eq("id", employeeId)
+      .eq("id", existing.id)
       .select("id, user_id, full_name, current_position, bio, skills, profile_visibility, created_at, updated_at")
       .single();
 

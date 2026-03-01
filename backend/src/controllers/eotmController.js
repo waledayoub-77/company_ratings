@@ -4,8 +4,8 @@ const eotmService = require('../services/eotmService');
 // POST /api/eotm/events
 const createEvent = async (req, res, next) => {
   try {
-    const { companyId, title, description, month, year } = req.body;
-    const data = await eotmService.createEvent(companyId, req.user.userId, { title, description, month, year });
+    const { companyId, department, month, year, startDate, endDate } = req.body;
+    const data = await eotmService.createEvent(companyId, req.user.userId, { department, month, year, startDate, endDate });
     res.status(201).json({ success: true, data });
   } catch (err) { next(err); }
 };
@@ -13,7 +13,7 @@ const createEvent = async (req, res, next) => {
 // POST /api/eotm/events/:id/vote
 const castVote = async (req, res, next) => {
   try {
-    const data = await eotmService.castVote(req.params.id, req.user.userId, req.body.nomineeId);
+    const data = await eotmService.castVote(req.params.id, req.user.userId, req.body.candidateId || req.body.nomineeId);
     res.status(201).json({ success: true, data });
   } catch (err) { next(err); }
 };

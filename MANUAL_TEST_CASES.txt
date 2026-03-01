@@ -654,3 +654,246 @@ FIX 15 — Feedback received triggers an email notification
   RE-TEST SUMMARY
   Total new re-tests:  15 fixes  ×  avg 3 cases each  =  ~47 test cases above
 ================================================================================
+
+
+================================================================================
+  V2 FEATURES — MANUAL TEST CASES
+  Pre-requisite: Run migration-v2.sql in your Supabase SQL editor FIRST
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+V2-01 — DATABASE MIGRATION
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] V2-M1  Open Supabase Dashboard → SQL Editor → paste contents of
+           backend/migration-v2.sql → click Run
+           → no errors should appear; all CREATE TABLE / ALTER TABLE succeed
+
+[ ] V2-M2  In Supabase Table Editor verify these new tables exist:
+           verification_requests, category_ratings, review_replies,
+           review_votes, eotm_events, eotm_votes, employee_of_month,
+           notification_preferences
+
+[ ] V2-M3  In Supabase Table Editor → companies table → confirm columns:
+           is_document_verified (bool), category_averages (jsonb)
+
+[ ] V2-M4  In Supabase Table Editor → company_reviews table → confirm columns:
+           departure_reason (varchar), helpful_count (int), ai_toxicity_score,
+           ai_sentiment, is_hidden_by_ai
+
+
+────────────────────────────────────────────────────────────────────────────────
+V2-02 — CATEGORY RATINGS (Write Review)
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] V2-R1  Login as employee (alice@ratehub.com) → go to a company's profile
+           → click "Write a Review" → the review form shows 6 category sliders:
+           Work-Life Balance, Compensation, Management, Culture,
+           Career Growth, Facilities
+
+[ ] V2-R2  Each slider is draggable 1–10 with a live numeric display and a
+           color gradient; moving the slider updates the number in real-time
+
+[ ] V2-R3  The form shows a "Reason for leaving" dropdown with options like
+           "Still Employed", "Better Opportunity", "Work-Life Balance", etc.
+
+[ ] V2-R4  Submit a review WITH category ratings and a departure reason
+           → success toast appears and you are redirected back to the company page
+
+[ ] V2-R5  On the company profile page, the right sidebar now shows a
+           "Category Breakdown" section with animated progress bars for
+           each category once at least one rated review exists
+
+[ ] V2-R6  The progress bar widths visually correspond to the submitted scores
+           (e.g. score 8/10 → bar ~80% width)
+
+
+────────────────────────────────────────────────────────────────────────────────
+V2-03 — HELPFUL VOTES ON REVIEWS
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] V2-V1  On a company profile page (logged in as employee), each review card
+           has a "Helpful" button (thumbs-up icon) at the bottom
+
+[ ] V2-V2  Click "Helpful" on a review → button increments the count
+           (e.g. "Helpful" becomes "Helpful (1)")
+
+[ ] V2-V3  Click "Helpful" again on the same review → vote is toggled off,
+           count decrements back
+
+[ ] V2-V4  Not logged in → click "Helpful" → redirected to /login
+
+[ ] V2-V5  Log in as a different user → the same review's helpful count is
+           visible; voting again increments it independently
+
+
+────────────────────────────────────────────────────────────────────────────────
+V2-04 — COMPANY ADMIN REPLIES TO REVIEWS
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] V2-CR1 Login as company admin (tech.admin@ratehub.com) → go to your
+           company's profile page → a review card shows a "Reply" button
+           next to the "Helpful" button
+
+[ ] V2-CR2 Click "Reply" → an inline text box and "Post Reply" button appear
+           below the review
+
+[ ] V2-CR3 Type fewer than 10 characters → "Post Reply" is disabled (greyed out)
+
+[ ] V2-CR4 Type a valid reply (≥10 chars) → click "Post Reply"
+           → reply appears below the review in a blue-tinted box labelled
+           "Company Response"
+
+[ ] V2-CR5 After a reply is posted on a review, the "Reply" button disappears
+           for that review (one reply per review enforced)
+
+[ ] V2-CR6 Non-company-admin employee → no "Reply" button visible on reviews
+
+[ ] V2-CR7 Departure reason badge: if a review was submitted with a departure
+           reason (not "Still Employed"), a small badge is shown below the
+           review text (e.g. "Left: better opportunity")
+
+
+────────────────────────────────────────────────────────────────────────────────
+V2-05 — IDENTITY VERIFICATION (Profile Page)
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] V2-IV1 Login as employee → go to /profile → left sidebar has a
+           "Verification" menu item (shield-check icon)
+
+[ ] V2-IV2 Click "Verification" → the panel shows an upload form with a URL
+           input field and "Submit for Verification" button
+
+[ ] V2-IV3 Submit with empty URL → button is disabled; cannot submit
+
+[ ] V2-IV4 Enter a valid URL (e.g. https://drive.google.com/somefile)
+           → click "Submit for Verification" → success message appears
+           and status changes to "Verification Pending" spinner UI
+
+[ ] V2-IV5 Submitting a second request while one is still pending → should
+           show the "Pending" state, not a new form
+
+
+────────────────────────────────────────────────────────────────────────────────
+V2-06 — VERIFICATION ADMIN (Admin Panel)
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] V2-VA1 Login as system admin (admin@ratehub.com) → go to /admin
+           → a "Verifications" tab is visible in the tab bar (shield icon)
+
+[ ] V2-VA2 Click "Verifications" tab → shows filter buttons: Pending / Approved / Rejected
+
+[ ] V2-VA3 Click "Pending" → the verification request submitted in V2-IV4 appears
+           with the user's name, email, type ("Identity"), and a document link
+
+[ ] V2-VA4 Click the document link → opens in a new tab
+
+[ ] V2-VA5 Click "Approve" (without admin notes) → request disappears from
+           pending list; switching to "Approved" filter shows it there
+
+[ ] V2-VA6 For another request: fill admin notes → click "Reject"
+           → request disappears from pending; visible under "Rejected" filter
+           with the notes shown
+
+[ ] V2-VA7 Click "Reject" without providing notes → an alert prompts you to
+           add notes before rejecting
+
+
+────────────────────────────────────────────────────────────────────────────────
+V2-07 — EMPLOYEE OF THE MONTH — COMPANY ADMIN
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] V2-E1  Login as company admin → go to /company-admin → an "EOTM" tab
+           is visible in the tab bar (award icon)
+
+[ ] V2-E2  Click "EOTM" tab → sees month/year dropdowns and "Create Event" button
+
+[ ] V2-E3  Select March 2026 → click "Create Event" → a new event card appears
+           with status "open" and "0 total votes"
+
+[ ] V2-E4  Creating a duplicate event for the same month/year → error alert
+           "Event for this month already exists"
+
+[ ] V2-E5  Click "View Nominees" on the open event → nominees panel expands
+           (empty list: "No votes yet")
+
+[ ] V2-E6  Click "Close & Declare Winner" on an open event with no votes
+           → event status changes to "closed"
+
+[ ] V2-E7  After closing, Hall of Fame section appears at bottom with the
+           winner card (or "no winner" if no votes)
+
+
+────────────────────────────────────────────────────────────────────────────────
+V2-08 — EMPLOYEE OF THE MONTH — EMPLOYEE VOTING
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] V2-EV1 Login as employee (alice) → go to /dashboard → an "EOTM" tab
+           is visible in the tab bar
+
+[ ] V2-EV2 Click "EOTM" tab → shows the open event for March 2026 with
+           "Open for Voting" badge
+
+[ ] V2-EV3 Click "View & Vote" → nominees panel expands (may show existing
+           nominees or "No nominees yet")
+
+[ ] V2-EV4 Click "Vote" next to a non-self nominee → vote is cast; count
+           increments; nominee appears in company admin's nominees list
+
+[ ] V2-EV5 Voting a second time in the same event → error alert (one vote
+           per event enforced)
+
+[ ] V2-EV6 Employee with NO verified employment → EOTM tab shows a message:
+           "You need a verified employment to participate"
+
+[ ] V2-EV7 After an event is closed, it no longer appears in the open events
+           list for employees; past winners appear in "Past Winners" section
+
+
+────────────────────────────────────────────────────────────────────────────────
+V2-09 — UI POLISH CHECKS
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] V2-UI1 Every page that uses PageHeader now shows a thin gradient horizontal
+           divider line below the header text (subtle, navy-to-transparent)
+
+[ ] V2-UI2 On the company profile page, "Employee Reviews" heading has a
+           vertical blue accent bar on its left side
+
+[ ] V2-UI3 "Category Breakdown" sidebar header also has the vertical accent bar
+
+[ ] V2-UI4 Review cards show the departure reason badge (small, muted) when
+           the reviewer chose a reason other than "Still Employed"
+
+[ ] V2-UI5 Company reply block uses a distinct light-blue background to
+           visually separate it from the review body
+
+[ ] V2-UI6 All new modals/panels (reply form, nominees list) use framer-motion
+           animate-in / animate-out transitions (no jarring layout jumps)
+
+
+────────────────────────────────────────────────────────────────────────────────
+V2-10 — REGRESSION: EXISTING FEATURES STILL WORK
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] V2-REG1 Login as employee → write a review WITHOUT category ratings
+            (leave all sliders at default) → review submits successfully
+
+[ ] V2-REG2 Company profile page still shows overall rating, review cards,
+            report button, and rating distribution chart
+
+[ ] V2-REG3 AdminPanel existing tabs (Overview, Reports, Companies, Users,
+            Audit) still work correctly after adding the Verifications tab
+
+[ ] V2-REG4 CompanyAdminDashboard existing tabs (Analytics, Requests, Reviews,
+            Feedback, Settings) still work with the new EOTM tab added
+
+[ ] V2-REG5 ProfilePage existing sections (Profile, Employment, Activity,
+            Settings) still render without errors after adding Verification tab
+
+[ ] V2-REG6 EmployeeDashboard existing tabs (Overview, Employment, My Reviews,
+            Feedback) still work after adding EOTM tab
+
+================================================================================
+  V2 TOTAL: ~45 new test cases
+================================================================================

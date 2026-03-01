@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Star,
@@ -646,7 +646,7 @@ function EotmTab({ companyId }) {
   const handleCreate = async () => {
     setCreating(true)
     try {
-      await createEotmEvent({ month: newMonth, year: newYear })
+      await createEotmEvent({ companyId, month: newMonth, year: newYear })
       await load()
     } catch (e) { alert(e?.message || 'Failed to create event') }
     finally { setCreating(false) }

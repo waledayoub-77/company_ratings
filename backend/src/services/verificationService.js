@@ -103,7 +103,7 @@ const getVerificationRequests = async (filters = {}) => {
 
   let query = supabase
     .from('verification_requests')
-    .select('*, users!inner(email, full_name, role)', { count: 'exact' });
+    .select('*, users!verification_requests_user_id_fkey(email, full_name, role)', { count: 'exact' });
 
   if (status) query = query.eq('status', status);
   if (type) query = query.eq('verification_type', type);

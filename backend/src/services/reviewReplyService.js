@@ -52,6 +52,7 @@ const createReply = async (reviewId, userId, content) => {
     .from('review_replies')
     .insert({
       review_id: reviewId,
+      company_id: review.company_id,
       user_id: userId,
       content: content.trim(),
     })

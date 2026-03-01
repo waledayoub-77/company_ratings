@@ -22,7 +22,7 @@ const saveCategoryRatings = async (reviewId, categoryRatings) => {
     if (!VALID_CATEGORIES.includes(category)) continue;
     const val = parseInt(rating);
     if (isNaN(val) || val < 1 || val > 10) continue;
-    rows.push({ review_id: reviewId, category, rating: val });
+    rows.push({ review_id: reviewId, category, score: val });
   }
 
   if (rows.length === 0) return [];
@@ -46,7 +46,7 @@ const saveCategoryRatings = async (reviewId, categoryRatings) => {
 const getCategoryRatings = async (reviewId) => {
   const { data, error } = await supabase
     .from('category_ratings')
-    .select('category, rating')
+    .select('category, score')
     .eq('review_id', reviewId);
 
   if (error) return [];
@@ -61,7 +61,7 @@ const getCategoryRatingsForReviews = async (reviewIds) => {
 
   const { data, error } = await supabase
     .from('category_ratings')
-    .select('review_id, category, rating')
+    .select('review_id, category, score')
     .in('review_id', reviewIds);
 
   if (error) return {};
@@ -70,7 +70,7 @@ const getCategoryRatingsForReviews = async (reviewIds) => {
   const grouped = {};
   (data || []).forEach(r => {
     if (!grouped[r.review_id]) grouped[r.review_id] = {};
-    grouped[r.review_id][r.category] = r.rating;
+    grouped[r.review_id][r.category] = r.score;
   });
   return grouped;
 };
@@ -91,7 +91,7 @@ const recalcCompanyCategoryAverages = async (companyId) => {
   const reviewIds = reviews.map(r => r.id);
   const { data: ratings } = await supabase
     .from('category_ratings')
-    .select('category, rating')
+    .select('category, score')
     .in('review_id', reviewIds);
 
   if (!ratings || ratings.length === 0) return;
@@ -101,7 +101,7 @@ const recalcCompanyCategoryAverages = async (companyId) => {
   const counts = {};
   ratings.forEach(r => {
     if (!sums[r.category]) { sums[r.category] = 0; counts[r.category] = 0; }
-    sums[r.category] += r.rating;
+    sums[r.category] += r.score;
     counts[r.category]++;
   });
 

@@ -703,6 +703,5 @@ export default function CompanyProfilePage() {
         </div>
       </div>
     </div>
-    </div>
   )
 }

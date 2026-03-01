@@ -1,8 +1,8 @@
 ================================================================================
-  RATEHUB — MANUAL TEST CASES
-  Total: 183 tests across 9 areas
+  RATEHUB — MANUAL TEST CASES  (V1 + Baraa Bug-Fix Re-Tests)
+  Total: 183 + 47 re-test cases  =  ~230 tests across 10 areas
   Credentials:
-    Employee       : alice@ratehub.com       / Test1234!
+    Employee       : bob@ratehub.com         / Test1234!
     Company Admin  : tech.admin@ratehub.com  / Test1234!
     System Admin   : admin@ratehub.com       / Test1234!
 ================================================================================
@@ -49,14 +49,14 @@ REGISTER (/register)
 [-- ] G14  Go to /register  →  select "Employee" role  →  first name and last name fields appear; company name field does NOT appear
 [-- ] G15  Go to /register  →  select "Company Admin" role  →  company name field appears
 [-- ] G16  Go to /register  →  select "Company Admin", fill email and password, leave company name EMPTY, submit  →  validation error appears
-[-- ] G17  Go to /register  →  register with alice@ratehub.com (existing email)  →  "already exists" / "email taken" error appears
+[-- ] G17  Go to /register  →  register with bob@ratehub.com (existing email)  →  "already exists" / "email taken" error appears
 [ --] G18  Go to /register  →  check that "System Admin" is NOT an available role option in the UI  (it should not be selectable)
 [-- ] —    Go to /register  →  click submit with ALL fields empty  →  native browser validation or custom error appears
 [-- ] —    Go to /register  →  "Sign In" / "Already have an account" link is visible and navigates to /login
 
 LOGIN (/login)
 [-- ] G19  Go to /login  →  email input, password input, and "Sign In" button are visible
-[-- ] G19  Login as alice@ratehub.com / Test1234!  →  redirected to /dashboard
+[-- ] G19  Login as bob@ratehub.com / Test1234!  →  redirected to /dashboard
 [ loading analytics are stuck on loading analytics same to reviews and settings] G19  Login as tech.admin@ratehub.com / Test1234!  →  redirected to /company-admin
 [-- ] G19  Login as admin@ratehub.com / Test1234!  →  redirected to /admin
 [-- ] G21  Go to /login  →  enter wrong password  →  "Invalid email or password" error message appears
@@ -74,7 +74,7 @@ LOGIN (/login)
 FORGOT PASSWORD (/forgot-password)
 -[-- ] —    Go to /forgot-password  →  email input and submit button are visible
 [-- ] G23  Go to /forgot-password  →  "Back to login" link is visible and works
-[-- ] G23  Go to /forgot-password  →  enter alice@ratehub.com and submit  →  "Check your inbox" or "email sent" message appears
+[-- ] G23  Go to /forgot-password  →  enter bob@ratehub.com and submit  →  "Check your inbox" or "email sent" message appears
 [-- ] G23  Go to /forgot-password  →  enter unknown@nobody.com and submit  →  same "check your inbox" message (no "email not found" leak)
 
 RESET PASSWORD (/reset-password/:token)
@@ -95,7 +95,7 @@ LOGOUT
 ────────────────────────────────────────────────────────────────────────────────
 
 DASHBOARD & NAVBAR
-[-- ] E1   Login as alice  →  automatically lands on /dashboard
+[-- ] E1   Login as bob  →  automatically lands on /dashboard
 [ --] E2   On /dashboard  →  navbar shows "Companies" link; shows "Dashboard" or employee-specific links; does NOT show "Admin Panel" or "Company Admin"
 [ --] E3   On /dashboard  →  profile dropdown (top right) shows Alice's real name and email (not placeholder "JD" or "Jane Cooper")
 [ --] E5   On /dashboard  →  stats cards show real numbers (reviews written, rating given, etc.) — NOT all zeros (if alice has activity)
@@ -228,7 +228,7 @@ ROLE REDIRECTS
 ────────────────────────────────────────────────────────────────────────────────
 
 VIEW & EDIT
-[ --] E26  Login as alice  →  go to /profile  →  real name (Alice's name) and email shown (NOT "Jane Cooper" or placeholder)
+[ --] E26  Login as bob  →  go to /profile  →  real name (Alice's name) and email shown (NOT "Jane Cooper" or placeholder)
 [ --] E27  On /profile  →  click "Edit" button  →  full name input appears; change the name, click "Save Changes"  →  name updated
 [-- ] E27  On /profile  →  click "Edit" button  →  bio field appears; update bio, save  →  bio updated
 [-- ] E27  On /profile  →  click "Edit" button  →  job title / current position field appears; update it, save  →  position updated
@@ -359,7 +359,7 @@ Skipped tests require:
   - G10/G12/G13  → a company with at least 1 existing review in DB
   - G22          → a pre-suspended test account (add SUSPENDED_EMAIL + SUSPENDED_PASSWORD to e2e/.env)
   - G26          → a real verify token (grab from email_verification_tokens table in Supabase)
-  - Some E-tests → alice must have approved employment at a specific company
+  - Some E-tests → bob must have approved employment at a specific company
 
 Bugs fixed so far:
   ✅  S1  — system_admin self-registration now blocked (403)
@@ -374,4 +374,328 @@ Remaining known issues (not yet fixed):
   ⚠️  C12/E21 — star ratings may display as 0 in some tab views
   ⚠️  C16  — offline/network-error save may fail silently
   ⚠️  C17  — company_admin can access write-review form (should be blocked)
+================================================================================
+
+
+================================================================================
+  RE-TEST CASES — 18 FIXES  (commit a46f077 "Fix all 18 manually-tested issues")
+  Re-test ONLY the items that were broken during the original manual session.
+  All credentials same as the header above.
+================================================================================
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 1 — CompanyAdmin dashboard tabs no longer stuck on loading
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F1-A  Login as tech.admin@ratehub.com  →  /company-admin  →  Analytics tab
+          shows real stat cards (total reviews, avg rating, employee count)
+          instead of a permanent loading spinner
+
+[ ] F1-B  Login as tech.admin@ratehub.com  →  /company-admin  →  Reviews tab
+          shows the company's reviews list (or "no reviews" empty state)
+          instead of a permanent loading spinner
+
+[ ] F1-C  Login as tech.admin@ratehub.com  →  /company-admin  →  Settings tab
+          shows form fields PRE-FILLED with real company name, description, etc.
+          instead of a permanent loading spinner
+
+[ ] F1-D  Login as tech.admin@ratehub.com  →  /company-admin  →  page heading
+          shows the REAL company name (e.g. "TechCorp Dashboard")
+          NOT "Dashboard Dashboard"
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 2 — Report dismiss / resolve actions work correctly
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F2-A  Login as admin@ratehub.com  →  /admin → Reports tab
+          →  click "Dismiss Report" on any pending report
+          →  report status changes to dismissed (row updated or removed),
+             NO alert() popup
+
+[ ] F2-B  Login as admin@ratehub.com  →  /admin → Reports tab
+          →  click "Remove Review" on any pending report
+          →  report status changes to resolved and the review is removed,
+             NO alert() popup
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 3 — Suspend user now requires a reason
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F3-A  Login as admin@ratehub.com  →  /admin → Users tab
+          →  click the suspend (🚫) icon on any active, non-admin user
+          →  an inline reason input and "Confirm" / "Cancel" buttons appear
+             (NOT immediately suspended, NOT a browser alert popup)
+
+[ ] F3-B  With the inline reason form open, click "Confirm" WITHOUT typing a reason
+          →  confirm button is DISABLED or nothing happens (reason is required)
+
+[ ] F3-C  With the inline reason form open, type a reason (e.g. "Spam activity")
+          →  click "Confirm"
+          →  user status changes to "Suspended" in the table row
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 4 — Admin users list now shows full name above email
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F4-A  Login as admin@ratehub.com  →  /admin → Users tab
+          →  each user row that has a full name shows:
+               - full name in bold (e.g. "Bob Smith") on the first line
+               - email in smaller gray text below it
+          →  rows without a full name show only the email (no crash, no blank)
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 5 — Bulk suspend UI (checkboxes + "Suspend X Selected" button)
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F5-A  Login as admin@ratehub.com  →  /admin → Users tab
+          →  each active, non-system_admin user row has a checkbox on the left
+
+[ ] F5-B  Check one or more checkboxes
+          →  a yellow "Suspend X Selected" button appears in the toolbar area
+
+[ ] F5-C  Click "Suspend X Selected"
+          →  a bulk-reason input panel appears
+          →  enter a reason and click "Confirm Bulk Suspend"
+          →  all selected users change to "Suspended" status
+          →  checkboxes deselect and the panel hides
+
+[ ] F5-D  Click the header checkbox (top of the list)
+          →  all eligible active users are selected simultaneously
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 6 — Reject Company button added
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F6-A  Login as admin@ratehub.com  →  /admin → Companies tab
+          →  an UNVERIFIED company shows a green "Verify" button (existing)
+
+[ ] F6-B  Click "Verify" on an unverified company
+          →  its badge changes to "Verified"
+          →  the button changes to a red "Reject" button
+
+[ ] F6-C  Click "Reject" on a verified company
+          →  confirmation dialog appears ("Reject / un-verify this company?")
+          →  click OK  →  badge reverts to "Unverified"; button back to "Verify"
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 7 — "Ended" badge shown after ending employment
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F7-A  Login as employee with an approved (is_current = true) employment
+          →  /dashboard → Employment tab  →  click "End" on the approved employment
+          →  confirm the end date
+          →  the card now shows an "Ended" red badge alongside "Approved"
+             (NOT still showing "Verified / Current")
+
+[ ] F7-B  On the same card after ending
+          →  the green "Current" label is GONE
+          →  a red "Ended" label appears in the dates row
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 8 — Delete review uses inline confirmation (no window.confirm)
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F8-A  Login as employee  →  /dashboard → Reviews tab
+          →  click "Delete" on any review
+          →  a red confirmation panel appears INLINE inside the review card:
+             "Are you sure you want to delete this review?"
+             with "Yes, Delete" and "Cancel" buttons
+             (NO native browser confirm() popup)
+
+[ ] F8-B  Click "Cancel" in the inline confirmation
+          →  the panel disappears; review is NOT deleted
+
+[ ] F8-C  Click "Yes, Delete" in the inline confirmation
+          →  review is removed from the list without a full page reload
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 9 — Company admin and system admin blocked from write-review page
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F9-A  Login as tech.admin@ratehub.com (company_admin)
+          →  navigate directly to /companies/<any-valid-id>/review
+          →  immediately redirected to /company-admin
+          →  the review form is NEVER shown; no "insufficient permissions" message
+
+[ ] F9-B  Login as admin@ratehub.com (system_admin)
+          →  navigate directly to /companies/<any-valid-id>/review
+          →  immediately redirected to /admin
+          →  the review form is NEVER shown
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 10 — Strong password enforced on "Change Password"
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F10-A Login as bob@ratehub.com  →  /profile → change-password section
+          →  enter current password correctly
+          →  new password: "alllowercase1!" (no uppercase letter)
+          →  click Save  →  validation error: must contain an uppercase letter
+
+[ ] F10-B Same section
+          →  new password: "NoNumbers!!!" (no digit)
+          →  click Save  →  validation error: must contain a number
+
+[ ] F10-C Same section
+          →  new password: "NoSpecial1A" (no special character)
+          →  click Save  →  validation error: must contain a special character
+
+[ ] F10-D Same section
+          →  new password: "Valid1Pass!" (uppercase + digit + special, ≥ 8 chars)
+          →  click Save  →  password changes successfully (success message shown)
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 11 — Reset password page validates token on load
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F11-A Go to /reset-password/invalidtoken123
+          →  page briefly shows "Validating reset link…" spinner
+          →  then shows an error: "Invalid Reset Link" heading +
+             explanatory message (NOT the password form)
+
+[ ] F11-B Use a reset token that has ALREADY been used
+          (submit the reset form once, then open the same link again)
+          →  second visit shows "This reset link has already been used."
+          →  the form does NOT appear again
+
+[ ] F11-C Use a valid (unused, unexpired) token
+          →  page shows the reset password form (strength indicator, confirm field)
+          →  fill in a strong password and submit  →  success message
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 12 — Location filter on /companies is now a dropdown
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F12-A Go to /companies  →  click the "Filters" panel / button
+          →  the Location field is a SELECT dropdown (not a free-text input)
+          →  options include "All Locations", "San Francisco", "New York", etc.
+
+[ ] F12-B Select a specific location from the dropdown (e.g. "San Francisco")
+          →  company results filter to that location only
+          →  an active-filter badge appears above the results
+
+[ ] F12-C Click "Clear all" filters
+          →  location resets to "All Locations"; all companies shown again
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 13 — Users cannot report their own reviews
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F13-A Login as bob@ratehub.com (employee who has written a review)
+          →  go to the company profile page where bob's review appears
+          →  find bob's own review card
+          →  the "Report" flag button is REPLACED by a "Your review" label
+             (no report button on own review)
+
+[ ] F13-B Still logged in as bob
+          →  look at a DIFFERENT employee's review on the same page
+          →  the "Report" flag button IS visible (can report others' reviews)
+
+[ ] F13-C API-level check (DevTools or curl):
+          POST /api/reports  { reviewId: <bob's own review id> }  with bob's token
+          →  response HTTP 400 with error code or message about self-reporting
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 14 — Verified employees section on company profile page
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F14-A Login as any user  →  go to a company profile page (/companies/:id)
+          →  scroll below the reviews section
+          →  "Verified Employees" section heading is visible
+          →  if employees exist: cards show name, initials, and position
+          →  if no employees: "No verified employees to display." empty state shown
+
+[ ] F14-B Visit the same company profile page while NOT logged in
+          →  the "Verified Employees" section is NOT visible (hidden for guests)
+
+[ ] F14-C Login as tech.admin@ratehub.com  →  go to the company's profile page
+          →  "Verified Employees" section IS visible with current employees listed
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 15 — Feedback received triggers an in-app notification
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F15-A Login as employee A (bob@ratehub.com)  →  go to /feedback
+          →  select a coworker (employee B) and submit peer feedback with ratings
+          →  login as employee B
+          →  click the notification bell  →  a "New Peer Feedback" notification
+             appears in the list
+
+[ ] F15-B (If email service is configured): check employee B's inbox
+          →  an email from RateHub with subject "You received new peer feedback"
+             should arrive within a few seconds
+          →  email body references employee A's name and links to the dashboard
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 16 — companyId included in auth responses for company_admin
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F16-A Login as tech.admin@ratehub.com
+          →  open DevTools → Application → localStorage
+          →  the "rh_user" key contains a JSON object with a non-null companyId
+             (e.g. "companyId": "some-uuid")
+          →  verify by running in DevTools console:
+             JSON.parse(localStorage.getItem('rh_user')).companyId
+
+[ ] F16-B With company_admin logged in, navigate to any company-admin page
+          →  the dashboard loads company-specific data without any
+             "company not found" or "undefined companyId" errors in the console
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 17 — Feedback email notification sent to recipient
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F17-A (Requires email service SMTP configured in backend/.env)
+          Login as employee A  →  submit peer feedback to employee B
+          →  employee B's email inbox receives a notification email
+          →  subject line contains "peer feedback" or "new feedback"
+          →  body mentions employee A's name
+
+[ ] F17-B If SMTP is NOT configured
+          →  feedback submission still succeeds (no 500 error)
+          →  only the email delivery is skipped; no crash
+
+
+────────────────────────────────────────────────────────────────────────────────
+FIX 18 — Admin panel audit logs record actions
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F18-A Login as admin@ratehub.com  →  perform an admin action (e.g. suspend a
+          user, verify a company)
+          →  go to /admin → Audit Logs tab
+          →  the action appears in the log with: action name, admin email, and
+             timestamp (most recent at the top)
+
+[ ] F18-B Filter or scroll the audit log
+          →  entries are sorted newest-first
+          →  no blank rows or "undefined" values in the table
+
+
+================================================================================
+  RE-TEST SUMMARY
+  Fixes covered:  18
+  New test cases: ~47
+  All 18 fixes committed in: a46f077  "Fix all 18 manually-tested issues"
+
+  How to mark results:
+    [-- ]  =  PASS
+    [ --]  =  PASS with a note / minor observation
+    [FAIL]  =  FAIL — describe what went wrong on the same line
+    [ ]    =  NOT YET TESTED
 ================================================================================

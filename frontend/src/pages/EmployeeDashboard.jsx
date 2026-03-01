@@ -1266,6 +1266,7 @@ function EotmVoteTab({ employments }) {
   const [loading, setLoading]   = useState(true)
   const [voting, setVoting]     = useState(null)
   const [expanded, setExpanded] = useState(null)
+  const [voteError, setVoteError] = useState('')
 
   useEffect(() => {
     if (!selectedCompany) { setLoading(false); return }
@@ -1295,12 +1296,13 @@ function EotmVoteTab({ employments }) {
 
   const handleVote = async (eventId, nomineeId) => {
     setVoting(nomineeId)
+    setVoteError('')
     try {
       await castEotmVote(eventId, nomineeId)
       // Refresh nominees
       const res = await getEotmNominees(eventId)
       setNominees(prev => ({ ...prev, [eventId]: res?.data?.nominees ?? res?.data ?? [] }))
-    } catch (e) { alert(e?.message || 'Vote failed') }
+    } catch (e) { setVoteError(e?.message || 'Vote failed') }
     finally { setVoting(null) }
   }
 
@@ -1394,6 +1396,9 @@ function EotmVoteTab({ employments }) {
                             </button>
                           </div>
                         ))}
+                        {voteError && (
+                          <p className="text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mt-2">{voteError}</p>
+                        )}
                       </div>
                     </motion.div>
                   )}

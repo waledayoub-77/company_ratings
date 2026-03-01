@@ -764,10 +764,10 @@ function VerificationsTab() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-navy-900">
-                    {req.user?.full_name ?? req.user?.email ?? 'Unknown User'}
+                    {req.users?.full_name ?? req.users?.email ?? 'Unknown User'}
                   </p>
                   <p className="text-xs text-navy-400 mt-0.5">
-                    {req.user?.email} · {typeLabel(req.type)} · {timeAgo(req.created_at)}
+                    {req.users?.email} · {typeLabel(req.type)} · {timeAgo(req.created_at)}
                   </p>
                 </div>
               </div>

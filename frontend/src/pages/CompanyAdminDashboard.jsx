@@ -623,6 +623,8 @@ function EotmTab({ companyId }) {
   const [loading, setLoading]   = useState(true)
   const [creating, setCreating] = useState(false)
   const [closing, setClosing]   = useState(null)
+  const [createError, setCreateError] = useState('')
+  const [closeError, setCloseError]   = useState('')
   const [newMonth, setNewMonth] = useState(new Date().getMonth() + 1)
   const [newYear, setNewYear]   = useState(new Date().getFullYear())
   const [nominees, setNominees] = useState({}) // { eventId: [...] }
@@ -645,19 +647,21 @@ function EotmTab({ companyId }) {
 
   const handleCreate = async () => {
     setCreating(true)
+    setCreateError('')
     try {
       await createEotmEvent({ companyId, month: newMonth, year: newYear })
       await load()
-    } catch (e) { alert(e?.message || 'Failed to create event') }
+    } catch (e) { setCreateError(e?.message || 'Failed to create event') }
     finally { setCreating(false) }
   }
 
   const handleClose = async (eventId) => {
     setClosing(eventId)
+    setCloseError('')
     try {
       await closeEotmEvent(eventId)
       await load()
-    } catch (e) { alert(e?.message || 'Failed to close event') }
+    } catch (e) { setCloseError(e?.message || 'Failed to close event') }
     finally { setClosing(null) }
   }
 
@@ -718,10 +722,16 @@ function EotmTab({ companyId }) {
               {creating ? 'Creating…' : 'Create Event'}
             </button>
           </div>
+          {createError && (
+            <p className="mt-3 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{createError}</p>
+          )}
         </div>
       </Reveal>
 
       {/* Active events */}
+      {closeError && (
+        <p className="text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{closeError}</p>
+      )}
       {events.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-xs font-semibold uppercase tracking-widest text-navy-400">Events</h3>

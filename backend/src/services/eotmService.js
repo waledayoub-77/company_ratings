@@ -214,7 +214,7 @@ const getCompanyEvents = async (companyId) => {
     .order('month', { ascending: false });
 
   if (error) return [];
-  return data || [];
+  return (data || []).map(ev => ({ ...ev, status: ev.is_active ? 'open' : 'closed' }));
 };
 
 /**
@@ -250,10 +250,10 @@ const getEventNominees = async (eventId) => {
   });
 
   return (employments || []).map(e => ({
-    employeeId: e.employees?.id || e.employee_id,
-    name: e.employees?.full_name || 'Unknown',
-    votes: tally[e.employee_id] || 0,
-  })).sort((a, b) => b.votes - a.votes);
+    employee_id: e.employees?.id || e.employee_id,
+    full_name: e.employees?.full_name || 'Unknown',
+    vote_count: tally[e.employee_id] || 0,
+  })).sort((a, b) => b.vote_count - a.vote_count);
 };
 
 /**
@@ -273,7 +273,7 @@ const getCompanyWinners = async (companyId) => {
     month: w.month,
     year: w.year,
     department: w.department,
-    name: w.employees?.full_name || 'Unknown',
+    employee_name: w.employees?.full_name || 'Unknown',
     voteCount: w.votes_count,
   }));
 };

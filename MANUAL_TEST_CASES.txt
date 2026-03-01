@@ -815,41 +815,41 @@ V2-06 — VERIFICATION ADMIN (Admin Panel)
 [there is no pending request even though i applied for a verification ] V2-VA3 Click "Pending" → the verification request submitted in V2-IV4 appears
            with the user's name, email, type ("Identity"), and a document link
 
-[ ] V2-VA4 Click the document link → opens in a new tab
+[ --] V2-VA4 Click the document link → opens in a new tab
 
-[ ] V2-VA5 Click "Approve" (without admin notes) → request disappears from
+[-- ] V2-VA5 Click "Approve" (without admin notes) → request disappears from
            pending list; switching to "Approved" filter shows it there
 
-[ ] V2-VA6 For another request: fill admin notes → click "Reject"
+[ --] V2-VA6 For another request: fill admin notes → click "Reject"
            → request disappears from pending; visible under "Rejected" filter
            with the notes shown
 
-[ ] V2-VA7 Click "Reject" without providing notes → an alert prompts you to
+[ --] V2-VA7 Click "Reject" without providing notes → an alert prompts you to
            add notes before rejecting
 
-
+note : there is no verification badge in the name i should see it for example in reviews i should see the identitity verification badge also in verification in admin panel i cant see the user who request a verification just unknown user
 ────────────────────────────────────────────────────────────────────────────────
 V2-07 — EMPLOYEE OF THE MONTH — COMPANY ADMIN
 ────────────────────────────────────────────────────────────────────────────────
 
-[ ] V2-E1  Login as company admin → go to /company-admin → an "EOTM" tab
+[ --] V2-E1  Login as company admin → go to /company-admin → an "EOTM" tab
            is visible in the tab bar (award icon)
 
-[ ] V2-E2  Click "EOTM" tab → sees month/year dropdowns and "Create Event" button
+[ --] V2-E2  Click "EOTM" tab → sees month/year dropdowns and "Create Event" button
 
-[ ] V2-E3  Select March 2026 → click "Create Event" → a new event card appears
+[ --] V2-E3  Select March 2026 → click "Create Event" → a new event card appears
            with status "open" and "0 total votes"
 
-[ ] V2-E4  Creating a duplicate event for the same month/year → error alert
+[-- but i dont want it to be alert ] V2-E4  Creating a duplicate event for the same month/year → error alert
            "Event for this month already exists"
 
-[ ] V2-E5  Click "View Nominees" on the open event → nominees panel expands
+[  all users dont have username just unknowns] V2-E5  Click "View Nominees" on the open event → nominees panel expands
            (empty list: "No votes yet")
 
-[ ] V2-E6  Click "Close & Declare Winner" on an open event with no votes
+[ no close declare winner also as a employee there is no place to vote] V2-E6  Click "Close & Declare Winner" on an open event with no votes
            → event status changes to "closed"
 
-[ ] V2-E7  After closing, Hall of Fame section appears at bottom with the
+[ unknows users] V2-E7  After closing, Hall of Fame section appears at bottom with the
            winner card (or "no winner" if no votes)
 
 
@@ -857,25 +857,25 @@ V2-07 — EMPLOYEE OF THE MONTH — COMPANY ADMIN
 V2-08 — EMPLOYEE OF THE MONTH — EMPLOYEE VOTING
 ────────────────────────────────────────────────────────────────────────────────
 
-[ ] V2-EV1 Login as employee (bob) → go to /dashboard → an "EOTM" tab
+[ no event just past winners and unknows users] V2-EV1 Login as employee (bob) → go to /dashboard → an "EOTM" tab
            is visible in the tab bar
 
-[ ] V2-EV2 Click "EOTM" tab → shows the open event for March 2026 with
+[ no] V2-EV2 Click "EOTM" tab → shows the open event for March 2026 with
            "Open for Voting" badge
 
-[ ] V2-EV3 Click "View & Vote" → nominees panel expands (may show existing
+[ no] V2-EV3 Click "View & Vote" → nominees panel expands (may show existing
            nominees or "No nominees yet")
 
-[ ] V2-EV4 Click "Vote" next to a non-self nominee → vote is cast; count
+[ no] V2-EV4 Click "Vote" next to a non-self nominee → vote is cast; count
            increments; nominee appears in company admin's nominees list
 
-[ ] V2-EV5 Voting a second time in the same event → error alert (one vote
+[no ] V2-EV5 Voting a second time in the same event → error alert (one vote
            per event enforced)
 
-[ ] V2-EV6 Employee with NO verified employment → EOTM tab shows a message:
+[ no] V2-EV6 Employee with NO verified employment → EOTM tab shows a message:
            "You need a verified employment to participate"
 
-[ ] V2-EV7 After an event is closed, it no longer appears in the open events
+[no ] V2-EV7 After an event is closed, it no longer appears in the open events
            list for employees; past winners appear in "Past Winners" section
 
 
@@ -883,21 +883,21 @@ V2-08 — EMPLOYEE OF THE MONTH — EMPLOYEE VOTING
 V2-09 — UI POLISH CHECKS
 ────────────────────────────────────────────────────────────────────────────────
 
-[ ] V2-UI1 Every page that uses PageHeader now shows a thin gradient horizontal
+[-- ] V2-UI1 Every page that uses PageHeader now shows a thin gradient horizontal
            divider line below the header text (subtle, navy-to-transparent)
 
-[ ] V2-UI2 On the company profile page, "Employee Reviews" heading has a
+[-- ] V2-UI2 On the company profile page, "Employee Reviews" heading has a
            vertical blue accent bar on its left side
 
-[ ] V2-UI3 "Category Breakdown" sidebar header also has the vertical accent bar
+[-- ] V2-UI3 "Category Breakdown" sidebar header also has the vertical accent bar
 
-[ ] V2-UI4 Review cards show the departure reason badge (small, muted) when
+[-- ] V2-UI4 Review cards show the departure reason badge (small, muted) when
            the reviewer chose a reason other than "Still Employed"
 
-[ ] V2-UI5 Company reply block uses a distinct light-blue background to
+[ --] V2-UI5 Company reply block uses a distinct light-blue background to
            visually separate it from the review body
 
-[ ] V2-UI6 All new modals/panels (reply form, nominees list) use framer-motion
+[-- ] V2-UI6 All new modals/panels (reply form, nominees list) use framer-motion
            animate-in / animate-out transitions (no jarring layout jumps)
 
 
@@ -1035,4 +1035,98 @@ V2-FIX 5 — Company profile layout consistent & employees redesigned  (was: V2-
 
 ================================================================================
   V2 RE-TEST TOTAL: 17 cases across 5 fixed bugs
+================================================================================
+
+
+════════════════════════════════════════════════════════════════════════════════
+  V2 RE-TEST ROUND 2 — Bugs fixed in commit after d7956f4
+════════════════════════════════════════════════════════════════════════════════
+
+────────────────────────────────────────────────────────────────────────────────
+V2-FIX 6 — EOTM nominee names and vote counts correct  (was: V2-E5, V2-E7)
+────────────────────────────────────────────────────────────────────────────────
+Root cause: eotmService.getEventNominees returned `{ employeeId, name, votes }`
+but frontend expected `{ employee_id, full_name, vote_count }`.
+Fix: renamed fields in eotmService to match frontend expectations.
+
+[ ] V2-F6-A  Login as tech.admin@ratehub.com  →  Company Admin Dashboard
+             →  EOTM tab  →  an open event card shows  →  click "View Nominees"
+             →  nominees appear with REAL names (not "Unknown")
+
+[ ] V2-F6-B  Past winners in the "Hall of Fame" section show real employee names
+             (not "Unknown") — root cause was `name` vs `employee_name` field.
+
+[ ] V2-F6-C  Each nominee card shows a correct vote count (e.g. "2 votes")
+             and the list is sorted highest-votes first.
+
+
+────────────────────────────────────────────────────────────────────────────────
+V2-FIX 7 — Employee EOTM tab shows open events and allows voting  (was: V2-EV1–EV7)
+────────────────────────────────────────────────────────────────────────────────
+Root cause: eotmService.getCompanyEvents returned raw eotm_events rows with
+`is_active` boolean, but EmployeeDashboard filtered on `ev.status === 'open'`.
+With `is_active` present but `status` undefined, no events ever rendered.
+Fix: service now maps `status: ev.is_active ? 'open' : 'closed'` on every row.
+
+[ ] V2-F7-A  Login as bob@ratehub.com  →  Employee Dashboard  →  EOTM tab
+             →  at least one card appears (the open event for the company)
+             →  card is labelled "Open for Voting" with a green badge
+
+[ ] V2-F7-B  Click "View & Vote" on the open event
+             →  nominees list expands with real names and vote counts
+
+[ ] V2-F7-C  Click "Vote" next to a nominee  →  button spins then the nominee's
+             vote count increments by 1
+
+[ ] V2-F7-D  Try voting a second time in the same event
+             →  an inline error message appears ("You have already voted…")
+             →  NO browser alert() dialog
+
+[ ] V2-F7-E  Past winners section still appears below the open events list
+             with correct employee names and month/year labels.
+
+[ ] V2-F7-F  Company admin closes the event  →  log back in as bob
+             →  open event no longer shows under EOTM tab
+             →  closed event winner appears in "Past Winners" section
+
+
+────────────────────────────────────────────────────────────────────────────────
+V2-FIX 8 — Inline errors replace alert() in EOTM actions  (was: V2-E4)
+────────────────────────────────────────────────────────────────────────────────
+Root cause: handleCreate and handleClose used browser alert() for errors.
+Fix: replaced with createError / closeError / voteError inline state.
+
+[ ] V2-F8-A  Login as tech.admin@ratehub.com  →  EOTM tab  →  select a month/year
+             that already has an event  →  click "Create Event"
+             →  a red inline error message appears under the Create button
+             ("An EOTM event already exists for this department/month")
+             →  NO browser alert() dialog pops up
+
+[ ] V2-F8-B  Select a unique month/year  →  "Create Event"  →  no error shown;
+             new event card appears in the Events list; error banner clears.
+
+[ ] V2-F8-C  (If testable) trigger a close failure (e.g. already-closed event) and
+             confirm a red inline error message appears near the events list
+             instead of a browser alert().
+
+
+────────────────────────────────────────────────────────────────────────────────
+V2-FIX 9 — Admin verification panel shows real user names  (was: V2-VA after VA7)
+────────────────────────────────────────────────────────────────────────────────
+Root cause: AdminPanel read `req.user?.full_name` but Supabase join key is
+`users` (plural table name), so the joined object was `req.users`.
+Fix: changed references to `req.users?.full_name` and `req.users?.email`.
+
+[ ] V2-F9-A  Login as admin@ratehub.com  →  Admin Panel  →  Verifications tab
+             →  pending requests show a real user name (e.g. "Bob Smith") and
+             email in the card header, NOT "Unknown User"
+
+[ ] V2-F9-B  Switch filter to "Approved" or "Rejected"
+             →  each request card also shows the correct user name & email.
+
+[ ] V2-F9-C  Approve a pending request  →  confirm the card disappears from
+             Pending, and the user's name is still shown correctly in Approved filter.
+
+================================================================================
+  V2 RE-TEST ROUND 2 TOTAL: 14 cases across 4 fixed bugs
 ================================================================================

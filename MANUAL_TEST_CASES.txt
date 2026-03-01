@@ -703,26 +703,30 @@ V2-01 — DATABASE MIGRATION
 ────────────────────────────────────────────────────────────────────────────────
 V2-02 — CATEGORY RATINGS (Write Review)
 ────────────────────────────────────────────────────────────────────────────────
+note: idont like the verified employees section
 
-[ ] V2-R1  Login as employee (bob@ratehub.com) → go to a company's profile
+
+
+
+[ --] V2-R1  Login as employee (bob@ratehub.com) → go to a company's profile
            → click "Write a Review" → the review form shows 6 category sliders:
            Work-Life Balance, Compensation, Management, Culture,
            Career Growth, Facilities
 
-[ ] V2-R2  Each slider is draggable 1–10 with a live numeric display and a
+[-- ] V2-R2  Each slider is draggable 1–10 with a live numeric display and a
            color gradient; moving the slider updates the number in real-time
 
-[ ] V2-R3  The form shows a "Reason for leaving" dropdown with options like
+[-- ] V2-R3  The form shows a "Reason for leaving" dropdown with options like
            "Still Employed", "Better Opportunity", "Work-Life Balance", etc.
 
-[ ] V2-R4  Submit a review WITH category ratings and a departure reason
+[ --] V2-R4  Submit a review WITH category ratings and a departure reason
            → success toast appears and you are redirected back to the company page
 
-[ ] V2-R5  On the company profile page, the right sidebar now shows a
+[ -- THE PAGE STRUCTURE WHEN I AM LOGGED IN AS AN EMPLOYEE NOT THE SAME IF IAM A GUEST FIX IT AND FIX THE VERIFIED EMPLOYEE SECTION ITS BAD REDESIGN IT] V2-R5  On the company profile page, the right sidebar now shows a
            "Category Breakdown" section with animated progress bars for
            each category once at least one rated review exists
 
-[ ] V2-R6  The progress bar widths visually correspond to the submitted scores
+[-- ] V2-R6  The progress bar widths visually correspond to the submitted scores
            (e.g. score 8/10 → bar ~80% width)
 
 
@@ -730,18 +734,18 @@ V2-02 — CATEGORY RATINGS (Write Review)
 V2-03 — HELPFUL VOTES ON REVIEWS
 ────────────────────────────────────────────────────────────────────────────────
 
-[ ] V2-V1  On a company profile page (logged in as employee), each review card
+[-- ] V2-V1  On a company profile page (logged in as employee), each review card
            has a "Helpful" button (thumbs-up icon) at the bottom
 
-[ ] V2-V2  Click "Helpful" on a review → button increments the count
+[--] V2-V2  Click "Helpful" on a review → button increments the count
            (e.g. "Helpful" becomes "Helpful (1)")
 
-[ ] V2-V3  Click "Helpful" again on the same review → vote is toggled off,
+[-- ] V2-V3  Click "Helpful" again on the same review → vote is toggled off,
            count decrements back
 
-[ ] V2-V4  Not logged in → click "Helpful" → redirected to /login
+[ --] V2-V4  Not logged in → click "Helpful" → redirected to /login
 
-[ ] V2-V5  Log in as a different user → the same review's helpful count is
+[ no its not ] V2-V5  Log in as a different user → the same review's helpful count is
            visible; voting again increments it independently
 
 
@@ -749,23 +753,30 @@ V2-03 — HELPFUL VOTES ON REVIEWS
 V2-04 — COMPANY ADMIN REPLIES TO REVIEWS
 ────────────────────────────────────────────────────────────────────────────────
 
-[ ] V2-CR1 Login as company admin (tech.admin@ratehub.com) → go to your
+[ --] V2-CR1 Login as company admin (tech.admin@ratehub.com) → go to your
            company's profile page → a review card shows a "Reply" button
            next to the "Helpful" button
 
-[ ] V2-CR2 Click "Reply" → an inline text box and "Post Reply" button appear
+[ --] V2-CR2 Click "Reply" → an inline text box and "Post Reply" button appear
            below the review
 
-[ ] V2-CR3 Type fewer than 10 characters → "Post Reply" is disabled (greyed out)
+[-- ] V2-CR3 Type fewer than 10 characters → "Post Reply" is disabled (greyed out)
 
-[ ] V2-CR4 Type a valid reply (≥10 chars) → click "Post Reply"
+[no its not when i refresh the page it disappeared ] V2-CR4 Type a valid reply (≥10 chars) → click "Post Reply"
            → reply appears below the review in a blue-tinted box labelled
            "Company Response"
 
-[ ] V2-CR5 After a reply is posted on a review, the "Reply" button disappears
+[ i dont know because there is no reply but when i write another reply an alert popsup and tell me you already replied one time] V2-CR5 After a reply is posted on a review, the "Reply" button disappears
            for that review (one reply per review enforced)
 
-[ ] V2-CR6 Non-company-admin employee → no "Reply" button visible on reviews
+[-- ] V2-CR6 Non-company-admin employee → no "Reply" button visible on reviews
+
+
+
+
+
+
+
 
 [ ] V2-CR7 Departure reason badge: if a review was submitted with a departure
            reason (not "Still Employed"), a small badge is shown below the
@@ -776,19 +787,19 @@ V2-04 — COMPANY ADMIN REPLIES TO REVIEWS
 V2-05 — IDENTITY VERIFICATION (Profile Page)
 ────────────────────────────────────────────────────────────────────────────────
 
-[ ] V2-IV1 Login as employee → go to /profile → left sidebar has a
+[ --] V2-IV1 Login as employee → go to /profile → left sidebar has a
            "Verification" menu item (shield-check icon)
 
-[ ] V2-IV2 Click "Verification" → the panel shows an upload form with a URL
+[-- ] V2-IV2 Click "Verification" → the panel shows an upload form with a URL
            input field and "Submit for Verification" button
 
-[ ] V2-IV3 Submit with empty URL → button is disabled; cannot submit
+[-- ] V2-IV3 Submit with empty URL → button is disabled; cannot submit
 
-[ ] V2-IV4 Enter a valid URL (e.g. https://drive.google.com/somefile)
+[no spinner ui ] V2-IV4 Enter a valid URL (e.g. https://drive.google.com/somefile)
            → click "Submit for Verification" → success message appears
            and status changes to "Verification Pending" spinner UI
 
-[ ] V2-IV5 Submitting a second request while one is still pending → should
+[no it shows me a new form ] V2-IV5 Submitting a second request while one is still pending → should
            show the "Pending" state, not a new form
 
 
@@ -796,12 +807,12 @@ V2-05 — IDENTITY VERIFICATION (Profile Page)
 V2-06 — VERIFICATION ADMIN (Admin Panel)
 ────────────────────────────────────────────────────────────────────────────────
 
-[ ] V2-VA1 Login as system admin (admin@ratehub.com) → go to /admin
+[-- ] V2-VA1 Login as system admin (admin@ratehub.com) → go to /admin
            → a "Verifications" tab is visible in the tab bar (shield icon)
 
-[ ] V2-VA2 Click "Verifications" tab → shows filter buttons: Pending / Approved / Rejected
+[-- ] V2-VA2 Click "Verifications" tab → shows filter buttons: Pending / Approved / Rejected
 
-[ ] V2-VA3 Click "Pending" → the verification request submitted in V2-IV4 appears
+[there is no pending request even though i applied for a verification ] V2-VA3 Click "Pending" → the verification request submitted in V2-IV4 appears
            with the user's name, email, type ("Identity"), and a document link
 
 [ ] V2-VA4 Click the document link → opens in a new tab
@@ -914,4 +925,114 @@ V2-10 — REGRESSION: EXISTING FEATURES STILL WORK
 
 ================================================================================
   V2 TOTAL: ~45 new test cases
+================================================================================
+
+
+================================================================================
+  RE-TEST — V2 BUG FIXES  (commit c76f600)
+  Re-test only the items that failed during the V2 manual session above.
+================================================================================
+
+
+────────────────────────────────────────────────────────────────────────────────
+V2-FIX 1 — Company reply persists after page refresh  (was: V2-CR4)
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] V2-F1-A  Login as tech.admin@ratehub.com  →  go to your company's profile page
+             →  click "Reply" on a review, type a reply (≥ 10 chars), click "Post Reply"
+             →  reply appears in a blue "Company Response" box below the review
+
+[ ] V2-F1-B  Refresh the page (F5)
+             →  the "Company Response" box is STILL visible with the reply text
+             (was disappearing before fix)
+
+[ ] V2-F1-C  After a reply is posted, the "Reply" button on THAT review is gone
+             →  no "Reply" button appears next to the Helpful button on that review
+             (was still showing before fix)
+
+
+────────────────────────────────────────────────────────────────────────────────
+V2-FIX 2 — Helpful count visible to all users  (was: V2-V5)
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] V2-F2-A  Login as employee A  →  go to a company profile  →  click "Helpful"
+             on a review  →  count shows "Helpful (1)"
+
+[ ] V2-F2-B  Log out  →  log in as employee B  →  go to the same company profile
+             →  the same review shows "Helpful (1)" (count is visible to all users,
+             not just the voter)
+
+[ ] V2-F2-C  Employee B clicks "Helpful" on the same review
+             →  count increments to "Helpful (2)"
+             →  employee A revisits  →  count shows "Helpful (2)"
+
+
+────────────────────────────────────────────────────────────────────────────────
+V2-FIX 3 — Verification pending UI shown after submission  (was: V2-IV4/IV5)
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] V2-F3-A  Login as employee  →  go to /profile → Verification tab
+             →  enter a valid URL (e.g. https://drive.google.com/testfile)
+             →  click "Submit for Verification"
+             →  the form is REPLACED by a yellow "Verification Pending" block
+             with a spinner icon and message "Your verification request is being reviewed."
+             (was showing a new empty form before fix)
+
+[ ] V2-F3-B  Refresh the page
+             →  the "Verification Pending" block is still shown (not reset to form)
+
+[ ] V2-F3-C  Clicking "Submit for Verification" a second time while pending is
+             NOT possible  →  the pending block is shown, no form to submit again
+
+
+────────────────────────────────────────────────────────────────────────────────
+V2-FIX 4 — Admin panel shows pending verification requests  (was: V2-VA3)
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] V2-F4-A  Login as admin@ratehub.com  →  go to /admin → Verifications tab
+             →  click "Pending" filter
+             →  the request submitted in V2-F3-A appears in the list with:
+               - user's name and email
+               - type "Identity"
+               - a clickable document link
+             (was showing empty list before fix)
+
+[ ] V2-F4-B  Click "Approve" on the pending request (no notes required)
+             →  request disappears from the Pending list
+             →  switch to "Approved" filter  →  request appears there
+
+[ ] V2-F4-C  For a different pending request: click "Reject" WITHOUT typing notes
+             →  alert "Please provide rejection notes"  →  request stays in list
+
+[ ] V2-F4-D  Enter rejection notes  →  click "Reject"
+             →  request disappears from Pending  →  appears under "Rejected" filter
+
+
+────────────────────────────────────────────────────────────────────────────────
+V2-FIX 5 — Company profile layout consistent & employees redesigned  (was: V2-R5)
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] V2-F5-A  Visit a company profile page while NOT logged in
+             →  layout shows: left sidebar (rating/distribution) + right main (reviews)
+             →  no "Verified Employees" section visible to guests
+
+[ ] V2-F5-B  Login as employee  →  go to the same company profile page
+             →  layout is IDENTICAL to guest view (same sidebar + main column structure)
+             →  "Verified Employees" card appears as a full-width section BELOW
+             the sidebar+reviews grid (not breaking the layout)
+
+[ ] V2-F5-C  The Verified Employees card shows:
+             →  a header with Users icon, "Verified Employees" title, and subtitle
+             →  employee cards in a 4-column grid (or fewer on mobile)
+             →  each card has a gradient avatar with initials, name, and position
+
+[ ] V2-F5-D  Login as tech.admin@ratehub.com  →  visit a company profile
+             →  "Write a Review" button is NOT visible in the header
+             →  Verified Employees section IS visible
+
+[ ] V2-F5-E  Login as admin@ratehub.com  →  visit a company profile
+             →  "Write a Review" button is NOT visible in the header
+
+================================================================================
+  V2 RE-TEST TOTAL: 17 cases across 5 fixed bugs
 ================================================================================

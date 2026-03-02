@@ -72,7 +72,7 @@ FIX 7-A — End employment with a past date  [CODE FIXED — RE-TEST]
 
 
 ────────────────────────────────────────────────────────────────────────────────
-FIX 11 — Reset password token validation  [NOT YET FULLY TESTED]
+FIX 11 — Reset password token validation  
 ────────────────────────────────────────────────────────────────────────────────
 
 [-- ] F11-B Use a reset token that has ALREADY been used
@@ -89,7 +89,7 @@ FIX 11 — Reset password token validation  [NOT YET FULLY TESTED]
 
 
 ────────────────────────────────────────────────────────────────────────────────
-FIX 12 — Location filter on /companies is a dropdown  [NOT YET TESTED]
+FIX 12 — Location filter on /companies is a dropdown
 ────────────────────────────────────────────────────────────────────────────────
 
 [working but not all locations are available (example: lebnaon not available) ] F12-A Go to /companies  →  open the Filters panel
@@ -104,7 +104,7 @@ FIX 12 — Location filter on /companies is a dropdown  [NOT YET TESTED]
 
 
 ────────────────────────────────────────────────────────────────────────────────
-FIX 13 — Users cannot report their own reviews  [NOT YET TESTED]
+FIX 13 — Users cannot report their own reviews
 ────────────────────────────────────────────────────────────────────────────────
 
 [ report flag to my review still appearing] F13-A Login as bob@ratehub.com
@@ -154,7 +154,7 @@ FIX 15 — Feedback triggers in-app notification
 
 
 ────────────────────────────────────────────────────────────────────────────────
-FIX 16 — companyId stored in localStorage for company_admin  [NOT YET TESTED]
+FIX 16 — companyId stored in localStorage for company_admin 
 ────────────────────────────────────────────────────────────────────────────────
 
 [-- ] F16-A Login as tech.admin@ratehub.com
@@ -178,7 +178,7 @@ FIX 17 — Feedback email notification
 
 
 ────────────────────────────────────────────────────────────────────────────────
-FIX 18 — Audit logs record admin actions  [NOT YET TESTED]
+FIX 18 — Audit logs record admin actions
 ────────────────────────────────────────────────────────────────────────────────
 
 [-- working but in audit log no name for the user that has been suspended ] F18-A Login as admin@ratehub.com

@@ -8,6 +8,25 @@ const { AppError } = require('../middlewares/errorHandler');
  * A row existing = helpful vote. No vote_type column.
  */
 const toggleVote = async (reviewId, userId) => {
+  // Prevent voting on own review
+  const { data: review } = await supabase
+    .from('company_reviews')
+    .select('employee_id')
+    .eq('id', reviewId)
+    .maybeSingle();
+
+  if (review) {
+    const { data: voter } = await supabase
+      .from('employees')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (voter && review.employee_id === voter.id) {
+      throw new AppError('You cannot vote on your own review', 400);
+    }
+  }
+
   // Check existing vote
   const { data: existing } = await supabase
     .from('review_votes')

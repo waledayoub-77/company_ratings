@@ -127,7 +127,7 @@ export default function AdminPanel() {
         </div>
 
         {activeTab === 'overview'  && <OverviewTab  analytics={analytics} />}
-        {activeTab === 'reports'   && <ReportsTab   />}
+        {activeTab === 'reports'   && <ReportsTab   onReportResolved={() => getAdminAnalytics().then(res => setAnalytics(res?.data ?? null)).catch(() => {})} />}
         {activeTab === 'companies' && <CompaniesTab />}
         {activeTab === 'users'     && <UsersTab     />}
         {activeTab === 'verifications' && <VerificationsTab />}
@@ -203,7 +203,7 @@ function OverviewTab({ analytics }) {
 }
 
 /* ─── Reports Tab ─── */
-function ReportsTab() {
+function ReportsTab({ onReportResolved }) {
   const [reports, setReports]   = useState([])
   const [loading, setLoading]   = useState(true)
   const [working, setWorking]   = useState(null)
@@ -223,6 +223,7 @@ function ReportsTab() {
     try {
       await resolveReport(id, { action })
       setReports(prev => prev.filter(r => r.id !== id))
+      onReportResolved?.()
     } catch (e) {
       alert(e?.message || 'Action failed')
     } finally {
@@ -494,10 +495,10 @@ function UsersTab() {
   }
 
   const handleBulkSuspend = async () => {
-    if (!bulkReason.trim() || selectedIds.size === 0) return
+    if (!bulkReason.trim() || bulkReason.trim().length < 3 || selectedIds.size === 0) return
     setBulkWorking(true)
     try {
-      await bulkSuspendUsers([...selectedIds])
+      await bulkSuspendUsers([...selectedIds], bulkReason.trim())
       setUsers(prev => prev.map(u => selectedIds.has(u.id) ? { ...u, is_active: false } : u))
       setSelectedIds(new Set())
       setShowBulk(false)
@@ -545,7 +546,7 @@ function UsersTab() {
             className="w-full h-9 rounded-lg border border-amber-300 bg-white px-3 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
           />
           <div className="flex gap-2">
-            <button onClick={handleBulkSuspend} disabled={!bulkReason.trim() || bulkWorking} className="h-8 px-4 bg-amber-600 text-white text-xs font-medium rounded-lg hover:bg-amber-700 disabled:opacity-50">
+            <button onClick={handleBulkSuspend} disabled={!bulkReason.trim() || bulkReason.trim().length < 3 || bulkWorking} className="h-8 px-4 bg-amber-600 text-white text-xs font-medium rounded-lg hover:bg-amber-700 disabled:opacity-50">
               {bulkWorking ? 'Suspending…' : 'Confirm Bulk Suspend'}
             </button>
             <button onClick={() => { setShowBulk(false); setBulkReason('') }} className="h-8 px-4 text-xs text-navy-500 hover:text-navy-700">Cancel</button>
@@ -873,6 +874,7 @@ function AuditTab() {
                 </p>
                 <p className="text-xs text-navy-400 mt-0.5">
                   by {entry.admin?.email ?? 'Admin'}
+                  {entry.details?.targetEmail ? ` → ${entry.details.targetEmail}` : ''}
                   {entry.entity_type ? ` · ${entry.entity_type}` : ''}
                   {entry.details?.reason ? ` · ${entry.details.reason}` : ''}
                 </p>

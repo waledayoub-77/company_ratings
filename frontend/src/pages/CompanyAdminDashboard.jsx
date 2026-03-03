@@ -136,7 +136,15 @@ function AnalyticsTab({ companyId }) {
       getCompanyAnalytics(companyId),
     ])
       .then(([statsRes, analyticsRes]) => {
-        setStats(statsRes?.data?.stats ?? statsRes?.data ?? null)
+        const raw = statsRes?.data?.stats ?? statsRes?.data ?? null
+        // Handle both camelCase and snake_case from RPC, and array responses
+        const s = Array.isArray(raw) ? raw[0] : raw
+        setStats(s ? {
+          totalReviews:     s.totalReviews     ?? s.total_reviews      ?? s.review_count   ?? null,
+          avgRating:        s.avgRating        ?? s.avg_rating         ?? s.average_rating  ?? null,
+          totalEmployees:   s.totalEmployees   ?? s.total_employees    ?? s.employee_count  ?? null,
+          avgFeedbackScore: s.avgFeedbackScore ?? s.avg_feedback_score ?? null,
+        } : null)
         setAnalytics(analyticsRes?.data?.analytics ?? analyticsRes?.data ?? null)
       })
       .finally(() => setLoading(false))
@@ -149,8 +157,11 @@ function AnalyticsTab({ companyId }) {
     { label: 'Avg Feedback Score',value: stats?.avgFeedbackScore != null ? Number(stats.avgFeedbackScore).toFixed(1) : '–', icon: MessageSquare, color: 'text-violet-500' },
   ]
 
-  const monthlyData  = analytics?.monthlyReviews ?? analytics?.monthly ?? []
-  const ratingDist   = analytics?.ratingDistribution
+  const monthlyRaw  = analytics?.monthlyReviews ?? analytics?.monthly ?? analytics?.reviewsOverTime ?? analytics?.reviews_over_time ?? {}
+  const monthlyData = Array.isArray(monthlyRaw)
+    ? monthlyRaw
+    : Object.entries(monthlyRaw).map(([month, count]) => ({ month, count }))
+  const ratingDist   = analytics?.ratingDistribution ?? analytics?.rating_distribution
     ? Object.entries(analytics.ratingDistribution)
         .map(([k, v]) => ({ stars: `${k}★`, count: v }))
         .sort((a, b) => b.stars.localeCompare(a.stars))

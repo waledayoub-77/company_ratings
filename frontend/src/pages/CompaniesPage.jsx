@@ -31,6 +31,9 @@ const locations = [
   'Dallas', 'Miami', 'Portland', 'San Diego', 'Phoenix', 'Philadelphia',
   'Minneapolis', 'Detroit', 'Houston', 'Nashville', 'Charlotte',
   'San Jose', 'Remote',
+  'Toronto', 'Vancouver', 'Montreal', 'London', 'Berlin', 'Paris',
+  'Dubai', 'Beirut', 'Lebanon', 'Riyadh', 'Cairo', 'Mumbai',
+  'Singapore', 'Tokyo', 'Sydney', 'Melbourne', 'Amsterdam', 'Zurich',
 ]
 const sortOptions = [
   { label: 'Highest Rated',  sortBy: 'overall_rating', sortOrder: 'desc' },

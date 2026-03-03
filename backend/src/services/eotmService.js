@@ -90,15 +90,16 @@ const castVote = async (eventId, userId, candidateEmployeeId) => {
   const voterEmployeeId = voterEmployee.id;
 
   // Verify voter is employed at this company (via employments table: employee_id FK)
-  const { data: voterEmp } = await supabase
+  // Use limit(1) instead of maybeSingle() — an employee may have multiple approved rows
+  const { data: voterEmps } = await supabase
     .from('employments')
     .select('id')
     .eq('employee_id', voterEmployeeId)
     .eq('company_id', event.company_id)
     .eq('verification_status', 'approved')
-    .maybeSingle();
+    .limit(1);
 
-  if (!voterEmp) throw new AppError('You must be a verified employee to vote', 403);
+  if (!voterEmps || voterEmps.length === 0) throw new AppError('You must be a verified employee to vote', 403);
 
   // Check existing vote (unique constraint: event_id + voter_id)
   const { data: existingVote } = await supabase
@@ -249,11 +250,20 @@ const getEventNominees = async (eventId) => {
     tally[v.candidate_id] = (tally[v.candidate_id] || 0) + 1;
   });
 
-  return (employments || []).map(e => ({
-    employee_id: e.employees?.id || e.employee_id,
-    full_name: e.employees?.full_name || 'Unknown',
-    vote_count: tally[e.employee_id] || 0,
-  })).sort((a, b) => b.vote_count - a.vote_count);
+  // Deduplicate by employee_id (an employee may have multiple employment records)
+  const seen = new Set();
+  const nominees = [];
+  for (const e of employments || []) {
+    const empId = e.employees?.id || e.employee_id;
+    if (seen.has(empId)) continue;
+    seen.add(empId);
+    nominees.push({
+      employee_id: empId,
+      full_name: e.employees?.full_name || 'Unknown',
+      vote_count: tally[empId] || 0,
+    });
+  }
+  return nominees.sort((a, b) => b.vote_count - a.vote_count);
 };
 
 /**

@@ -307,7 +307,7 @@ exports.suspendUser = async (req, res) => {
     // Revoke all refresh tokens
     await supabase.from('refresh_tokens').update({ is_revoked: true }).eq('user_id', id);
 
-    await logAudit({ adminId, action: 'user_suspended', targetType: 'user', targetId: id, details: { reason } });
+    await logAudit({ adminId, action: 'user_suspended', targetType: 'user', targetId: id, details: { reason, targetEmail: updated.email } });
 
     try {
       await sendAccountSuspendedEmail({ to: updated.email, name: updated.email, reason });

@@ -477,7 +477,7 @@ function UsersTab() {
   }, [search, load])
 
   const handleSuspend = async (id) => {
-    if (!suspendReason.trim()) return
+    if (!suspendReason.trim() || suspendReason.trim().length < 3) return
     setWorking(id)
     try {
       await suspendUser(id, { reason: suspendReason.trim() })
@@ -702,7 +702,7 @@ function UsersTab() {
                           <div className="mt-2 text-left space-y-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
                             <input
                               type="text"
-                              placeholder="Reason for suspension"
+                              placeholder="Reason for suspension (min 3 chars)"
                               value={suspendReason}
                               onChange={e => setSuspendReason(e.target.value)}
                               className="w-full h-8 rounded-lg border border-amber-300 bg-white px-2 text-xs placeholder:text-navy-300 focus:outline-none"
@@ -710,7 +710,7 @@ function UsersTab() {
                             <div className="flex gap-1">
                               <button
                                 onClick={() => handleSuspend(u.id)}
-                                disabled={!suspendReason.trim()}
+                                disabled={!suspendReason.trim() || suspendReason.trim().length < 3}
                                 className="h-7 px-3 bg-amber-600 text-white text-[11px] font-medium rounded-md hover:bg-amber-700 disabled:opacity-50"
                               >
                                 Confirm

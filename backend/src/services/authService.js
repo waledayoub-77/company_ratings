@@ -17,7 +17,7 @@ const registerUser = async ({ email, password, role = 'employee', fullName, full
     .from('users')
     .select('id')
     .eq('email', email)
-    .is('deleted_at', null)  // Allow re-registration with a soft-deleted account's email
+    .eq('is_deleted', false)
     .maybeSingle();
 
   if (existingUser) {
@@ -158,12 +158,26 @@ const refreshToken = async (token) => {
 
 
   const decoded = verifyRefreshToken(token);
+
+  // Block deleted / suspended users from refreshing tokens
+  const { data: dbUser } = await supabase
+    .from('users')
+    .select('is_active, is_deleted')
+    .eq('id', decoded.userId)
+    .maybeSingle();
+
+  if (!dbUser || dbUser.is_deleted) {
+    throw new AppError('Account not found', 401, 'ACCOUNT_DELETED');
+  }
+  if (!dbUser.is_active) {
+    throw new AppError('Account suspended', 403, 'ACCOUNT_SUSPENDED');
+  }
+
   await supabase
     .from('refresh_tokens')
     .update({ is_revoked: true })
     .eq('id', storedToken.id);
 
-  
   const payload = { userId: decoded.userId, email: decoded.email, role: decoded.role };
   const newAccessToken = generateAccessToken(payload);
   const newRefreshToken = generateRefreshToken(payload);

@@ -559,6 +559,7 @@ SELECT
     r.overall_rating,
     r.content,
     r.is_anonymous,
+    r.departure_reason,
     r.created_at,
     r.edited_at
 FROM company_reviews r

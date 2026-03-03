@@ -287,7 +287,7 @@ exports.suspendUser = async (req, res) => {
     const { id } = req.params;
     const { reason } = req.body;
 
-    if (!reason) return res.status(400).json({ success: false, error: { message: 'Reason is required', code: 'MISSING_FIELD' } });
+    if (!reason || reason.trim().length < 3) return res.status(400).json({ success: false, error: { message: 'Reason is required (min 3 chars)', code: 'MISSING_FIELD' } });
 
     const { data: target } = await supabase.from('users').select('id, role, is_active').eq('id', id).eq('is_deleted', false).maybeSingle();
     if (!target) return res.status(404).json({ success: false, error: { message: 'User not found', code: 'NOT_FOUND' } });
@@ -373,7 +373,7 @@ exports.deleteUser = async (req, res) => {
     if (target.role === 'system_admin') return res.status(400).json({ success: false, error: { message: 'Cannot delete a system admin', code: 'FORBIDDEN_ACTION' } });
     if (id === adminId) return res.status(400).json({ success: false, error: { message: 'Cannot delete your own account', code: 'FORBIDDEN_ACTION' } });
 
-    await supabase.from('users').update({ is_deleted: true, is_active: false }).eq('id', id);
+    await supabase.from('users').update({ is_deleted: true, is_active: false, deleted_at: new Date().toISOString() }).eq('id', id);
     await supabase.from('refresh_tokens').update({ is_revoked: true }).eq('user_id', id);
     await logAudit({ adminId, action: 'user_deleted', targetType: 'user', targetId: id, details: { email: target.email } });
 

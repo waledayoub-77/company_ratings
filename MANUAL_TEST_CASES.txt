@@ -829,3 +829,39 @@ Fix: added replyError state; error renders as small red text below the textarea.
 ================================================================================
   V2 RE-TEST ROUND 5 TOTAL: 15 cases across 6 fixed bugs
 ================================================================================
+
+
+════════════════════════════════════════════════════════════════════════════════
+  NEW BUGS FOUND — Reported for fixing
+════════════════════════════════════════════════════════════════════════════════
+
+────────────────────────────────────────────────────────────────────────────────
+BUG 1 — Deleted user's email is NOT removed from DB; signup with same email blocked
+────────────────────────────────────────────────────────────────────────────────
+
+[BUG] Login as admin@ratehub.com  →  /admin → Users tab
+            →  delete any user (e.g. bob@ratehub.com)
+            →  user disappears from the Users list
+
+[FAIL] Try to login with the deleted user's credentials
+            →  Expected: "Account not found" or similar
+            →  Actual: "Invalid email or password" (email still exists in DB)
+
+[FAIL] Try to register a new account using the same deleted email
+            →  Expected: registration should succeed (user was deleted)
+            →  Actual: "Email already exists" error — email was NOT fully removed
+            from the database, so the same email can never be re-used
+
+────────────────────────────────────────────────────────────────────────────────
+BUG 2 — Employee current position is not saved; lost after page refresh
+────────────────────────────────────────────────────────────────────────────────
+
+[BUG] Login as bob@ratehub.com  →  go to /dashboard or /profile
+            →  find the "Current Position" field
+            →  type a position title (e.g. "Senior Developer")
+            →  save / submit the form
+
+[FAIL] Press F5 to refresh the page
+            →  Expected: position field shows "Senior Developer"
+            →  Actual: position field is empty — as if nothing was entered;
+            the value is not being persisted to the database

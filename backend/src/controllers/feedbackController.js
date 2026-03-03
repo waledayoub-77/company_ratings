@@ -193,7 +193,7 @@ exports.createFeedback = async (req, res) => {
           type: 'feedback_received',
           title: 'New Peer Feedback',
           message: `${reviewerEmp?.full_name || 'A coworker'} submitted feedback for you (Q${quarter} ${year}).`,
-          link: '/internal-feedback',
+          link: '/feedback',
         });
         // Send email notification (non-blocking)
         const { data: ratedUser } = await supabase.from('users').select('email').eq('id', ratedEmp.user_id).maybeSingle();

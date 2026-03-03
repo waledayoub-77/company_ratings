@@ -89,6 +89,9 @@ export default function CompanyProfilePage() {
   const [replySubmitting, setReplySubmitting] = useState(false)
   const [replyError, setReplyError] = useState('')
 
+  // Helpful vote errors (per review id)
+  const [voteErrors, setVoteErrors] = useState({})
+
   // Employees state
   const [employees, setEmployees] = useState([])
   const [employeesLoading, setEmployeesLoading] = useState(false)
@@ -500,9 +503,11 @@ export default function CompanyProfilePage() {
                     <div className="mt-5 pt-4 border-t border-navy-50 flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         {/* Helpful vote button */}
+                        <div className="flex flex-col gap-0.5">
                         <button
                           onClick={async () => {
                             if (!user) { navigate('/login'); return }
+                            setVoteErrors(prev => ({ ...prev, [review.id]: '' }))
                             try {
                               const res = await toggleReviewVote(review.id, 'helpful')
                               // Update local helpful count
@@ -511,13 +516,19 @@ export default function CompanyProfilePage() {
                                 const delta = res?.data?.action === 'removed' ? -1 : res?.data?.action === 'added' ? 1 : 0
                                 return { ...r, helpful_count: Math.max(0, (r.helpful_count || 0) + delta) }
                               }))
-                            } catch {}
+                            } catch (err) {
+                              setVoteErrors(prev => ({ ...prev, [review.id]: err?.message || 'Cannot vote on this review' }))
+                            }
                           }}
                           className="flex items-center gap-1.5 text-xs text-navy-400 hover:text-navy-700 transition-colors group"
                         >
                           <ThumbsUp size={13} className="group-hover:text-emerald-500 transition-colors" />
                           Helpful{(review.helpful_count || 0) > 0 ? ` (${review.helpful_count})` : ''}
                         </button>
+                        {voteErrors[review.id] && (
+                          <span className="text-[11px] text-red-500">{voteErrors[review.id]}</span>
+                        )}
+                        </div>
 
                         {/* Reply button (company admin only, if no reply exists) */}
                         {user?.role === 'company_admin' && user?.companyId === company?.id && !review.reply && (

@@ -17,6 +17,7 @@ const registerUser = async ({ email, password, role = 'employee', fullName, full
     .from('users')
     .select('id')
     .eq('email', email)
+    .is('deleted_at', null)  // Allow re-registration with a soft-deleted account's email
     .maybeSingle();
 
   if (existingUser) {

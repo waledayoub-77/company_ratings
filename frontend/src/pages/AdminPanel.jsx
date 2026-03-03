@@ -69,8 +69,13 @@ function reasonVariant(reason) {
   return 'default'
 }
 
+const VALID_ADMIN_TABS = ['overview', 'reports', 'companies', 'users', 'verifications', 'audit']
+
 export default function AdminPanel() {
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState(() => {
+    const hash = window.location.hash.replace('#', '')
+    return VALID_ADMIN_TABS.includes(hash) ? hash : 'overview'
+  })
   const [analytics, setAnalytics] = useState(null)
 
   useEffect(() => {
@@ -78,6 +83,11 @@ export default function AdminPanel() {
       .then(res => setAnalytics(res?.data ?? null))
       .catch(() => {})
   }, [])
+
+  const handleTabChange = (id) => {
+    setActiveTab(id)
+    window.history.replaceState(null, '', `#${id}`)
+  }
 
   const tabs = [
     { id: 'overview',  label: 'Overview',  icon: BarChart3 },
@@ -103,8 +113,8 @@ export default function AdminPanel() {
           {tabs.map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`relative flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap transition-colors ${
+              onClick={() => handleTabChange(tab.id)}
+              className={`relative flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap transition-colors ${`
                 activeTab === tab.id ? 'text-navy-900' : 'text-navy-400 hover:text-navy-600'
               }`}
             >

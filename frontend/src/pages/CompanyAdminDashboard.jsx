@@ -42,8 +42,13 @@ import { getPendingEmployments, approveEmployment, rejectEmployment, getAllEmplo
 import { getFeedbackReceived } from '../api/feedback'
 import { createEotmEvent, closeEotmEvent, getCompanyEotmEvents, getEotmNominees, getCompanyEotmWinners } from '../api/eotm'
 
+const VALID_CA_TABS = ['overview', 'requests', 'reviews', 'eotm', 'feedback', 'settings']
+
 export default function CompanyAdminDashboard() {
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState(() => {
+    const hash = window.location.hash.replace('#', '')
+    return VALID_CA_TABS.includes(hash) ? hash : 'overview'
+  })
   const [pendingCount, setPendingCount] = useState(0)
   const [companyName, setCompanyName] = useState('')
   const { user } = useAuth()
@@ -98,8 +103,8 @@ export default function CompanyAdminDashboard() {
           {tabs.map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`relative flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap transition-colors ${
+              onClick={() => { setActiveTab(tab.id); window.history.replaceState(null, '', `#${tab.id}`) }}
+              className={`relative flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap transition-colors ${`
                 activeTab === tab.id ? 'text-navy-900' : 'text-navy-400 hover:text-navy-600'
               }`}
             >

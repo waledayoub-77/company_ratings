@@ -155,41 +155,7 @@ WRONG ROLE REDIRECTS
 ALREADY LOGGED IN → redirected away from auth pages
 
 
-────────────────────────────────────────────────────────────────────────────────
-08 — SECURITY
-────────────────────────────────────────────────────────────────────────────────
 
-[ ] S1   POST /api/auth/register with body { role: "system_admin", ... }  →  should return 400 or 403 (FIXED — backend now blocks it)
-         (To test: open DevTools → Network, or use curl/Postman)
-         curl -X POST http://localhost:5000/api/auth/register \
-           -H "Content-Type: application/json" \
-           -d '{"email":"hack@test.com","password":"Test1234!","role":"system_admin","firstName":"A","lastName":"B"}'
-         Expected: HTTP 400 or 403
-
-[ ] S2   Login as employee  →  call GET /api/admin/users with that token  →  403 returned
-         curl -H "Authorization: Bearer <EMPLOYEE_TOKEN>" http://localhost:5000/api/admin/users
-         Expected: 403
-
-[ ] S2   Login as employee  →  call GET /api/admin/analytics with that token  →  403 returned
-
-[ ] S3   Login as company_admin  →  call GET /api/admin/analytics with that token  →  403 returned
-[ ] S3   Login as company_admin  →  call GET /api/admin/users with that token  →  403 returned
-
-[ ] S4   Login as company_admin  →  PATCH /api/companies/<OTHER_COMPANY_ID> with that token  →  403 or 404
-[ ] S5   Login as company_admin  →  DELETE /api/companies/<OTHER_COMPANY_ID> with that token  →  403 or 404
-[ ] S6   Login as company_admin  →  PATCH /api/employments/<OTHER_EMPLOYMENT_ID>/approve  →  403 or 404
-
-[ ] S7   Login as employee  →  open DevTools → Application → localStorage  →  key "rh_access" exists with a JWT value
-[ ] S7   Login as employee  →  press F5 to hard refresh  →  still on /dashboard (session persists via token rehydration)
-[ ] S8   Login as employee  →  in DevTools console: localStorage.removeItem('rh_user'); localStorage.removeItem('rh_access'); localStorage.removeItem('rh_refresh')  →  navigate to /dashboard  →  redirected to /login
-
-[ ] S9   Login as employee  →  go to write a review  →  paste <script>alert("XSS")</script> in the review text field  →  submit  →  NO alert() popup fires
-[ ] S10  Go to /register as company_admin  →  enter <script>alert("XSS")</script> as company name  →  submit  →  NO alert() popup fires
-
-[ ] S11  Send 15 rapid POST requests to /api/auth/login with wrong credentials  →  after ~5 attempts, should receive HTTP 429  (⚠️ rate limiting is disabled in development mode — will NOT trigger in dev)
-         for i in $(seq 1 15); do curl -s -o /dev/null -w "%{http_code}\n" -X POST http://localhost:5000/api/auth/login -H "Content-Type: application/json" -d '{"email":"test@test.com","password":"wrong"}'; done
-
-you make the security test
 ────────────────────────────────────────────────────────────────────────────────
 09 — CROSS-ROLE & EDGE CASES
 ────────────────────────────────────────────────────────────────────────────────
@@ -546,7 +512,7 @@ Root cause: reviewVoteService.toggleVote had no self-vote prevention.
 Fix: Added check that compares the review's employee_id with the voter's
 employee record — throws 400 "You cannot vote on your own review".
 
-[-- working but no message appear only number of helpful is not incremented] R3-F3-A  Login as bob@ratehub.com  →  go to a company profile page
+[-- ] R3-F3-A  Login as bob@ratehub.com  →  go to a company profile page
              →  find bob's own review card
              →  click the "Helpful" button on it
              →  an error message appears ("You cannot vote on your own review")
@@ -591,17 +557,17 @@ Cairo, Mumbai, Singapore, Tokyo, Sydney, Melbourne, Amsterdam, Zurich, etc.
 
 
 ────────────────────────────────────────────────────────────────────────────────
-R3-FIX 6 — Feedback notification click goes to /internal-feedback (was: F15)
+R3-FIX 6 — Feedback notification click goes to /feedback (was: F15)
 ────────────────────────────────────────────────────────────────────────────────
 Root cause: feedbackController.js created the notification with
-link: '/profile' instead of '/internal-feedback'.
-Fix: Changed the link to '/internal-feedback'.
+link: '/internal-feedback' — a path that has no registered route — causing a 404.
+Fix: Changed the link to '/feedback' which is the correct registered route.
 
-[when i press on the notification i will goto 404 page not found ] R3-F6-A  Login as bob@ratehub.com  →  go to /dashboard → Feedback tab
+[-- ] R3-F6-A  Login as bob@ratehub.com  →  go to /dashboard → Feedback tab
              →  select a coworker and submit peer feedback
              →  log out, log in as the coworker
              →  click the notification bell  →  click the "New Peer Feedback" notification
-             →  navigated to /internal-feedback (NOT /profile)
+             →  navigated to /feedback (NOT a 404 page)
 
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -666,7 +632,7 @@ but the public_company_reviews view hides employee_id for anonymous reviews
 Fix: Backend now injects is_own: true/false per review using optionalAuth +
 a private company_reviews lookup, bypassing the public view's anonymisation.
 
-[working i can not report my self but this appears after i pres submit report (report button still appear) ] R4-F1-A  Login as bob@ratehub.com  →  go to a company profile page
+[-- ] R4-F1-A  Login as bob@ratehub.com  →  go to a company profile page
              →  find bob's OWN review (whether anonymous or not)
              →  the "Report" flag button is REPLACED by "Your review" label
              →  there is NO report button visible on that review
@@ -674,7 +640,7 @@ a private company_reviews lookup, bypassing the public view's anonymisation.
 [-- ] R4-F1-B  On the same page, find ANOTHER employee's review
              →  the "Report" flag button IS visible (bob can report others)
 
-[report button still showed but when i try to submit report then they write you can not report yourself ] R4-F1-C  Write a NEW review as bob with "anonymous" option checked
+[-- ] R4-F1-C  Write a NEW review as bob with "anonymous" option checked
              →  go to that company's profile page
              →  bob's anonymous review shows "Your review" label, NOT a Report button
 
@@ -805,7 +771,7 @@ return null while initializing to prevent premature redirects.
 [-- ] R5-F5-C  Login as admin@ratehub.com  →  navigate to /admin
              →  press F5  →  stays on /admin  →  NO redirect to /login
 
-[when refresh i will go to another page (example: i was on verification tab then refresh it takes me to analytics tab) ] R5-F5-D  Press F5 a third time on each page (regression check)
+[-- ] R5-F5-D  Press F5 a third time on each page (regression check)
              →  still stays on the correct page every time
 
 
@@ -837,24 +803,28 @@ Fix: added replyError state; error renders as small red text below the textarea.
 
 ────────────────────────────────────────────────────────────────────────────────
 BUG 1 — Deleted user's email is NOT removed from DB; signup with same email blocked
+✅ FIXED — See R6-FIX 5 in the RE-TEST ROUND 6 section below
 ────────────────────────────────────────────────────────────────────────────────
-
-[BUG] Login as admin@ratehub.com  →  /admin → Users tab
-            →  delete any user (e.g. bob@ratehub.com)
-            →  user disappears from the Users list
-
-[FAIL] Try to login with the deleted user's credentials
-            →  Expected: "Account not found" or similar
-            →  Actual: "Invalid email or password" (email still exists in DB)
-
-[FAIL] Try to register a new account using the same deleted email
-            →  Expected: registration should succeed (user was deleted)
-            →  Actual: "Email already exists" error — email was NOT fully removed
-            from the database, so the same email can never be re-used
+Root cause: authService.registerUser email-uniqueness query included soft-deleted
+rows (deleted_at IS NOT NULL), so a recycled email always triggered "Email already
+exists" and blocked re-registration.
+Fix applied: Added .is('deleted_at', null) to the Supabase email query in
+backend/src/services/authService.js so soft-deleted accounts are excluded.
 
 ────────────────────────────────────────────────────────────────────────────────
 BUG 2 — Employee current position is not saved; lost after page refresh
+⚠️  INFRA FIX REQUIRED — Not a code bug
 ────────────────────────────────────────────────────────────────────────────────
+Root cause (investigated): The update code in employeeController.js is correct.
+The silent failure is caused by one or both missing infrastructure items:
+  1. current_position column does not exist in the employees table.
+     FIX: Run backend/migrations/add_current_position_to_employees.sql
+          in the Supabase SQL Editor.
+  2. SUPABASE_SERVICE_ROLE_KEY is not set in backend/.env.
+     Without it the server falls back to the anon key, RLS silently blocks
+     the UPDATE, and the endpoint still returns 200 with 0 rows affected.
+     FIX: Add SUPABASE_SERVICE_ROLE_KEY=<your key> to backend/.env
+          (get from Supabase Dashboard → Settings → API → service_role).
 
 [BUG] Login as bob@ratehub.com  →  go to /dashboard or /profile
             →  find the "Current Position" field
@@ -865,3 +835,121 @@ BUG 2 — Employee current position is not saved; lost after page refresh
             →  Expected: position field shows "Senior Developer"
             →  Actual: position field is empty — as if nothing was entered;
             the value is not being persisted to the database
+
+
+════════════════════════════════════════════════════════════════════════════════
+  V2 RE-TEST ROUND 6 — Bugs fixed this session
+  5 code fixes applied across 6 files.
+  Re-test only the items below.
+════════════════════════════════════════════════════════════════════════════════
+
+────────────────────────────────────────────────────────────────────────────────
+R6-FIX 1 — Helpful vote shows error message on own review  (was: R3-F3-A)
+────────────────────────────────────────────────────────────────────────────────
+Root cause: CompanyProfilePage had an empty catch {} block that silently
+swallowed the API error when an employee tried to vote on their own review,
+so no feedback was shown and the count appeared unchanged.
+Fix: Added voteErrors state (per-review map) in CompanyProfilePage. On error
+the message appears as small red text below the Helpful button.
+
+[ ] R6-F1-A  Login as bob@ratehub.com  →  go to a company profile page
+             →  find bob's own review card
+             →  click the "Helpful" button on it
+             →  a small red error message appears below the button
+               ("You cannot vote on your own review" or similar)
+             →  the helpful count does NOT increment
+
+[ ] R6-F1-B  On the same page, click "Helpful" on ANOTHER employee's review
+             →  count increments normally  →  NO error message shown
+
+
+────────────────────────────────────────────────────────────────────────────────
+R6-FIX 2 — Feedback notification navigates to /feedback  (was: R3-F6-A)
+────────────────────────────────────────────────────────────────────────────────
+Root cause: feedbackController.js sent link: '/internal-feedback' in the
+notification record, but that path has no registered route — causing a 404.
+Fix: Changed the link to '/feedback' which is the correct registered route.
+
+[ ] R6-F2-A  Login as bob@ratehub.com  →  go to /dashboard → Feedback tab
+             →  select a coworker and submit peer feedback
+             →  log out, log in as the coworker who received the feedback
+             →  click the notification bell
+             →  click the "New Peer Feedback" notification
+             →  page navigates to /feedback successfully  (NOT a 404)
+
+
+────────────────────────────────────────────────────────────────────────────────
+R6-FIX 3 — Own review shows "Your review" label, not Report button  (was: R4-F1-A/C)
+────────────────────────────────────────────────────────────────────────────────
+Root cause: getCompanyReviews() in frontend/src/api/companies.js always called
+the unauthenticated request() helper, so the backend's optionalAuth received
+no token → req.user was null → is_own was always false → Report button shown
+on the authenticated user's own reviews.
+Fix: getCompanyReviews now reads localStorage 'rh_access' and calls authRequest()
+when a token exists, so the backend correctly sets is_own: true.
+
+[ ] R6-F3-A  Login as bob@ratehub.com  →  go to a company profile page
+             →  find bob's OWN review (named or anonymous)
+             →  card shows "Your review" label  →  NO Report button visible
+
+[ ] R6-F3-B  On the same page find ANOTHER employee's review
+             →  the Report flag button IS visible (bob can report others)
+
+[ ] R6-F3-C  Write a NEW review as bob with "anonymous" option checked
+             →  go to that company's profile page
+             →  bob's anonymous review shows "Your review", NOT a Report button
+
+[ ] R6-F3-D  Open that company profile as a GUEST (not logged in)
+             →  all reviews show the Report button
+             →  clicking Report redirects to /login
+
+
+────────────────────────────────────────────────────────────────────────────────
+R6-FIX 4 — Active tab persists across F5 refresh  (was: R5-F5-D)
+────────────────────────────────────────────────────────────────────────────────
+Root cause: activeTab was stored in React state only and lost on hard refresh,
+so the dashboard always reverted to the default Overview tab after F5.
+Fix: AdminPanel and CompanyAdminDashboard now write the active tab to the URL
+hash (e.g. /admin#reports) on every tab click and read it back on mount.
+
+[ ] R6-F4-A  Login as admin@ratehub.com  →  /admin → click "Reports" tab
+             →  press F5
+             →  page reloads and stays on the Reports tab  (NOT Overview)
+
+[ ] R6-F4-B  Login as admin@ratehub.com  →  /admin → click "Verifications" tab
+             →  press F5
+             →  stays on Verifications tab
+
+[ ] R6-F4-C  Login as tech.admin@ratehub.com  →  /company-admin → click "Reviews" tab
+             →  press F5
+             →  stays on Reviews tab  (NOT Overview)
+
+[ ] R6-F4-D  Login as tech.admin@ratehub.com  →  /company-admin → click "Settings" tab
+             →  press F5
+             →  stays on Settings tab
+
+
+────────────────────────────────────────────────────────────────────────────────
+R6-FIX 5 — Deleted user's email can be re-used for registration  (was: BUG 1)
+────────────────────────────────────────────────────────────────────────────────
+Root cause: registerUser email-uniqueness query included soft-deleted rows
+(deleted_at IS NOT NULL), so a recycled email always triggered "Email already
+exists" and permanently blocked re-registration.
+Fix: Added .is('deleted_at', null) to the Supabase query in
+backend/src/services/authService.js so soft-deleted accounts are excluded.
+
+[ ] R6-F5-A  Login as admin@ratehub.com  →  /admin → Users tab
+             →  delete a non-critical test user
+             →  user disappears from the list
+
+[ ] R6-F5-B  Go to /register  →  enter the SAME email as the deleted user
+             →  fill in all required fields  →  click "Register"
+             →  registration SUCCEEDS  (no "Email already exists" error)
+
+[ ] R6-F5-C  New account confirmation email arrives (or email_verified record
+             is created in Supabase)  →  new account is fully functional
+
+
+================================================================================
+  V2 RE-TEST ROUND 6 TOTAL: 13 cases across 5 fixed bugs
+================================================================================

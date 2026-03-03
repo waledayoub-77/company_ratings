@@ -28,7 +28,10 @@ export async function getCompanyReviews(companyId, params = {}) {
   const qs = new URLSearchParams(
     Object.entries(params).filter(([, v]) => v !== '' && v != null)
   ).toString()
-  return request(`/companies/${companyId}/reviews${qs ? `?${qs}` : ''}`)
+  const url = `/companies/${companyId}/reviews${qs ? `?${qs}` : ''}`
+  // Send auth token when available so backend can set is_own on each review
+  const token = localStorage.getItem('rh_access')
+  return token ? authRequest(url) : request(url)
 }
 
 /**

@@ -87,6 +87,7 @@ export default function CompanyProfilePage() {
   const [replyingTo, setReplyingTo] = useState(null)
   const [replyContent, setReplyContent] = useState('')
   const [replySubmitting, setReplySubmitting] = useState(false)
+  const [replyError, setReplyError] = useState('')
 
   // Employees state
   const [employees, setEmployees] = useState([])
@@ -563,6 +564,9 @@ export default function CompanyProfilePage() {
                           placeholder="Write a professional response (min 10 characters)..."
                           className="w-full h-20 rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs text-navy-700 resize-none mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                         />
+                        {replyError && (
+                          <p className="text-xs text-red-600 mb-2">{replyError}</p>
+                        )}
                         <div className="flex items-center gap-2">
                           <button
                             onClick={async () => {
@@ -576,8 +580,9 @@ export default function CompanyProfilePage() {
                                 } : r))
                                 setReplyingTo(null)
                                 setReplyContent('')
+                                setReplyError('')
                               } catch (err) {
-                                alert(err?.message || 'Failed to post reply')
+                                setReplyError(err?.message || 'Failed to post reply')
                               } finally {
                                 setReplySubmitting(false)
                               }
@@ -589,7 +594,7 @@ export default function CompanyProfilePage() {
                             {replySubmitting ? 'Posting...' : 'Post Reply'}
                           </button>
                           <button
-                            onClick={() => { setReplyingTo(null); setReplyContent('') }}
+                            onClick={() => { setReplyingTo(null); setReplyContent(''); setReplyError('') }}
                             className="h-8 px-4 text-xs text-navy-500 hover:text-navy-700 transition-colors"
                           >
                             Cancel

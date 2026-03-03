@@ -29,14 +29,16 @@ function GuestRoute({ children }) {
 
 // Require any authenticated user — redirects to /login if not logged in
 function ProtectedRoute({ children }) {
-  const { user } = useAuth()
+  const { user, initializing } = useAuth()
+  if (initializing) return null
   if (!user) return <Navigate to="/login" replace />
   return children
 }
 
 // Require a specific role — redirects to their home if wrong role
 function RoleRoute({ role, children }) {
-  const { user } = useAuth()
+  const { user, initializing } = useAuth()
+  if (initializing) return null
   if (!user) return <Navigate to="/login" replace />
   if (user.role !== role) return <Navigate to={ROLE_HOME[user.role] || '/'} replace />
   return children

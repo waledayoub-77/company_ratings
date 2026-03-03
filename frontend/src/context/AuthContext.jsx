@@ -24,6 +24,7 @@ export function AuthProvider({ children }) {
   const stored = loadFromStorage()
   const [user, setUser]               = useState(stored.user)
   const [accessToken, setAccessToken] = useState(stored.accessToken)
+  const [initializing, setInitializing] = useState(!!stored.accessToken)
 
   // On every app load with a valid token: refresh user data from server.
   // This ensures fullName, role and other profile fields are always up-to-date
@@ -48,6 +49,7 @@ export function AuthProvider({ children }) {
         setUser(null)
         setAccessToken(null)
       })
+      .finally(() => setInitializing(false))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveSession = useCallback(({ user, accessToken, refreshToken }) => {
@@ -85,7 +87,7 @@ export function AuthProvider({ children }) {
   }, [clearSession])
 
   return (
-    <AuthContext.Provider value={{ user, accessToken, saveSession, updateUser, clearSession, logout }}>
+    <AuthContext.Provider value={{ user, accessToken, initializing, saveSession, updateUser, clearSession, logout }}>
       {children}
     </AuthContext.Provider>
   )

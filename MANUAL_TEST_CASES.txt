@@ -17,33 +17,6 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────
-FIX 11 — Reset password token validation  
-────────────────────────────────────────────────────────────────────────────────
-
-
- — Feedback triggers in-app notification 
-────────────────────────────────────────────────────────────────────────────────
-
-[-- working but when i press on the notification it takes me to profile page] F15-A Login as bob@ratehub.com  →  go to /dashboard → Feedback tab
-          →  select a coworker and submit peer feedback with ratings
-          →  log out, login as the coworker
-          →  click notification bell  →  "New Peer Feedback" notification appears
-
-
-================================================================================
-  RE-TEST SUMMARY
-  Items removed (all passed): F1-A/B/C/D, F2-A, F3-A/B/C, F5-A/B/D,
-    F6-A/B/C, F7-B, F8-A/B/C, F9-A/B, F10-A/B/C/D, F11-A
-  Items remaining: 19 test cases across 9 fix areas
-  Code fixes applied this session:
-    ✅  F4-A  — backend now returns full_name from users + employees tables
-    ✅  F5-C  — bulk suspend now sends reason to backend correctly
-    ✅  F7-A  — end employment validates date range, returns 400 not 500
-
-  How to mark results:
-    [FAIL]  =  FAIL — describe what went wrong on the same line
-    [ ]    =  NOT YET TESTED
-================================================================================
 
 
 ================================================================================
@@ -90,7 +63,6 @@ LOGIN (/login)
 FORGOT PASSWORD (/forgot-password)
 
 RESET PASSWORD (/reset-password/:token)
-[i changed my password once so i enter a second time to the same reset password link and redirect me to reset password page it shouldnt + when i write invalid token it redirect me also to reset password ] G24  Go to /reset-password/invalidtoken123  →  error message shown, NOT a blank page
 
 VERIFY EMAIL (/verify-email/:token)
 
@@ -104,17 +76,12 @@ LOGOUT
 DASHBOARD & NAVBAR
 
 EMPLOYMENT REQUESTS
-[ no its not and still verified ] E35  On /dashboard → Employment tab  →  click "End Employment" on an approved employment  →  status changes to "ended"
 
 REVIEWS
-[ it works but why using alert you should make a popup forit ] E20  On /dashboard → Reviews tab  →  click "Delete" on a review  →  review is removed from the list
-note::!!!!!! : i can report my self when i submit a review check if this true !!!!!!!!!!!!!
 
 
 FEEDBACK
-[no coworkers found maybe this company dont have more than 1 employee ] —    Go to /dashboard/feedback  →  internal feedback page loads (send feedback to coworkers)
 
-note : i didnt get an email to tell me that someone gave me feedback 
 
 NOTIFICATIONS
 
@@ -126,8 +93,8 @@ ROLE REDIRECTS
 ────────────────────────────────────────────────────────────────────────────────
 
 DASHBOARD & NAVBAR
-[no it shows dashboard dashboard  ] C3   On /company-admin  →  page shows REAL company name (not hardcoded "Stripe Dashboard" or similar placeholder)
-[i dont understand this  ] C4   If company_admin account has no associated company in DB  →  shows an error message, NOT an infinite loading spinner  (⚠️ may need a special account to test)
+[ ] C3   On /company-admin  →  page shows REAL company name (not hardcoded "Stripe Dashboard" or similar placeholder)
+[ ] C4   If company_admin account has no associated company in DB  →  shows an error message, NOT an infinite loading spinner  (⚠️ may need a special account to test)
 
 ANALYTICS TAB
 
@@ -141,10 +108,8 @@ note : also how should the commpany get feedbacks i dont see an option
 SETTINGS TAB
 
 REVIEW ACCESS
-[when i try to submit a review it blocks me and error message shown insufficient permissions so we need to change this message to something better or block all review page  ] C17  Login as company_admin  →  go to /companies/:id/review  →  should be blocked / unable to write a review (company admins are not employees)  (⚠️ may be a known bug where form is accessible)
 
 PROFILE & ROLE REDIRECTS
-[ no its not ] C21  On a company profile page (/companies/:id)  →  verified employees section is visible
 
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -156,17 +121,11 @@ PANEL & NAVBAR
 REPORTS TAB
 
 COMPANIES TAB
-[no reject option  ] A9   On /admin → Companies tab  →  click "Reject" on a company  →  company removed or status changes to rejected
 
 USERS TAB
-[-- but its better to show the username and under the username the email ] A10  On /admin → Users tab  →  user list is shown with real users
-[ no its not a alert popup shows reason is required] A12  On /admin → Users tab  →  click "Suspend" on a user  →  user status changes to suspended
-[i dont understand ] A14  Suspend a user  →  while their session is active, try to access a protected API  →  should get 403 "Account Suspended" (now fixed — per-request check)
-[there is no select multiple user and checkboxes and bulk suspend ] A16  On /admin → Users tab  →  select multiple users with checkboxes, click bulk "Suspend"  →  all selected users suspended
-[ i dont understand] A17  On /admin → Users tab  →  trigger a delete/action error  →  error shown inline on page (NOT a browser alert() popup)  (⚠️ hard to force manually)
+[ ] A17  On /admin → Users tab  →  trigger a delete/action error  →  error shown inline on page (NOT a browser alert() popup)  (⚠️ hard to force manually)
 
 AUDIT LOGS TAB
-[ not its not  and i think it shouldnt ] A19  On /admin → Audit Logs tab or Users tab  →  admin can manually override/approve any employment request
 
 ROLE REDIRECTS
 
@@ -178,7 +137,6 @@ ROLE REDIRECTS
 VIEW & EDIT
 
 CHANGE PASSWORD
-note : when i cahnge the password it allows me to enter a password like 12121212
 
 
 ACCOUNT ACTIONS
@@ -237,13 +195,12 @@ you make the security test
 ────────────────────────────────────────────────────────────────────────────────
 
 SESSION REHYDRATION
-[ no it redirects me to login in third time] X1   Login as company_admin  →  press F5  →  stays on /company-admin
-[ no its redirects me to login in third time ] X1   Login as system_admin  →  press F5  →  stays on /admin
+[ ] X1   Login as company_admin  →  press F5  →  stays on /company-admin
+[ ] X1   Login as system_admin  →  press F5  →  stays on /admin
 
 LOGOUT EFFECTS
 
 EMPTY STATES
-[ i dont see a section for employees for a specific company ] X4   Find a company with 0 verified employees  →  employees section shows "no employees" gracefully (no crash)
 
 MOBILE RESPONSIVE
 
@@ -294,91 +251,6 @@ Remaining known issues (not yet fixed):
 ================================================================================
 
 
-────────────────────────────────────────────────────────────────────────────────
-FIX 2 — Report dismiss / resolve actions work correctly
-────────────────────────────────────────────────────────────────────────────────
-
-
-────────────────────────────────────────────────────────────────────────────────
-FIX 3 — Suspend user now requires a reason
-────────────────────────────────────────────────────────────────────────────────
-
-
-────────────────────────────────────────────────────────────────────────────────
-FIX 4 — Admin users list now shows full name
-────────────────────────────────────────────────────────────────────────────────
-
-
-────────────────────────────────────────────────────────────────────────────────
-FIX 5 — Bulk suspend UI (checkboxes + "Suspend X Selected" button)
-────────────────────────────────────────────────────────────────────────────────
-
-
-────────────────────────────────────────────────────────────────────────────────
-FIX 6 — Reject Company button added
-────────────────────────────────────────────────────────────────────────────────
-
-
-────────────────────────────────────────────────────────────────────────────────
-FIX 7 — "Ended" badge shown after ending employment
-────────────────────────────────────────────────────────────────────────────────
-
-
-────────────────────────────────────────────────────────────────────────────────
-FIX 8 — Delete review uses inline confirmation (no window.confirm)
-────────────────────────────────────────────────────────────────────────────────
-
-
-────────────────────────────────────────────────────────────────────────────────
-FIX 9 — Company admin is blocked from the write-review page
-────────────────────────────────────────────────────────────────────────────────
-
-
-────────────────────────────────────────────────────────────────────────────────
-FIX 10 — Strong password enforced on "Change Password"
-────────────────────────────────────────────────────────────────────────────────
-
-
-────────────────────────────────────────────────────────────────────────────────
-FIX 11 — Reset password page validates token on load
-────────────────────────────────────────────────────────────────────────────────
-
-[ ] F11-A Go to /reset-password/invalidtoken123
-          →  page briefly shows "Validating reset link…" spinner
-          →  then shows an error state: "Invalid Reset Link" heading and an
-             explanatory message (NOT the password form with fields)
-
-[ ] F11-B Use a reset token that has ALREADY been used (submit the password reset
-          form once, then open the same link again in a new tab)
-          →  second visit shows "This reset link has already been used." message
-          →  NOT the form again
-
-[ ] F11-C Use a valid (unused, unexpired) token
-          →  page shows the reset password form (strength indicator, confirm field)
-          →  fill in a valid password and submit  →  success
-
-
-[on postman it tells me route not found ] F13-C Extra (API-level): using bob's auth token, POST /api/reports with
-          reviewId = bob's own review id
-          →  response should be HTTP 400 with error code "SELF_REPORT"
-          (test via DevTools → Network or curl/Postman)
-
-
-────────────────────────────────────────────────────────────────────────────────
-FIX 14 — Verified employees section on company profile
-────────────────────────────────────────────────────────────────────────────────
-
-
-────────────────────────────────────────────────────────────────────────────────
-FIX 15 — Feedback received triggers an email notification
-────────────────────────────────────────────────────────────────────────────────
-
-
-[-- but when i press on the notification it takes me to my profile ] F15-B The in-app notification (bell icon) still works alongside the email:
-          →  after bob submits feedback, login as employee B
-          →  click the notification bell  →  a "New Peer Feedback" notification
-             is listed
-
 ================================================================================
   RE-TEST SUMMARY
   Total new re-tests:  15 fixes  ×  avg 3 cases each  =  ~47 test cases above
@@ -414,12 +286,6 @@ V2-01 — DATABASE MIGRATION
 ────────────────────────────────────────────────────────────────────────────────
 V2-02 — CATEGORY RATINGS (Write Review)
 ────────────────────────────────────────────────────────────────────────────────
-note: idont like the verified employees section
-
-
-[ -- THE PAGE STRUCTURE WHEN I AM LOGGED IN AS AN EMPLOYEE NOT THE SAME IF IAM A GUEST FIX IT AND FIX THE VERIFIED EMPLOYEE SECTION ITS BAD REDESIGN IT] V2-R5  On the company profile page, the right sidebar now shows a
-           "Category Breakdown" section with animated progress bars for
-           each category once at least one rated review exists
 
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -427,20 +293,11 @@ V2-03 — HELPFUL VOTES ON REVIEWS
 ────────────────────────────────────────────────────────────────────────────────
 
 
-[ no its not ] V2-V5  Log in as a different user → the same review's helpful count is
-           visible; voting again increments it independently
-
-
 ────────────────────────────────────────────────────────────────────────────────
 V2-04 — COMPANY ADMIN REPLIES TO REVIEWS
 ────────────────────────────────────────────────────────────────────────────────
 
-
-[no its not when i refresh the page it disappeared ] V2-CR4 Type a valid reply (≥10 chars) → click "Post Reply"
-           → reply appears below the review in a blue-tinted box labelled
-           "Company Response"
-
-[ i dont know because there is no reply but when i write another reply an alert popsup and tell me you already replied one time] V2-CR5 After a reply is posted on a review, the "Reply" button disappears
+[ ] V2-CR5 After a reply is posted on a review, the "Reply" button disappears
            for that review (one reply per review enforced)
 
 
@@ -454,65 +311,52 @@ V2-05 — IDENTITY VERIFICATION (Profile Page)
 ────────────────────────────────────────────────────────────────────────────────
 
 
-[no spinner ui ] V2-IV4 Enter a valid URL (e.g. https://drive.google.com/somefile)
-           → click "Submit for Verification" → success message appears
-           and status changes to "Verification Pending" spinner UI
-
-[no it shows me a new form ] V2-IV5 Submitting a second request while one is still pending → should
-           show the "Pending" state, not a new form
-
-
 ────────────────────────────────────────────────────────────────────────────────
 V2-06 — VERIFICATION ADMIN (Admin Panel)
 ────────────────────────────────────────────────────────────────────────────────
 
 
-[there is no pending request even though i applied for a verification ] V2-VA3 Click "Pending" → the verification request submitted in V2-IV4 appears
-           with the user's name, email, type ("Identity"), and a document link
-
-
-note : there is no verification badge in the name i should see it for example in reviews i should see the identitity verification badge also in verification in admin panel i cant see the user who request a verification just unknown user
 ────────────────────────────────────────────────────────────────────────────────
 V2-07 — EMPLOYEE OF THE MONTH — COMPANY ADMIN
 ────────────────────────────────────────────────────────────────────────────────
 
 
-[-- but i dont want it to be alert ] V2-E4  Creating a duplicate event for the same month/year → error alert
-           "Event for this month already exists"
+[ ] V2-E4  Creating a duplicate event for the same month/year → inline error shown
+           "Event for this month already exists" (NOT a browser alert() popup)
 
-[  all users dont have username just unknowns] V2-E5  Click "View Nominees" on the open event → nominees panel expands
-           (empty list: "No votes yet")
+[ ] V2-E5  Click "View Nominees" on the open event → nominees panel expands
+           (empty list: "No votes yet" or real employee names if any voted)
 
-[ no close declare winner also as a employee there is no place to vote] V2-E6  Click "Close & Declare Winner" on an open event with no votes
+[ ] V2-E6  Click "Close & Declare Winner" on an open event with no votes
            → event status changes to "closed"
 
-[ unknows users] V2-E7  After closing, Hall of Fame section appears at bottom with the
-           winner card (or "no winner" if no votes)
+[ ] V2-E7  After closing, Hall of Fame section appears at bottom with the
+           winner card (or "no winner" if no votes) — winner shows real employee name
 
 
 ────────────────────────────────────────────────────────────────────────────────
 V2-08 — EMPLOYEE OF THE MONTH — EMPLOYEE VOTING
 ────────────────────────────────────────────────────────────────────────────────
 
-[ no event just past winners and unknows users] V2-EV1 Login as employee (bob) → go to /dashboard → an "EOTM" tab
+[ ] V2-EV1 Login as employee (bob) → go to /dashboard → an "EOTM" tab
            is visible in the tab bar
 
-[ no] V2-EV2 Click "EOTM" tab → shows the open event for March 2026 with
+[ ] V2-EV2 Click "EOTM" tab → shows the open event for March 2026 with
            "Open for Voting" badge
 
-[ no] V2-EV3 Click "View & Vote" → nominees panel expands (may show existing
+[ ] V2-EV3 Click "View & Vote" → nominees panel expands (may show existing
            nominees or "No nominees yet")
 
-[ no] V2-EV4 Click "Vote" next to a non-self nominee → vote is cast; count
+[ ] V2-EV4 Click "Vote" next to a non-self nominee → vote is cast; count
            increments; nominee appears in company admin's nominees list
 
-[no ] V2-EV5 Voting a second time in the same event → error alert (one vote
-           per event enforced)
+[ ] V2-EV5 Voting a second time in the same event → inline error message
+           (one vote per event enforced; NO browser alert() popup)
 
-[ no] V2-EV6 Employee with NO verified employment → EOTM tab shows a message:
+[ ] V2-EV6 Employee with NO verified employment → EOTM tab shows a message:
            "You need a verified employment to participate"
 
-[no ] V2-EV7 After an event is closed, it no longer appears in the open events
+[ ] V2-EV7 After an event is closed, it no longer appears in the open events
            list for employees; past winners appear in "Past Winners" section
 
 
@@ -551,7 +395,7 @@ V2-FIX 2 — Helpful count visible to all users  (was: V2-V5)
 V2-FIX 3 — Verification pending UI shown after submission  (was: V2-IV4/IV5)
 ────────────────────────────────────────────────────────────────────────────────
 
-[-- ] V2-F3-A  Login as employee  →  go to /profile → Verification tab
+[ ] V2-F3-A  Login as employee  →  go to /profile → Verification tab
              →  enter a valid URL (e.g. https://drive.google.com/testfile)
              →  click "Submit for Verification"
              →  the form is REPLACED by a yellow "Verification Pending" block
@@ -564,7 +408,7 @@ V2-FIX 4 — Admin panel shows pending verification requests  (was: V2-VA3)
 ────────────────────────────────────────────────────────────────────────────────
 
 
-[-- admin notes is wrong (i wrote unavilable link it appeared: no no no) ] V2-F4-D  Enter rejection notes  →  click "Reject"
+[ ] V2-F4-D  Enter rejection notes  →  click "Reject"
              →  request disappears from Pending  →  appears under "Rejected" filter
 
 
@@ -629,7 +473,13 @@ Fix: service now maps `status: ev.is_active ? 'open' : 'closed'` on every row.
 V2-FIX 8 — Inline errors replace alert() in EOTM actions  (was: V2-E4)
 ────────────────────────────────────────────────────────────────────────────────
 Root cause: handleCreate and handleClose used browser alert() for errors.
-Fix: replaced with createError / closeError / voteError inline state.
+Fix: replaced with createError / closeError inline state banners.
+
+[ ] V2-F8-A  Login as company_admin  →  try to create a duplicate EOTM event
+             (same month already exists)  →  inline red error banner appears
+             above the create form  →  NO browser alert() popup
+
+[ ] V2-F8-B  Click the ✕ on the error banner  →  banner dismisses cleanly
 
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -638,6 +488,10 @@ V2-FIX 9 — Admin verification panel shows real user names  (was: V2-VA after V
 Root cause: AdminPanel read `req.user?.full_name` but Supabase join key is
 `users` (plural table name), so the joined object was `req.users`.
 Fix: changed references to `req.users?.full_name` and `req.users?.email`.
+
+[ ] V2-F9-A  Login as admin@ratehub.com  →  /admin → Verifications tab
+             →  each pending request shows the user's real full name and email
+             (not "Unknown User")
 
 
 ================================================================================
@@ -856,4 +710,122 @@ banner above the reports list with a dismiss (✕) button.
 
 ================================================================================
   V2 RE-TEST ROUND 4 TOTAL: 7 cases across 2 fixed bugs
+================================================================================
+
+════════════════════════════════════════════════════════════════════════════════
+  V2 RE-TEST ROUND 5 — Bugs fixed this session
+  6 code fixes applied across 5 files.
+  Re-test only the items below.
+════════════════════════════════════════════════════════════════════════════════
+
+────────────────────────────────────────────────────────────────────────────────
+R5-FIX 1 — Company Admin Dashboard title shows real company name  (was: C3)
+────────────────────────────────────────────────────────────────────────────────
+Root cause: CompanyAdminDashboard used useState('Dashboard') as the default
+so the title rendered "Dashboard Dashboard" before the API call resolved.
+Fix: default changed to '' and title renders "Company Dashboard" until API loads.
+
+[ ] R5-F1-A  Login as tech.admin@ratehub.com  →  go to /company-admin
+             →  page title shows "TechCorp Dashboard" (or real company name)
+             →  NOT "Dashboard Dashboard" or "Company Dashboard Dashboard"
+
+[ ] R5-F1-B  Hard-refresh (/company-admin F5)  →  title briefly shows
+             "Company Dashboard" then updates to the real name once API loads
+             →  NEVER shows "Dashboard Dashboard" at any point
+
+
+────────────────────────────────────────────────────────────────────────────────
+R5-FIX 2 — No-company guard shows error state  (was: C4)
+────────────────────────────────────────────────────────────────────────────────
+Root cause: dashboard rendered full skeleton even when user.companyId was null,
+causing a blank/infinite-loading screen.
+Fix: early return renders a clear error card when companyId is missing.
+
+[ ] R5-F2-A  Login as a company_admin account with NO company linked
+             →  go to /company-admin
+             →  see message: "No company linked to your account."
+             →  NO blank screen or infinite spinner  (⚠️ requires a special test account)
+
+
+────────────────────────────────────────────────────────────────────────────────
+R5-FIX 3 — Admin Users tab: inline errors, no alert() or confirm() popups  (was: A17)
+────────────────────────────────────────────────────────────────────────────────
+Root cause: handleSuspend, handleUnsuspend, handleDelete, handleBulkSuspend all
+used alert() for errors; handleDelete used window.confirm() for confirmation.
+Fix: added userError state with inline red banner; delete uses two-click confirm.
+
+[ ] R5-F3-A  Login as admin@ratehub.com  →  /admin → Users tab
+             →  click the Trash icon next to any user
+             →  button changes to "Sure? / ✕"  (inline confirm — no native popup)
+             →  click "✕" to cancel  →  button reverts to trash icon
+             →  click trash again, then "Sure?"  →  user is deleted from list
+             →  NO window.confirm() native dialog appeared
+
+[ ] R5-F3-B  Trigger an unsuspend/suspend API error (e.g. network off):
+             →  a red inline banner appears at the top of the Users tab
+             →  has a ✕ dismiss button
+             →  NO browser alert() popup
+
+
+────────────────────────────────────────────────────────────────────────────────
+R5-FIX 4 — Admin Verifications tab: inline errors, no alert() popups  (was: V2-F4-D)
+────────────────────────────────────────────────────────────────────────────────
+Root cause: handleApprove and handleReject used alert() for both validation
+("Please provide rejection notes") and API errors.
+Fix: added verifError state with inline red banner.
+
+[ ] R5-F4-A  Login as admin@ratehub.com  →  /admin → Verifications tab
+             →  find a pending request  →  click "Reject" WITHOUT entering notes
+             →  red inline banner: "Please provide rejection notes"
+             →  NO browser alert() popup
+
+[ ] R5-F4-B  Enter rejection notes  →  click "Reject"
+             →  request disappears from Pending list
+             →  banner dismisses (or was never shown)
+
+[ ] R5-F4-C  Dismiss the inline error banner with ✕  →  banner disappears
+
+
+────────────────────────────────────────────────────────────────────────────────
+R5-FIX 5 — F5 session rehydration stays on current page  (was: X1)
+────────────────────────────────────────────────────────────────────────────────
+Root cause: AuthContext catch block wiped session on ANY error (including
+transient network errors) and ProtectedRoute/RoleRoute had no loading guard —
+immediately redirected to /login before the token re-check finished.
+Fix: added initializing state (true while apiGetMe() is in flight); routes
+return null while initializing to prevent premature redirects.
+
+[ ] R5-F5-A  Login as bob@ratehub.com  →  navigate to /dashboard
+             →  press F5 (hard refresh)  →  stays on /dashboard
+             →  NO redirect to /login
+
+[ ] R5-F5-B  Login as tech.admin@ratehub.com  →  navigate to /company-admin
+             →  press F5  →  stays on /company-admin  →  NO redirect to /login
+
+[ ] R5-F5-C  Login as admin@ratehub.com  →  navigate to /admin
+             →  press F5  →  stays on /admin  →  NO redirect to /login
+
+[ ] R5-F5-D  Press F5 a third time on each page (regression check)
+             →  still stays on the correct page every time
+
+
+────────────────────────────────────────────────────────────────────────────────
+R5-FIX 6 — Company reply error shows inline, not alert()  (was: V2-CR5)
+────────────────────────────────────────────────────────────────────────────────
+Root cause: CompanyProfilePage reply submit catch called alert() on API error.
+Fix: added replyError state; error renders as small red text below the textarea.
+
+[ ] R5-F6-A  Login as tech.admin@ratehub.com  →  go to company profile
+             →  find a review with no existing reply  →  click "Reply"
+             →  write a reply (min 10 chars)  →  click "Post Reply"
+             →  reply appears under the review, Reply button disappears
+
+[ ] R5-F6-B  Try to post a reply on a review that ALREADY has a reply
+             (backend will reject the duplicate)
+             →  a small red error message appears BELOW the textarea
+             →  NO browser alert() popup
+             →  click "Cancel"  →  error clears
+
+================================================================================
+  V2 RE-TEST ROUND 5 TOTAL: 15 cases across 6 fixed bugs
 ================================================================================

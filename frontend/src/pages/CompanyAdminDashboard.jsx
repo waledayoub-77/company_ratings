@@ -45,7 +45,7 @@ import { createEotmEvent, closeEotmEvent, getCompanyEotmEvents, getEotmNominees,
 export default function CompanyAdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview')
   const [pendingCount, setPendingCount] = useState(0)
-  const [companyName, setCompanyName] = useState('Dashboard')
+  const [companyName, setCompanyName] = useState('')
   const { user } = useAuth()
   const companyId = user?.companyId
 
@@ -74,11 +74,20 @@ export default function CompanyAdminDashboard() {
     { id: 'settings', label: 'Settings', icon: Settings },
   ]
 
+  if (!companyId) return (
+    <div className="min-h-screen bg-ice-50 flex items-center justify-center">
+      <div className="text-center">
+        <p className="text-lg font-semibold text-navy-700 mb-2">No company linked to your account.</p>
+        <p className="text-sm text-navy-400">Please contact an administrator to link your account to a company.</p>
+      </div>
+    </div>
+  )
+
   return (
     <div className="min-h-screen bg-ice-50">
       <PageHeader
         tag="Company Admin"
-        title={`${companyName} Dashboard`}
+        title={companyName ? `${companyName} Dashboard` : 'Company Dashboard'}
         subtitle="Manage your company profile, verify employees, and view analytics."
         backHref
       />

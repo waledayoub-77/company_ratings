@@ -449,6 +449,7 @@ function UsersTab() {
   const [bulkReason, setBulkReason] = useState('')
   const [showBulk, setShowBulk] = useState(false)
   const [bulkWorking, setBulkWorking] = useState(false)
+  const [userError, setUserError] = useState('')
 
   const load = useCallback((q = '') => {
     setLoading(true)
@@ -473,7 +474,7 @@ function UsersTab() {
       setUsers(prev => prev.map(u => u.id === id ? { ...u, is_active: false } : u))
       setSuspendTarget(null)
       setSuspendReason('')
-    } catch (e) { alert(e?.message || 'Action failed') }
+    } catch (e) { setUserError(e?.message || 'Action failed') }
     finally { setWorking(null) }
   }
 
@@ -482,17 +483,20 @@ function UsersTab() {
     try {
       await unsuspendUser(id)
       setUsers(prev => prev.map(u => u.id === id ? { ...u, is_active: true } : u))
-    } catch (e) { alert(e?.message || 'Action failed') }
+    } catch (e) { setUserError(e?.message || 'Action failed') }
     finally { setWorking(null) }
   }
 
+  const [deleteConfirm, setDeleteConfirm] = useState(null)
+
   const handleDelete = async (id) => {
-    if (!window.confirm('Permanently delete this user?')) return
+    if (deleteConfirm !== id) { setDeleteConfirm(id); return }
+    setDeleteConfirm(null)
     setWorking(id)
     try {
       await deleteUser(id)
       setUsers(prev => prev.filter(u => u.id !== id))
-    } catch (e) { alert(e?.message || 'Delete failed') }
+    } catch (e) { setUserError(e?.message || 'Delete failed') }
     finally { setWorking(null) }
   }
 
@@ -513,12 +517,18 @@ function UsersTab() {
       setSelectedIds(new Set())
       setShowBulk(false)
       setBulkReason('')
-    } catch (e) { alert(e?.message || 'Bulk suspend failed') }
+    } catch (e) { setUserError(e?.message || 'Bulk suspend failed') }
     finally { setBulkWorking(false) }
   }
 
   return (
     <div className="space-y-6">
+      {userError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+          <p className="text-sm text-red-700">{userError}</p>
+          <button onClick={() => setUserError('')} className="text-red-400 hover:text-red-600 text-lg leading-none">&times;</button>
+        </div>
+      )}
       <div className="flex items-center justify-between gap-4">
         <h2 className="text-lg font-semibold text-navy-900">User Management</h2>
         <div className="flex items-center gap-2">
@@ -650,12 +660,30 @@ function UsersTab() {
                                     <CheckCircle2 size={14} />
                                   </button>
                                 )}
-                                <button
-                                  onClick={() => handleDelete(u.id)}
-                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-navy-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
+                                {deleteConfirm === u.id ? (
+                                  <>
+                                    <button
+                                      onClick={() => handleDelete(u.id)}
+                                      className="h-7 px-2 bg-red-600 text-white text-[11px] font-medium rounded-md hover:bg-red-700"
+                                    >
+                                      Sure?
+                                    </button>
+                                    <button
+                                      onClick={() => setDeleteConfirm(null)}
+                                      className="h-7 px-2 text-[11px] text-navy-500 hover:text-navy-700"
+                                    >
+                                      ✕
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button
+                                    onClick={() => handleDelete(u.id)}
+                                    title="Delete user"
+                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-navy-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                )}
                               </>
                             )}
                         </div>
@@ -701,6 +729,7 @@ function VerificationsTab() {
   const [working, setWorking]   = useState(null)
   const [filter, setFilter]     = useState('pending')
   const [adminNotes, setAdminNotes] = useState({})
+  const [verifError, setVerifError] = useState('')
 
   const load = useCallback(() => {
     setLoading(true)
@@ -717,17 +746,17 @@ function VerificationsTab() {
     try {
       await approveVerification(id, adminNotes[id] || '')
       setRequests(prev => prev.filter(r => r.id !== id))
-    } catch (e) { alert(e?.message || 'Approval failed') }
+    } catch (e) { setVerifError(e?.message || 'Approval failed') }
     finally { setWorking(null) }
   }
 
   const handleReject = async (id) => {
-    if (!adminNotes[id]?.trim()) { alert('Please provide rejection notes'); return }
+    if (!adminNotes[id]?.trim()) { setVerifError('Please provide rejection notes'); return }
     setWorking(id)
     try {
       await rejectVerification(id, adminNotes[id])
       setRequests(prev => prev.filter(r => r.id !== id))
-    } catch (e) { alert(e?.message || 'Rejection failed') }
+    } catch (e) { setVerifError(e?.message || 'Rejection failed') }
     finally { setWorking(null) }
   }
 
@@ -735,6 +764,12 @@ function VerificationsTab() {
 
   return (
     <div className="space-y-5">
+      {verifError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+          <p className="text-sm text-red-700">{verifError}</p>
+          <button onClick={() => setVerifError('')} className="text-red-400 hover:text-red-600 text-lg leading-none">&times;</button>
+        </div>
+      )}
       <div className="flex items-center justify-between gap-4">
         <h2 className="text-lg font-semibold text-navy-900">
           Verification Requests

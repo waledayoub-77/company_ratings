@@ -532,7 +532,7 @@ export default function CompanyProfilePage() {
 
                       {reportSuccess === review.id ? (
                         <span className="text-xs text-emerald-600 font-medium">Report submitted</span>
-                      ) : review.employee_id && user?.employeeId && review.employee_id === user.employeeId ? (
+                      ) : review.is_own ? (
                         <span className="text-xs text-navy-300">Your review</span>
                       ) : (
                       <button

@@ -1,5 +1,6 @@
 // Review Controller - HTTP handlers for review endpoints
 const reviewService = require('../services/reviewService');
+const supabase = require('../config/database');
 
 /**
  * POST /reviews
@@ -84,9 +85,33 @@ const getCompanyReviews = async (req, res, next) => {
       filters
     );
 
+    // If viewer is authenticated, tag their own reviews with is_own: true
+    // This works even for anonymous reviews (bypasses the public view hiding employee_id)
+    let ownReviewIds = new Set();
+    if (req.user?.userId) {
+      const { data: emp } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('user_id', req.user.userId)
+        .maybeSingle();
+      if (emp) {
+        const { data: ownReviews } = await supabase
+          .from('company_reviews')
+          .select('id')
+          .eq('employee_id', emp.id)
+          .eq('company_id', req.params.companyId);
+        (ownReviews || []).forEach(r => ownReviewIds.add(r.id));
+      }
+    }
+
+    const reviews = result.reviews.map(r => ({
+      ...r,
+      is_own: ownReviewIds.has(r.id),
+    }));
+
     res.status(200).json({
       success: true,
-      data: result.reviews,
+      data: reviews,
       pagination: result.pagination
     });
   } catch (error) {

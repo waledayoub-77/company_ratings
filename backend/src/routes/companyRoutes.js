@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const companyController = require('../controllers/companyController');
 const reviewController = require('../controllers/reviewController');
-const { requireAuth } = require('../middlewares/authMiddleware');
+const { requireAuth, optionalAuth } = require('../middlewares/authMiddleware');
 const { requireRole, requireCompanyAdmin } = require('../middlewares/roleMiddleware');
 
 /**
@@ -24,6 +24,7 @@ router.get(
 // GET /companies/:companyId/reviews - Get all reviews for a company (Days 3-4)
 router.get(
   '/:companyId/reviews',
+  optionalAuth,
   reviewController.getCompanyReviews
 );
 

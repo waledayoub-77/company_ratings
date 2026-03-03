@@ -207,6 +207,7 @@ function ReportsTab({ onReportResolved }) {
   const [reports, setReports]   = useState([])
   const [loading, setLoading]   = useState(true)
   const [working, setWorking]   = useState(null)
+  const [actionError, setActionError] = useState(null)
 
   const load = useCallback(() => {
     setLoading(true)
@@ -220,12 +221,13 @@ function ReportsTab({ onReportResolved }) {
 
   const handleAction = async (id, action) => {
     setWorking(id)
+    setActionError(null)
     try {
       await resolveReport(id, { action })
       setReports(prev => prev.filter(r => r.id !== id))
       onReportResolved?.()
     } catch (e) {
-      alert(e?.message || 'Action failed')
+      setActionError(e?.message || 'Action failed')
     } finally {
       setWorking(null)
     }
@@ -241,6 +243,14 @@ function ReportsTab({ onReportResolved }) {
           <RefreshCw size={14} />
         </button>
       </div>
+
+      {actionError && (
+        <div className="flex items-start gap-2.5 rounded-xl bg-red-50 border border-red-200 px-4 py-3">
+          <AlertTriangle size={15} className="text-red-500 mt-0.5 shrink-0" />
+          <p className="text-sm text-red-700">{actionError}</p>
+          <button onClick={() => setActionError(null)} className="ml-auto text-red-400 hover:text-red-600">✕</button>
+        </div>
+      )}
 
       {loading ? <Spinner /> : reports.length === 0 ? (
         <div className="bg-white rounded-2xl border border-navy-100/50 py-16 text-center text-sm text-navy-400">

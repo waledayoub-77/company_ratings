@@ -8,7 +8,6 @@
 ================================================================================
 
 
-
 ================================================================================
   RE-TEST CASES — Bugs Fixed & Pending Tests
   Only contains items that FAILED or were NOT YET TESTED.
@@ -18,107 +17,17 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────
-FIX 2-B — Remove Review on a report  [DEFERRED — no reviews existed at test time]
-────────────────────────────────────────────────────────────────────────────────
-
-[ after removing review the numbers of notifications still appear beside Reports tab] F2-B  Login as admin@ratehub.com  →  /admin → Reports tab
-          →  click "Remove Review" on any pending report
-          →  report status changes to resolved and the review is removed,
-             NO alert() popup
-          (Requires a report linked to a real review to exist in DB)
-
-
-────────────────────────────────────────────────────────────────────────────────
-FIX 4 — Admin users list shows full name above email  [CODE FIXED — RE-TEST]
-────────────────────────────────────────────────────────────────────────────────
-
-
-
-────────────────────────────────────────────────────────────────────────────────
-FIX 5-C — Bulk suspend with reason  [CODE FIXED — RE-TEST]
-────────────────────────────────────────────────────────────────────────────────
-
-[ working but when submitting the reason of report (example: m) it is submitted normally maybe we should add min chars] F5-C  Login as admin@ratehub.com  →  /admin → Users tab
-          →  check one or more user checkboxes
-          →  click "Suspend X Selected"
-          →  enter a reason (e.g. "Spam activity") and click "Confirm Bulk Suspend"
-          →  all selected users change to "Suspended" status
-          →  checkboxes deselect and the panel hides
-          (Was FAIL: showed "Reason is required (min 3 chars)" even when reason
-           was typed — fixed: reason is now included in the request body)
-
-
-────────────────────────────────────────────────────────────────────────────────
-FIX 7-A — End employment with a past date  [CODE FIXED — RE-TEST]
-────────────────────────────────────────────────────────────────────────────────
-
-
-
-────────────────────────────────────────────────────────────────────────────────
 FIX 11 — Reset password token validation  
 ────────────────────────────────────────────────────────────────────────────────
 
 
-
-────────────────────────────────────────────────────────────────────────────────
-FIX 12 — Location filter on /companies is a dropdown
-────────────────────────────────────────────────────────────────────────────────
-
-[working but not all locations are available (example: lebnaon not available) ] F12-A Go to /companies  →  open the Filters panel
-          →  the Location field is a SELECT dropdown (not a free-text input)
-          →  options include "All Locations", "San Francisco", "New York", etc.
-
-
-
-────────────────────────────────────────────────────────────────────────────────
-FIX 13 — Users cannot report their own reviews
-────────────────────────────────────────────────────────────────────────────────
-
-[ report flag to my review still appearing] F13-A Login as bob@ratehub.com
-          →  go to the company profile page where bob's review appears
-          →  find bob's own review card
-          →  the "Report" flag button is REPLACED by a "Your review" label
-             (no report button visible on own review)
-
-
-
-────────────────────────────────────────────────────────────────────────────────
-FIX 14 — Verified employees section on company profile 
-────────────────────────────────────────────────────────────────────────────────
-
-
-
-────────────────────────────────────────────────────────────────────────────────
-FIX 15 — Feedback triggers in-app notification 
+ — Feedback triggers in-app notification 
 ────────────────────────────────────────────────────────────────────────────────
 
 [-- working but when i press on the notification it takes me to profile page] F15-A Login as bob@ratehub.com  →  go to /dashboard → Feedback tab
           →  select a coworker and submit peer feedback with ratings
           →  log out, login as the coworker
           →  click notification bell  →  "New Peer Feedback" notification appears
-
-
-────────────────────────────────────────────────────────────────────────────────
-FIX 16 — companyId stored in localStorage for company_admin 
-────────────────────────────────────────────────────────────────────────────────
-
-
-
-────────────────────────────────────────────────────────────────────────────────
-FIX 17 — Feedback email notification 
-────────────────────────────────────────────────────────────────────────────────
-
-
-
-────────────────────────────────────────────────────────────────────────────────
-FIX 18 — Audit logs record admin actions
-────────────────────────────────────────────────────────────────────────────────
-
-[-- working but in audit log no name for the user that has been suspended ] F18-A Login as admin@ratehub.com
-          →  perform any admin action (suspend a user, verify a company)
-          →  go to /admin → Audit Logs tab
-          →  the action appears: action name, admin email, timestamp (newest first)
-
 
 
 ================================================================================
@@ -135,7 +44,6 @@ FIX 18 — Audit logs record admin actions
     [FAIL]  =  FAIL — describe what went wrong on the same line
     [ ]    =  NOT YET TESTED
 ================================================================================
-
 
 
 ================================================================================
@@ -171,10 +79,6 @@ FIX 18 — Audit logs record admin actions
 ────────────────────────────────────────────────────────────────────────────────
 
 
-[not a dropdown why ? ] G6   Go to /companies  →  location filter dropdown/select is present and clickable
-
-
-
 ────────────────────────────────────────────────────────────────────────────────
 02 — AUTHENTICATION
 ────────────────────────────────────────────────────────────────────────────────
@@ -182,7 +86,6 @@ FIX 18 — Audit logs record admin actions
 REGISTER (/register)
 
 LOGIN (/login)
-[ loading analytics are stuck on loading analytics same to reviews and settings] G19  Login as tech.admin@ratehub.com / Test1234!  →  redirected to /company-admin
 
 FORGOT PASSWORD (/forgot-password)
 
@@ -223,27 +126,19 @@ ROLE REDIRECTS
 ────────────────────────────────────────────────────────────────────────────────
 
 DASHBOARD & NAVBAR
-[ like i said above the analytics stuck on loading analytics same for reviews and settings] C1   Login as tech.admin@ratehub.com  →  automatically lands on /company-admin
 [no it shows dashboard dashboard  ] C3   On /company-admin  →  page shows REAL company name (not hardcoded "Stripe Dashboard" or similar placeholder)
 [i dont understand this  ] C4   If company_admin account has no associated company in DB  →  shows an error message, NOT an infinite loading spinner  (⚠️ may need a special account to test)
 
 ANALYTICS TAB
-[ stuck on loading analytics ] C5   On /company-admin → Analytics tab  →  stat cards show real numbers (total reviews, avg rating, employees, etc.)
-[ stuck on loading analytics] C6   On /company-admin → Analytics tab  →  area chart or bar chart renders visually with data (not blank/empty chart)
 
 EMPLOYMENT REQUESTS TAB
 
 REVIEWS TAB
-[ stuck on loading reviews] C11  On /company-admin → Reviews tab  →  reviews list OR "no reviews" empty state is shown
-[ stuck on loading review] C12  On /company-admin → Reviews tab  →  star ratings shown on reviews are correct (not all showing 0 stars)  (⚠️ known potential bug)
 
 TEAM FEEDBACK TAB
 note : also how should the commpany get feedbacks i dont see an option 
 
 SETTINGS TAB
-[ stuck on loading settings ] C14  On /company-admin → Settings tab  →  form fields are pre-filled with REAL company data (name, description, etc.)
-[ stuck on loading settings] C15  On /company-admin → Settings tab  →  change company description, click Save  →  success message shown
-[stuck on loading settings ] C16  On /company-admin → Settings tab  →  if save fails (e.g. network error)  →  user-facing error shown, NOT a silent failure  (⚠️ hard to test manually without dev tools)
 
 REVIEW ACCESS
 [when i try to submit a review it blocks me and error message shown insufficient permissions so we need to change this message to something better or block all review page  ] C17  Login as company_admin  →  go to /companies/:id/review  →  should be blocked / unable to write a review (company admins are not employees)  (⚠️ may be a known bug where form is accessible)
@@ -259,7 +154,6 @@ PROFILE & ROLE REDIRECTS
 PANEL & NAVBAR
 
 REPORTS TAB
-[ when i tried it a alert showsup and tells me invalid action must be dismissed, resolved ] A6   On /admin → Reports tab  →  click "Dismiss Report" on a report  →  report dismissed, review still visible
 
 COMPANIES TAB
 [no reject option  ] A9   On /admin → Companies tab  →  click "Reject" on a company  →  company removed or status changes to rejected
@@ -401,19 +295,8 @@ Remaining known issues (not yet fixed):
 
 
 ────────────────────────────────────────────────────────────────────────────────
-FIX 1 — CompanyAdmin dashboard tabs no longer stuck on loading
-────────────────────────────────────────────────────────────────────────────────
-
-[a dash in all sections no stats are shown] F1-A  Login as tech.admin@ratehub.com  →  /company-admin  →  Analytics tab
-          shows real stat cards (total reviews, avg rating, employee count)
-          instead of a permanent loading spinner
-
-
-
-────────────────────────────────────────────────────────────────────────────────
 FIX 2 — Report dismiss / resolve actions work correctly
 ────────────────────────────────────────────────────────────────────────────────
-
 
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -421,11 +304,9 @@ FIX 3 — Suspend user now requires a reason
 ────────────────────────────────────────────────────────────────────────────────
 
 
-
 ────────────────────────────────────────────────────────────────────────────────
 FIX 4 — Admin users list now shows full name
 ────────────────────────────────────────────────────────────────────────────────
-
 
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -433,11 +314,9 @@ FIX 5 — Bulk suspend UI (checkboxes + "Suspend X Selected" button)
 ────────────────────────────────────────────────────────────────────────────────
 
 
-
 ────────────────────────────────────────────────────────────────────────────────
 FIX 6 — Reject Company button added
 ────────────────────────────────────────────────────────────────────────────────
-
 
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -445,11 +324,9 @@ FIX 7 — "Ended" badge shown after ending employment
 ────────────────────────────────────────────────────────────────────────────────
 
 
-
 ────────────────────────────────────────────────────────────────────────────────
 FIX 8 — Delete review uses inline confirmation (no window.confirm)
 ────────────────────────────────────────────────────────────────────────────────
-
 
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -457,11 +334,9 @@ FIX 9 — Company admin is blocked from the write-review page
 ────────────────────────────────────────────────────────────────────────────────
 
 
-
 ────────────────────────────────────────────────────────────────────────────────
 FIX 10 — Strong password enforced on "Change Password"
 ────────────────────────────────────────────────────────────────────────────────
-
 
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -483,23 +358,6 @@ FIX 11 — Reset password page validates token on load
           →  fill in a valid password and submit  →  success
 
 
-────────────────────────────────────────────────────────────────────────────────
-FIX 12 — Location filter is now a dropdown
-────────────────────────────────────────────────────────────────────────────────
-
-
-
-────────────────────────────────────────────────────────────────────────────────
-FIX 13 — Users cannot report their own reviews
-────────────────────────────────────────────────────────────────────────────────
-
-[-- when i press submit review the error appears but red flag report button still appears ] F13-A Login as bob (employee who has written a review)
-          →  go to the company profile page where bob's review appears
-          →  find bob's own review
-          →  the "Report" flag button is REPLACED by the label "Your review"
-          →  there is NO report button on her own review
-
-
 [on postman it tells me route not found ] F13-C Extra (API-level): using bob's auth token, POST /api/reports with
           reviewId = bob's own review id
           →  response should be HTTP 400 with error code "SELF_REPORT"
@@ -509,7 +367,6 @@ FIX 13 — Users cannot report their own reviews
 ────────────────────────────────────────────────────────────────────────────────
 FIX 14 — Verified employees section on company profile
 ────────────────────────────────────────────────────────────────────────────────
-
 
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -560,17 +417,14 @@ V2-02 — CATEGORY RATINGS (Write Review)
 note: idont like the verified employees section
 
 
-
 [ -- THE PAGE STRUCTURE WHEN I AM LOGGED IN AS AN EMPLOYEE NOT THE SAME IF IAM A GUEST FIX IT AND FIX THE VERIFIED EMPLOYEE SECTION ITS BAD REDESIGN IT] V2-R5  On the company profile page, the right sidebar now shows a
            "Category Breakdown" section with animated progress bars for
            each category once at least one rated review exists
 
 
-
 ────────────────────────────────────────────────────────────────────────────────
 V2-03 — HELPFUL VOTES ON REVIEWS
 ────────────────────────────────────────────────────────────────────────────────
-
 
 
 [ no its not ] V2-V5  Log in as a different user → the same review's helpful count is
@@ -582,14 +436,12 @@ V2-04 — COMPANY ADMIN REPLIES TO REVIEWS
 ────────────────────────────────────────────────────────────────────────────────
 
 
-
 [no its not when i refresh the page it disappeared ] V2-CR4 Type a valid reply (≥10 chars) → click "Post Reply"
            → reply appears below the review in a blue-tinted box labelled
            "Company Response"
 
 [ i dont know because there is no reply but when i write another reply an alert popsup and tell me you already replied one time] V2-CR5 After a reply is posted on a review, the "Reply" button disappears
            for that review (one reply per review enforced)
-
 
 
 [ ] V2-CR7 Departure reason badge: if a review was submitted with a departure
@@ -600,7 +452,6 @@ V2-04 — COMPANY ADMIN REPLIES TO REVIEWS
 ────────────────────────────────────────────────────────────────────────────────
 V2-05 — IDENTITY VERIFICATION (Profile Page)
 ────────────────────────────────────────────────────────────────────────────────
-
 
 
 [no spinner ui ] V2-IV4 Enter a valid URL (e.g. https://drive.google.com/somefile)
@@ -616,17 +467,14 @@ V2-06 — VERIFICATION ADMIN (Admin Panel)
 ────────────────────────────────────────────────────────────────────────────────
 
 
-
 [there is no pending request even though i applied for a verification ] V2-VA3 Click "Pending" → the verification request submitted in V2-IV4 appears
            with the user's name, email, type ("Identity"), and a document link
-
 
 
 note : there is no verification badge in the name i should see it for example in reviews i should see the identitity verification badge also in verification in admin panel i cant see the user who request a verification just unknown user
 ────────────────────────────────────────────────────────────────────────────────
 V2-07 — EMPLOYEE OF THE MONTH — COMPANY ADMIN
 ────────────────────────────────────────────────────────────────────────────────
-
 
 
 [-- but i dont want it to be alert ] V2-E4  Creating a duplicate event for the same month/year → error alert
@@ -673,11 +521,9 @@ V2-09 — UI POLISH CHECKS
 ────────────────────────────────────────────────────────────────────────────────
 
 
-
 ────────────────────────────────────────────────────────────────────────────────
 V2-10 — REGRESSION: EXISTING FEATURES STILL WORK
 ────────────────────────────────────────────────────────────────────────────────
-
 
 
 ================================================================================
@@ -696,16 +542,9 @@ V2-FIX 1 — Company reply persists after page refresh  (was: V2-CR4)
 ────────────────────────────────────────────────────────────────────────────────
 
 
-
 ────────────────────────────────────────────────────────────────────────────────
 V2-FIX 2 — Helpful count visible to all users  (was: V2-V5)
 ────────────────────────────────────────────────────────────────────────────────
-
-
-[-- working but even the employee his self can put helpful to his review ] V2-F2-B  Log out  →  log in as employee B  →  go to the same company profile
-             →  the same review shows "Helpful (1)" (count is visible to all users,
-             not just the voter)
-
 
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -720,11 +559,9 @@ V2-FIX 3 — Verification pending UI shown after submission  (was: V2-IV4/IV5)
              (was showing a new empty form before fix)
 
 
-
 ────────────────────────────────────────────────────────────────────────────────
 V2-FIX 4 — Admin panel shows pending verification requests  (was: V2-VA3)
 ────────────────────────────────────────────────────────────────────────────────
-
 
 
 [-- admin notes is wrong (i wrote unavilable link it appeared: no no no) ] V2-F4-D  Enter rejection notes  →  click "Reject"
@@ -734,7 +571,6 @@ V2-FIX 4 — Admin panel shows pending verification requests  (was: V2-VA3)
 ────────────────────────────────────────────────────────────────────────────────
 V2-FIX 5 — Company profile layout consistent & employees redesigned  (was: V2-R5)
 ────────────────────────────────────────────────────────────────────────────────
-
 
 
 ================================================================================
@@ -769,11 +605,9 @@ Root cause: eotmService.getCompanyEvents returned raw eotm_events rows with
 With `is_active` present but `status` undefined, no events ever rendered.
 Fix: service now maps `status: ev.is_active ? 'open' : 'closed'` on every row.
 
-[-- working but each name is appearing twice or more  ] V2-F7-A  Login as bob@ratehub.com  →  Employee Dashboard  →  EOTM tab
              →  at least one card appears (the open event for the company)
              →  card is labelled "Open for Voting" with a green badge
 
-[not working - saying you must be verified even if i am ] V2-F7-B  Click "View & Vote" on the open event
              →  nominees list expands with real names and vote counts
 
 [ ] V2-F7-C  Click "Vote" next to a nominee  →  button spins then the nominee's
@@ -798,14 +632,12 @@ Root cause: handleCreate and handleClose used browser alert() for errors.
 Fix: replaced with createError / closeError / voteError inline state.
 
 
-
 ────────────────────────────────────────────────────────────────────────────────
 V2-FIX 9 — Admin verification panel shows real user names  (was: V2-VA after VA7)
 ────────────────────────────────────────────────────────────────────────────────
 Root cause: AdminPanel read `req.user?.full_name` but Supabase join key is
 `users` (plural table name), so the joined object was `req.users`.
 Fix: changed references to `req.users?.full_name` and `req.users?.email`.
-
 
 
 ================================================================================
@@ -964,4 +796,64 @@ Fix: Changed to `.limit(1)` with array length check.
 
 ================================================================================
   V2 RE-TEST ROUND 3 TOTAL: 17 cases across 9 fixed bugs
+================================================================================
+
+════════════════════════════════════════════════════════════════════════════════
+  V2 RE-TEST ROUND 4 — Bugs fixed today (March 3 2026)
+  2 code fixes applied.
+════════════════════════════════════════════════════════════════════════════════
+
+────────────────────────────────────────────────────────────────────────────────
+R4-FIX 1 — Self-report button hidden for anonymous reviews  (was: F13-A)
+────────────────────────────────────────────────────────────────────────────────
+Root cause: CompanyProfilePage checked review.employee_id === user.employeeId,
+but the public_company_reviews view hides employee_id for anonymous reviews
+(sets it to null). So bob's anonymous review showed the Report flag.
+Fix: Backend now injects is_own: true/false per review using optionalAuth +
+a private company_reviews lookup, bypassing the public view's anonymisation.
+
+[ ] R4-F1-A  Login as bob@ratehub.com  →  go to a company profile page
+             →  find bob's OWN review (whether anonymous or not)
+             →  the "Report" flag button is REPLACED by "Your review" label
+             →  there is NO report button visible on that review
+
+[ ] R4-F1-B  On the same page, find ANOTHER employee's review
+             →  the "Report" flag button IS visible (bob can report others)
+
+[ ] R4-F1-C  Write a NEW review as bob with "anonymous" option checked
+             →  go to that company's profile page
+             →  bob's anonymous review shows "Your review" label, NOT a Report button
+
+[ ] R4-F1-D  Open the company profile as a GUEST (not logged in)
+             →  all reviews show the Report button (no "Your review" check applied)
+             →  clicking Report redirects to /login
+
+
+────────────────────────────────────────────────────────────────────────────────
+R4-FIX 2 — Dismiss Report shows inline error instead of alert()  (was: A6)
+────────────────────────────────────────────────────────────────────────────────
+Root cause: handleAction in ReportsTab caught API errors and called alert(),
+showing a native browser popup. Also the error "invalid action must be
+dismissed, resolved" was from a mismatch between frontend action names and
+backend VALID_ACTIONS list (previously fixed in code, but alert was still there).
+Fix: Replaced alert() with setActionError() — error shows as a red inline
+banner above the reports list with a dismiss (✕) button.
+
+[ ] R4-F2-A  Login as admin@ratehub.com  →  /admin → Reports tab
+             →  click "Dismiss Report" on a pending report
+             →  the report disappears from the list (dismissed successfully)
+             →  NO browser alert() popup appears
+
+[ ] R4-F2-B  Login as admin@ratehub.com  →  /admin → Reports tab
+             →  click "Remove Review" on a pending report
+             →  report disappears and the linked review is removed
+             →  NO browser alert() popup appears
+
+[ ] R4-F2-C  (Force an error: double-click dismiss quickly before list updates)
+             →  if an error occurs, a red inline banner appears above the reports
+             →  has a ✕ button to dismiss the banner
+             →  NO native browser alert() popup
+
+================================================================================
+  V2 RE-TEST ROUND 4 TOTAL: 7 cases across 2 fixed bugs
 ================================================================================

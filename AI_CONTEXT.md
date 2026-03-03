@@ -2,10 +2,10 @@
 
 > **FOR AI ASSISTANTS**: This file contains the current state of the project, completed tasks, and active work. Update this file whenever you make changes or complete tasks. This helps all team members' AI assistants stay synchronized.
 
-**Last Updated**: February 25, 2026 (Phase 8 complete — All phases done ✅)  
+**Last Updated**: March 3, 2026 (Bug Fix Rounds 4 & 5 complete — 8 fixes total, MANUAL_TEST_CASES restructured)  
 **Project**: Company Ratings Platform (Glassdoor-like)  
 **Team Size**: 4 developers  
-**Sprint**: Day 8 ✅ COMPLETE — Frontend integration finished, all 8 phases done  
+**Sprint**: Day 8 ✅ COMPLETE — Frontend integration finished, all 8 phases done + 2 post-phase bug fix rounds  
 **Tech Lead**: @baraa
 
 ---
@@ -867,6 +867,60 @@ if (!validReasons.includes(reason)) {
 ---
 
 ## 🔄 RECENT CHANGES LOG
+
+### 2026-03-03 — Walid: Bug Fix Round 5 (6 fixes) + MANUAL_TEST_CASES Restructure ✅
+
+**Commit**: `e58b9fb` (fixes), `20fd482` (restructure)  
+**Branch**: `ratehub.3`
+
+**Summary**: Fixed 6 remaining broken test cases from Round 5 re-test. All `alert()`/`window.confirm()` calls replaced with inline error state. Fixed auth flash-redirect (F5) and Dashboard title bug. Restructured MANUAL_TEST_CASES.txt from 832 → 586 lines.
+
+**Fixes applied**:
+
+| Fix ID | File | Root Cause | Solution |
+|--------|------|-----------|----------|
+| C3 | `CompanyAdminDashboard.jsx` | `useState('Dashboard')` default + title template → "Dashboard Dashboard" | Default `''`; title: `companyName ? \`${companyName} Dashboard\` : 'Company Dashboard'` |
+| C4 | `CompanyAdminDashboard.jsx` | No guard when `user.companyId` is null → blank/infinite loader | Early return rendering error card: "No company linked to your account." |
+| A17 (UsersTab) | `AdminPanel.jsx` | 4 handlers used `alert()`; delete used `window.confirm()` | Added `userError` state + inline red banner; two-click delete confirm (`deleteConfirm` state: trash icon → "Sure? / ✕") |
+| V2-F4-D (VerificationsTab) | `AdminPanel.jsx` | 3 `alert()` calls in approve/reject handlers | Added `verifError` state + inline red banner |
+| X1 (F5 flash-redirect) | `AuthContext.jsx` + `App.jsx` | Any API error in getMe cleared session; routes redirected before rehydration | Added `initializing` state (true while token rehydration in-flight); `ProtectedRoute`/`RoleRoute` return `null` while initializing |
+| V2-CR5 | `CompanyProfilePage.jsx` | Reply submit catch called `alert()` | Added `replyError` state; red text below textarea; cleared on success/cancel |
+
+**Files modified**:
+- `frontend/src/pages/CompanyAdminDashboard.jsx` — C3 title fix + C4 no-company guard
+- `frontend/src/pages/AdminPanel.jsx` — UsersTab: `userError` + `deleteConfirm` state; VerificationsTab: `verifError` state
+- `frontend/src/context/AuthContext.jsx` — Added `initializing` state + `.finally(() => setInitializing(false))`
+- `frontend/src/App.jsx` — `ProtectedRoute` + `RoleRoute` read `initializing`, return `null` while true
+- `frontend/src/pages/CompanyProfilePage.jsx` — `replyError` state, inline red text, cleared on cancel
+- `MANUAL_TEST_CASES.txt` — **RESTRUCTURED** from 832 → 586 lines:
+  - Removed 3 stacked orphan headers, empty section skeletons, inline failure notes, stale known-issues list
+  - New 3-part structure: Part 1 (Core Pending, 15 tests) · Part 2 (V2 Features, 15 tests) · Part 3 (Re-test Rounds 1–5, 50 tests)
+  - Added Totals section: **80 tests total**
+  - Added R5 section (15 re-test cases for the 6 fixes above)
+
+---
+
+### 2026-03-03 — Baraa: Bug Fix Round 4 — Self-report + Dismiss Alert ✅
+
+**Commit**: `ba15ac9`  
+**Branch**: `ratehub.3`
+
+**Summary**: Fixed self-report button being hidden for own anonymous reviews. Replaced `alert()` in AdminPanel ReportsTab Dismiss action with inline error state.
+
+**Fixes applied**:
+
+| Fix ID | File | Root Cause | Solution |
+|--------|------|-----------|----------|
+| F13-A (Self-report button) | `CompanyProfilePage.jsx` + backend | Employee ID hidden in public view for anonymous reviews → `review.employee_id` always null → "Report" button shown, "Self-report" button never shown for own reviews | Added `is_own` field: `reviewController.js` queries private `company_reviews` table (bypasses `public_company_reviews` view) when user is authenticated via `optionalAuth`; frontend uses `review.is_own` |
+| A6 (Dismiss alert) | `AdminPanel.jsx` ReportsTab | `handleDismiss` catch block called `alert()` | Replaced with `setActionError()` → inline error banner in ReportsTab |
+
+**Files modified**:
+- `backend/src/controllers/reviewController.js` — Added `is_own` injection via private table query when `req.user` present
+- `backend/src/routes/companyRoutes.js` — Added `optionalAuth` middleware to `GET /:companyId/reviews`
+- `frontend/src/pages/CompanyProfilePage.jsx` — `review.is_own` replaces `review.employee_id === user?.userId` comparison
+- `frontend/src/pages/AdminPanel.jsx` — ReportsTab `handleDismiss` catch: `setActionError()` instead of `alert()`
+
+---
 
 ### 2026-02-25 — Walid: Phase 8 UX Polish Complete ✅
 

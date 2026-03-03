@@ -93,7 +93,7 @@ ROLE REDIRECTS
 ────────────────────────────────────────────────────────────────────────────────
 
 DASHBOARD & NAVBAR
-[ ] C3   On /company-admin  →  page shows REAL company name (not hardcoded "Stripe Dashboard" or similar placeholder)
+[-- ] C3   On /company-admin  →  page shows REAL company name (not hardcoded "Stripe Dashboard" or similar placeholder)
 [ ] C4   If company_admin account has no associated company in DB  →  shows an error message, NOT an infinite loading spinner  (⚠️ may need a special account to test)
 
 ANALYTICS TAB
@@ -123,7 +123,7 @@ REPORTS TAB
 COMPANIES TAB
 
 USERS TAB
-[ ] A17  On /admin → Users tab  →  trigger a delete/action error  →  error shown inline on page (NOT a browser alert() popup)  (⚠️ hard to force manually)
+[-- ] A17  On /admin → Users tab  →  trigger a delete/action error  →  error shown inline on page (NOT a browser alert() popup)  (⚠️ hard to force manually)
 
 AUDIT LOGS TAB
 
@@ -195,8 +195,8 @@ you make the security test
 ────────────────────────────────────────────────────────────────────────────────
 
 SESSION REHYDRATION
-[ ] X1   Login as company_admin  →  press F5  →  stays on /company-admin
-[ ] X1   Login as system_admin  →  press F5  →  stays on /admin
+[-- ] X1   Login as company_admin  →  press F5  →  stays on /company-admin
+[-- ] X1   Login as system_admin  →  press F5  →  stays on /admin
 
 LOGOUT EFFECTS
 
@@ -297,7 +297,7 @@ V2-03 — HELPFUL VOTES ON REVIEWS
 V2-04 — COMPANY ADMIN REPLIES TO REVIEWS
 ────────────────────────────────────────────────────────────────────────────────
 
-[ ] V2-CR5 After a reply is posted on a review, the "Reply" button disappears
+[-- ] V2-CR5 After a reply is posted on a review, the "Reply" button disappears
            for that review (one reply per review enforced)
 
 
@@ -321,16 +321,16 @@ V2-07 — EMPLOYEE OF THE MONTH — COMPANY ADMIN
 ────────────────────────────────────────────────────────────────────────────────
 
 
-[ ] V2-E4  Creating a duplicate event for the same month/year → inline error shown
+[-- ] V2-E4  Creating a duplicate event for the same month/year → inline error shown
            "Event for this month already exists" (NOT a browser alert() popup)
 
-[ ] V2-E5  Click "View Nominees" on the open event → nominees panel expands
+[-- ] V2-E5  Click "View Nominees" on the open event → nominees panel expands
            (empty list: "No votes yet" or real employee names if any voted)
 
-[ ] V2-E6  Click "Close & Declare Winner" on an open event with no votes
+[-- working but even if two of the employees have same votes one of them only one of them is the winner (based on what they choose one of them?) ] V2-E6  Click "Close & Declare Winner" on an open event with no votes
            → event status changes to "closed"
 
-[ ] V2-E7  After closing, Hall of Fame section appears at bottom with the
+[-- no name appeares if now winner but No Winner card is not shown in the Hall of Fame for this month ] V2-E7  After closing, Hall of Fame section appears at bottom with the
            winner card (or "no winner" if no votes) — winner shows real employee name
 
 
@@ -338,25 +338,25 @@ V2-07 — EMPLOYEE OF THE MONTH — COMPANY ADMIN
 V2-08 — EMPLOYEE OF THE MONTH — EMPLOYEE VOTING
 ────────────────────────────────────────────────────────────────────────────────
 
-[ ] V2-EV1 Login as employee (bob) → go to /dashboard → an "EOTM" tab
+[-- ] V2-EV1 Login as employee (bob) → go to /dashboard → an "EOTM" tab
            is visible in the tab bar
 
-[ ] V2-EV2 Click "EOTM" tab → shows the open event for March 2026 with
+[-- ] V2-EV2 Click "EOTM" tab → shows the open event for March 2026 with
            "Open for Voting" badge
 
-[ ] V2-EV3 Click "View & Vote" → nominees panel expands (may show existing
+[-- ] V2-EV3 Click "View & Vote" → nominees panel expands (may show existing
            nominees or "No nominees yet")
 
-[ ] V2-EV4 Click "Vote" next to a non-self nominee → vote is cast; count
+[-- ] V2-EV4 Click "Vote" next to a non-self nominee → vote is cast; count
            increments; nominee appears in company admin's nominees list
 
-[ ] V2-EV5 Voting a second time in the same event → inline error message
+[-- ] V2-EV5 Voting a second time in the same event → inline error message
            (one vote per event enforced; NO browser alert() popup)
 
-[ ] V2-EV6 Employee with NO verified employment → EOTM tab shows a message:
+[-- ] V2-EV6 Employee with NO verified employment → EOTM tab shows a message:
            "You need a verified employment to participate"
 
-[ ] V2-EV7 After an event is closed, it no longer appears in the open events
+[-- ] V2-EV7 After an event is closed, it no longer appears in the open events
            list for employees; past winners appear in "Past Winners" section
 
 
@@ -395,7 +395,7 @@ V2-FIX 2 — Helpful count visible to all users  (was: V2-V5)
 V2-FIX 3 — Verification pending UI shown after submission  (was: V2-IV4/IV5)
 ────────────────────────────────────────────────────────────────────────────────
 
-[ ] V2-F3-A  Login as employee  →  go to /profile → Verification tab
+[-- ] V2-F3-A  Login as employee  →  go to /profile → Verification tab
              →  enter a valid URL (e.g. https://drive.google.com/testfile)
              →  click "Submit for Verification"
              →  the form is REPLACED by a yellow "Verification Pending" block
@@ -408,7 +408,7 @@ V2-FIX 4 — Admin panel shows pending verification requests  (was: V2-VA3)
 ────────────────────────────────────────────────────────────────────────────────
 
 
-[ ] V2-F4-D  Enter rejection notes  →  click "Reject"
+[-- ] V2-F4-D  Enter rejection notes  →  click "Reject"
              →  request disappears from Pending  →  appears under "Rejected" filter
 
 
@@ -434,15 +434,15 @@ but frontend expected `{ employee_id, full_name, vote_count }`.
 Fix: renamed fields in eotmService to match frontend expectations.
 
 
-[ ] V2-F6-B  Past winners in the "Hall of Fame" section show real employee names
+[-- ] V2-F6-B  Past winners in the "Hall of Fame" section show real employee names
              (not "Unknown") — root cause was `name` vs `employee_name` field.
 
-[ ] V2-F6-C  Each nominee card shows a correct vote count (e.g. "2 votes")
+[-- ] V2-F6-C  Each nominee card shows a correct vote count (e.g. "2 votes")
              and the list is sorted highest-votes first.
 
 
 ────────────────────────────────────────────────────────────────────────────────
-V2-FIX 7 — Employee EOTM tab shows open events and allows voting  (was: V2-EV1–EV7) [not working]
+V2-FIX 7 — Employee EOTM tab shows open events and allows voting  (was: V2-EV1–EV7) 
 ────────────────────────────────────────────────────────────────────────────────
 Root cause: eotmService.getCompanyEvents returned raw eotm_events rows with
 `is_active` boolean, but EmployeeDashboard filtered on `ev.status === 'open'`.
@@ -454,17 +454,17 @@ Fix: service now maps `status: ev.is_active ? 'open' : 'closed'` on every row.
 
              →  nominees list expands with real names and vote counts
 
-[ ] V2-F7-C  Click "Vote" next to a nominee  →  button spins then the nominee's
+[-- ] V2-F7-C  Click "Vote" next to a nominee  →  button spins then the nominee's
              vote count increments by 1
 
-[ ] V2-F7-D  Try voting a second time in the same event
+[-- ] V2-F7-D  Try voting a second time in the same event
              →  an inline error message appears ("You have already voted…")
              →  NO browser alert() dialog
 
-[ ] V2-F7-E  Past winners section still appears below the open events list
+[-- ] V2-F7-E  Past winners section still appears below the open events list
              with correct employee names and month/year labels.
 
-[ ] V2-F7-F  Company admin closes the event  →  log back in as bob
+[-- ] V2-F7-F  Company admin closes the event  →  log back in as bob
              →  open event no longer shows under EOTM tab
              →  closed event winner appears in "Past Winners" section
 
@@ -475,11 +475,11 @@ V2-FIX 8 — Inline errors replace alert() in EOTM actions  (was: V2-E4)
 Root cause: handleCreate and handleClose used browser alert() for errors.
 Fix: replaced with createError / closeError inline state banners.
 
-[ ] V2-F8-A  Login as company_admin  →  try to create a duplicate EOTM event
+[-- ] V2-F8-A  Login as company_admin  →  try to create a duplicate EOTM event
              (same month already exists)  →  inline red error banner appears
              above the create form  →  NO browser alert() popup
 
-[ ] V2-F8-B  Click the ✕ on the error banner  →  banner dismisses cleanly
+[-- ] V2-F8-B  Click the ✕ on the error banner  →  banner dismisses cleanly
 
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -489,7 +489,7 @@ Root cause: AdminPanel read `req.user?.full_name` but Supabase join key is
 `users` (plural table name), so the joined object was `req.users`.
 Fix: changed references to `req.users?.full_name` and `req.users?.email`.
 
-[ ] V2-F9-A  Login as admin@ratehub.com  →  /admin → Verifications tab
+[-- ] V2-F9-A  Login as admin@ratehub.com  →  /admin → Verifications tab
              →  each pending request shows the user's real full name and email
              (not "Unknown User")
 
@@ -514,11 +514,11 @@ an array, and `reviewsOverTime` key was not handled.
 Fix: CompanyAdminDashboard.jsx AnalyticsTab now handles both naming
 conventions, array responses, and the reviewsOverTime object→array mapping.
 
-[ ] R3-F1-A  Login as tech.admin@ratehub.com  →  /company-admin → Analytics tab
+[-- ] R3-F1-A  Login as tech.admin@ratehub.com  →  /company-admin → Analytics tab
              →  stat cards show REAL numbers (total reviews, avg rating, employees)
              →  NOT dashes (—) or loading spinners
 
-[ ] R3-F1-B  The area/bar chart renders with data (or "no data" empty state)
+[-- ] R3-F1-B  The area/bar chart renders with data (or "no data" empty state)
              →  NOT a blank chart or crash
 
 
@@ -530,12 +530,12 @@ so the badge count on the Reports tab stayed stale.
 Fix: AdminPanel passes `onReportResolved` callback to ReportsTab that
 re-fetches analytics after each resolution.
 
-[ ] R3-F2-A  Login as admin@ratehub.com  →  /admin → Reports tab
+[-- ] R3-F2-A  Login as admin@ratehub.com  →  /admin → Reports tab
              →  note the badge number on the Reports tab (e.g. "3")
              →  click "Remove Review" or "Dismiss" on a report
              →  the badge number DECREASES by 1 immediately (no page refresh needed)
 
-[ ] R3-F2-B  Resolve ALL pending reports
+[-- ] R3-F2-B  Resolve ALL pending reports
              →  the badge disappears entirely (no "0" badge shown)
 
 
@@ -546,18 +546,18 @@ Root cause: reviewVoteService.toggleVote had no self-vote prevention.
 Fix: Added check that compares the review's employee_id with the voter's
 employee record — throws 400 "You cannot vote on your own review".
 
-[ ] R3-F3-A  Login as bob@ratehub.com  →  go to a company profile page
+[-- working but no message appear only number of helpful is not incremented] R3-F3-A  Login as bob@ratehub.com  →  go to a company profile page
              →  find bob's own review card
              →  click the "Helpful" button on it
              →  an error message appears ("You cannot vote on your own review")
              →  the helpful count does NOT increment
 
-[ ] R3-F3-B  On the same page, click "Helpful" on ANOTHER employee's review
+[-- ] R3-F3-B  On the same page, click "Helpful" on ANOTHER employee's review
              →  count increments normally (e.g. "Helpful (1)")
 
 
 ────────────────────────────────────────────────────────────────────────────────
-R3-FIX 4 — Bulk suspend enforces min 3-char reason (was: F5-C)
+R3-FIX 4 — Bulk suspend enforces min 3-char reason (was: F5-C) [not working i wrote only (j) then user is suspended normally no chars limit are required]
 ────────────────────────────────────────────────────────────────────────────────
 Root cause: bulkSuspendUsers() was not passing the reason to the API, and
 no minimum length validation existed on the frontend.
@@ -581,11 +581,11 @@ Root cause: The locations array only had US cities.
 Fix: Added Lebanon, Beirut, Dubai, Toronto, London, Berlin, Paris, Riyadh,
 Cairo, Mumbai, Singapore, Tokyo, Sydney, Melbourne, Amsterdam, Zurich, etc.
 
-[ ] R3-F5-A  Go to /companies  →  open Filters panel  →  click Location dropdown
+[-- ] R3-F5-A  Go to /companies  →  open Filters panel  →  click Location dropdown
              →  scroll through options  →  "Lebanon" is listed
              →  "Dubai", "Beirut", "Toronto", "London" are also listed
 
-[ ] R3-F5-B  Select "Lebanon" from the dropdown
+[-- ] R3-F5-B  Select "Lebanon" from the dropdown
              →  company results filter to Lebanon-based companies only
              (may show 0 results if no companies are in Lebanon)
 
@@ -597,7 +597,7 @@ Root cause: feedbackController.js created the notification with
 link: '/profile' instead of '/internal-feedback'.
 Fix: Changed the link to '/internal-feedback'.
 
-[ ] R3-F6-A  Login as bob@ratehub.com  →  go to /dashboard → Feedback tab
+[when i press on the notification i will goto 404 page not found ] R3-F6-A  Login as bob@ratehub.com  →  go to /dashboard → Feedback tab
              →  select a coworker and submit peer feedback
              →  log out, log in as the coworker
              →  click the notification bell  →  click the "New Peer Feedback" notification
@@ -612,7 +612,7 @@ not the target user's identity. AdminPanel AuditTab didn't display it.
 Fix: Added targetEmail to audit log details + display "→ target@email.com"
 in the audit entry row.
 
-[ ] R3-F7-A  Login as admin@ratehub.com  →  /admin → Users tab
+[-- ] R3-F7-A  Login as admin@ratehub.com  →  /admin → Users tab
              →  suspend a user (e.g. bob@ratehub.com) with a reason
              →  go to Audit Logs tab
              →  the suspend entry shows: admin email → bob@ratehub.com
@@ -626,7 +626,7 @@ Root cause: eotmService.getEventNominees did not deduplicate when an employee
 had multiple approved employment records at the same company.
 Fix: Added Set-based deduplication by employee_id.
 
-[ ] R3-F8-A  Login as bob@ratehub.com  →  Employee Dashboard → EOTM tab
+[-- ] R3-F8-A  Login as bob@ratehub.com  →  Employee Dashboard → EOTM tab
              →  click "View & Vote" on an open event
              →  each employee name appears EXACTLY ONCE in the nominees list
              (no duplicates even if they have multiple employments)
@@ -639,13 +639,13 @@ Root cause: eotmService.castVote used `.maybeSingle()` to check voter's
 employment, which throws when multiple approved rows exist.
 Fix: Changed to `.limit(1)` with array length check.
 
-[ ] R3-F9-A  Login as bob@ratehub.com (verified employee with approved employment)
+[-- ] R3-F9-A  Login as bob@ratehub.com (verified employee with approved employment)
              →  Employee Dashboard → EOTM tab → click "View & Vote"
              →  click "Vote" next to a nominee
              →  vote is cast successfully (count increments)
              →  NO "You must be a verified employee" error
 
-[ ] R3-F9-B  Try voting a second time in the same event
+[-- ] R3-F9-B  Try voting a second time in the same event
              →  inline error: "You have already voted in this event"
 
 ================================================================================
@@ -666,19 +666,19 @@ but the public_company_reviews view hides employee_id for anonymous reviews
 Fix: Backend now injects is_own: true/false per review using optionalAuth +
 a private company_reviews lookup, bypassing the public view's anonymisation.
 
-[ ] R4-F1-A  Login as bob@ratehub.com  →  go to a company profile page
+[working i can not report my self but this appears after i pres submit report (report button still appear) ] R4-F1-A  Login as bob@ratehub.com  →  go to a company profile page
              →  find bob's OWN review (whether anonymous or not)
              →  the "Report" flag button is REPLACED by "Your review" label
              →  there is NO report button visible on that review
 
-[ ] R4-F1-B  On the same page, find ANOTHER employee's review
+[-- ] R4-F1-B  On the same page, find ANOTHER employee's review
              →  the "Report" flag button IS visible (bob can report others)
 
-[ ] R4-F1-C  Write a NEW review as bob with "anonymous" option checked
+[report button still showed but when i try to submit report then they write you can not report yourself ] R4-F1-C  Write a NEW review as bob with "anonymous" option checked
              →  go to that company's profile page
              →  bob's anonymous review shows "Your review" label, NOT a Report button
 
-[ ] R4-F1-D  Open the company profile as a GUEST (not logged in)
+[-- ] R4-F1-D  Open the company profile as a GUEST (not logged in)
              →  all reviews show the Report button (no "Your review" check applied)
              →  clicking Report redirects to /login
 
@@ -693,17 +693,17 @@ backend VALID_ACTIONS list (previously fixed in code, but alert was still there)
 Fix: Replaced alert() with setActionError() — error shows as a red inline
 banner above the reports list with a dismiss (✕) button.
 
-[ ] R4-F2-A  Login as admin@ratehub.com  →  /admin → Reports tab
+[-- ] R4-F2-A  Login as admin@ratehub.com  →  /admin → Reports tab
              →  click "Dismiss Report" on a pending report
              →  the report disappears from the list (dismissed successfully)
              →  NO browser alert() popup appears
 
-[ ] R4-F2-B  Login as admin@ratehub.com  →  /admin → Reports tab
+[-- ] R4-F2-B  Login as admin@ratehub.com  →  /admin → Reports tab
              →  click "Remove Review" on a pending report
              →  report disappears and the linked review is removed
              →  NO browser alert() popup appears
 
-[ ] R4-F2-C  (Force an error: double-click dismiss quickly before list updates)
+[-- ] R4-F2-C  (Force an error: double-click dismiss quickly before list updates)
              →  if an error occurs, a red inline banner appears above the reports
              →  has a ✕ button to dismiss the banner
              →  NO native browser alert() popup
@@ -725,11 +725,11 @@ Root cause: CompanyAdminDashboard used useState('Dashboard') as the default
 so the title rendered "Dashboard Dashboard" before the API call resolved.
 Fix: default changed to '' and title renders "Company Dashboard" until API loads.
 
-[ ] R5-F1-A  Login as tech.admin@ratehub.com  →  go to /company-admin
+[-- ] R5-F1-A  Login as tech.admin@ratehub.com  →  go to /company-admin
              →  page title shows "TechCorp Dashboard" (or real company name)
              →  NOT "Dashboard Dashboard" or "Company Dashboard Dashboard"
 
-[ ] R5-F1-B  Hard-refresh (/company-admin F5)  →  title briefly shows
+[-- ] R5-F1-B  Hard-refresh (/company-admin F5)  →  title briefly shows
              "Company Dashboard" then updates to the real name once API loads
              →  NEVER shows "Dashboard Dashboard" at any point
 
@@ -741,7 +741,7 @@ Root cause: dashboard rendered full skeleton even when user.companyId was null,
 causing a blank/infinite-loading screen.
 Fix: early return renders a clear error card when companyId is missing.
 
-[ ] R5-F2-A  Login as a company_admin account with NO company linked
+[when i sign in page appear normally no message appeareslike no company linked ] R5-F2-A  Login as a company_admin account with NO company linked
              →  go to /company-admin
              →  see message: "No company linked to your account."
              →  NO blank screen or infinite spinner  (⚠️ requires a special test account)
@@ -754,14 +754,14 @@ Root cause: handleSuspend, handleUnsuspend, handleDelete, handleBulkSuspend all
 used alert() for errors; handleDelete used window.confirm() for confirmation.
 Fix: added userError state with inline red banner; delete uses two-click confirm.
 
-[ ] R5-F3-A  Login as admin@ratehub.com  →  /admin → Users tab
+[-- ] R5-F3-A  Login as admin@ratehub.com  →  /admin → Users tab
              →  click the Trash icon next to any user
              →  button changes to "Sure? / ✕"  (inline confirm — no native popup)
              →  click "✕" to cancel  →  button reverts to trash icon
              →  click trash again, then "Sure?"  →  user is deleted from list
              →  NO window.confirm() native dialog appeared
 
-[ ] R5-F3-B  Trigger an unsuspend/suspend API error (e.g. network off):
+[-- ] R5-F3-B  Trigger an unsuspend/suspend API error (e.g. network off):
              →  a red inline banner appears at the top of the Users tab
              →  has a ✕ dismiss button
              →  NO browser alert() popup
@@ -774,16 +774,16 @@ Root cause: handleApprove and handleReject used alert() for both validation
 ("Please provide rejection notes") and API errors.
 Fix: added verifError state with inline red banner.
 
-[ ] R5-F4-A  Login as admin@ratehub.com  →  /admin → Verifications tab
+[-- ] R5-F4-A  Login as admin@ratehub.com  →  /admin → Verifications tab
              →  find a pending request  →  click "Reject" WITHOUT entering notes
              →  red inline banner: "Please provide rejection notes"
              →  NO browser alert() popup
 
-[ ] R5-F4-B  Enter rejection notes  →  click "Reject"
+[-- ] R5-F4-B  Enter rejection notes  →  click "Reject"
              →  request disappears from Pending list
              →  banner dismisses (or was never shown)
 
-[ ] R5-F4-C  Dismiss the inline error banner with ✕  →  banner disappears
+[-- ] R5-F4-C  Dismiss the inline error banner with ✕  →  banner disappears
 
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -795,17 +795,17 @@ immediately redirected to /login before the token re-check finished.
 Fix: added initializing state (true while apiGetMe() is in flight); routes
 return null while initializing to prevent premature redirects.
 
-[ ] R5-F5-A  Login as bob@ratehub.com  →  navigate to /dashboard
+[-- ] R5-F5-A  Login as bob@ratehub.com  →  navigate to /dashboard
              →  press F5 (hard refresh)  →  stays on /dashboard
              →  NO redirect to /login
 
-[ ] R5-F5-B  Login as tech.admin@ratehub.com  →  navigate to /company-admin
+[-- ] R5-F5-B  Login as tech.admin@ratehub.com  →  navigate to /company-admin
              →  press F5  →  stays on /company-admin  →  NO redirect to /login
 
-[ ] R5-F5-C  Login as admin@ratehub.com  →  navigate to /admin
+[-- ] R5-F5-C  Login as admin@ratehub.com  →  navigate to /admin
              →  press F5  →  stays on /admin  →  NO redirect to /login
 
-[ ] R5-F5-D  Press F5 a third time on each page (regression check)
+[when refresh i will go to another page (example: i was on verification tab then refresh it takes me to analytics tab) ] R5-F5-D  Press F5 a third time on each page (regression check)
              →  still stays on the correct page every time
 
 
@@ -815,12 +815,12 @@ R5-FIX 6 — Company reply error shows inline, not alert()  (was: V2-CR5)
 Root cause: CompanyProfilePage reply submit catch called alert() on API error.
 Fix: added replyError state; error renders as small red text below the textarea.
 
-[ ] R5-F6-A  Login as tech.admin@ratehub.com  →  go to company profile
+[-- ] R5-F6-A  Login as tech.admin@ratehub.com  →  go to company profile
              →  find a review with no existing reply  →  click "Reply"
              →  write a reply (min 10 chars)  →  click "Post Reply"
              →  reply appears under the review, Reply button disappears
 
-[ ] R5-F6-B  Try to post a reply on a review that ALREADY has a reply
+[when a review already have a reply then the reply button is hidden for that review ] R5-F6-B  Try to post a reply on a review that ALREADY has a reply
              (backend will reject the duplicate)
              →  a small red error message appears BELOW the textarea
              →  NO browser alert() popup

@@ -27,7 +27,7 @@ KNOWN OPEN ISSUES  (not yet fixed)
 PENDING — items not yet verified
 ────────────────────────────────────────────────────────────────────────────────
 
-[ ] C4      /company-admin with NO company linked
+[no it worked even if no company ] C4      /company-admin with NO company linked
             → shows "No company linked to your account." message
             → NO blank screen or infinite spinner
             (⚠️ requires a company_admin account with no company in DB)
@@ -53,15 +53,15 @@ V2-01 — DATABASE MIGRATION  (run migration-v2.sql first)
            ai_toxicity_score, ai_sentiment, is_hidden_by_ai
 
 ────────────────────────────────────────────────────────────────────────────────
-V2-04 — COMPANY ADMIN REPLIES TO REVIEWS
+V2-04 — COMPANY ADMIN REPLIES TO REVIEWS 
 ────────────────────────────────────────────────────────────────────────────────
 
-[ ] V2-CR7  Departure reason badge: if a review was submitted with a departure
+[nothing appears ] V2-CR7  Departure reason badge: if a review was submitted with a departure
             reason (not "Still Employed"), a small badge is shown below the
             review text (e.g. "Left: better opportunity")
 
 ────────────────────────────────────────────────────────────────────────────────
-R3-FIX 4 — Bulk suspend enforces min 3-char reason
+R3-FIX 4 — Bulk suspend enforces min 3-char reason [not working i wrote one char and it works no min chars required]
 ────────────────────────────────────────────────────────────────────────────────
 
 [ ] R3-F4-A  Login as admin@ratehub.com  →  /admin → Users tab
@@ -74,7 +74,7 @@ R3-FIX 4 — Bulk suspend enforces min 3-char reason
              → all selected users change to "Suspended" status
 
 ────────────────────────────────────────────────────────────────────────────────
-BUG 2 — Employee current position not saved  (INFRA FIX REQUIRED)
+BUG 2 — Employee current position not saved  (INFRA FIX REQUIRED) [working]
 ────────────────────────────────────────────────────────────────────────────────
 Application code is correct. Silent failure caused by one or both of:
 
@@ -100,14 +100,14 @@ Root cause: empty catch {} block silently swallowed the self-vote API error.
 Fix: added voteErrors state (per-review) in CompanyProfilePage — error renders
 as small red text below the Helpful button.
 
-[ ] R6-F1-A  Login as bob@ratehub.com  →  go to a company profile page
+[-- ] R6-F1-A  Login as bob@ratehub.com  →  go to a company profile page
              →  find bob's own review card
              →  click the "Helpful" button on it
              →  a small red error message appears below the button
                 ("You cannot vote on your own review" or similar)
              →  the helpful count does NOT increment
 
-[ ] R6-F1-B  On the same page click "Helpful" on ANOTHER employee's review
+[-- ] R6-F1-B  On the same page click "Helpful" on ANOTHER employee's review
              →  count increments normally  →  NO error message shown
 
 
@@ -118,7 +118,7 @@ Root cause: feedbackController.js used link: '/internal-feedback' — no such
 route exists in the app, causing a 404.
 Fix: changed to link: '/feedback' (the correct registered route).
 
-[ ] R6-F2-A  Login as bob@ratehub.com  →  go to /dashboard → Feedback tab
+[-- ] R6-F2-A  Login as bob@ratehub.com  →  go to /dashboard → Feedback tab
              →  select a coworker and submit peer feedback
              →  log out, log in as the coworker who received the feedback
              →  click the notification bell
@@ -135,18 +135,18 @@ false → Report button shown on the user's own reviews.
 Fix: getCompanyReviews now reads localStorage 'rh_access' and calls
 authRequest() when a token exists.
 
-[ ] R6-F3-A  Login as bob@ratehub.com  →  go to a company profile page
+[-- ] R6-F3-A  Login as bob@ratehub.com  →  go to a company profile page
              →  find bob's OWN review (named or anonymous)
              →  card shows "Your review" label  →  NO Report button visible
 
-[ ] R6-F3-B  On the same page find ANOTHER employee's review
+[-- ] R6-F3-B  On the same page find ANOTHER employee's review
              →  the Report flag button IS visible (bob can report others)
 
-[ ] R6-F3-C  Write a NEW review as bob with "anonymous" option checked
+[-- ] R6-F3-C  Write a NEW review as bob with "anonymous" option checked
              →  go to that company's profile page
              →  bob's anonymous review shows "Your review", NOT a Report button
 
-[ ] R6-F3-D  Open that company profile as a GUEST (not logged in)
+[-- ] R6-F3-D  Open that company profile as a GUEST (not logged in)
              →  all reviews show the Report button
              →  clicking Report redirects to /login
 
@@ -159,17 +159,17 @@ always reverted to the default Overview tab.
 Fix: AdminPanel and CompanyAdminDashboard write the active tab to the URL hash
 (e.g. /admin#reports) on every click and read it back on mount.
 
-[ ] R6-F4-A  Login as admin@ratehub.com  →  /admin → click "Reports" tab
+[-- ] R6-F4-A  Login as admin@ratehub.com  →  /admin → click "Reports" tab
              →  press F5
              →  page reloads and stays on the Reports tab  (NOT Overview)
 
-[ ] R6-F4-B  Login as admin@ratehub.com  →  /admin → click "Verifications" tab
+[-- ] R6-F4-B  Login as admin@ratehub.com  →  /admin → click "Verifications" tab
              →  press F5  →  stays on Verifications tab
 
-[ ] R6-F4-C  Login as tech.admin@ratehub.com  →  /company-admin → click "Reviews" tab
+[-- ] R6-F4-C  Login as tech.admin@ratehub.com  →  /company-admin → click "Reviews" tab
              →  press F5  →  stays on Reviews tab  (NOT Overview)
 
-[ ] R6-F4-D  Login as tech.admin@ratehub.com  →  /company-admin → click "Settings" tab
+[-- ] R6-F4-D  Login as tech.admin@ratehub.com  →  /company-admin → click "Settings" tab
              →  press F5  →  stays on Settings tab
 
 
@@ -180,17 +180,121 @@ Root cause: registerUser email-uniqueness query included soft-deleted rows
 (deleted_at IS NOT NULL) → recycled email permanently blocked re-registration.
 Fix: added .is('deleted_at', null) to the Supabase query in authService.js.
 
-[ ] R6-F5-A  Login as admin@ratehub.com  →  /admin → Users tab
+[-- ] R6-F5-A  Login as admin@ratehub.com  →  /admin → Users tab
              →  delete a non-critical test user
              →  user disappears from the list
 
-[ ] R6-F5-B  Go to /register  →  enter the SAME email as the deleted user
+[saying email already exist even if system admin deleted it and i can login normally even if system admin deleted my account ] R6-F5-B  Go to /register  →  enter the SAME email as the deleted user
              →  fill in all required fields  →  click "Register"
              →  registration SUCCEEDS  (no "Email already exists" error)
 
-[ ] R6-F5-C  New account works normally after registration
+[ saying email already exists even if the system admin deleted account] R6-F5-C  New account works normally after registration
 
 
 ================================================================================
   RE-TEST ROUND 6 TOTAL: 13 cases across 5 fixed bugs
 ================================================================================
+
+
+════════════════════════════════════════════════════════════════════════════════
+  PENDING FEATURE — Tab Notification Badges (unread counts)
+  Same style as the existing red badge on the Admin "Reports" tab.
+  Badge shows when there are new/unread items; disappears or decrements
+  when the user opens that tab and views the content.
+  NOT YET IMPLEMENTED — test cases listed here for future verification.
+════════════════════════════════════════════════════════════════════════════════
+
+────────────────────────────────────────────────────────────────────────────────
+TAB-BADGE-1 — Admin Panel: Verifications tab badge
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] TB-A1  A new verification request is submitted by an employee
+           →  Login as admin@ratehub.com  →  /admin
+           →  "Verifications" tab shows a red badge with the count of
+              pending verification requests (e.g. ❶)
+
+[ ] TB-A2  Click the "Verifications" tab
+           →  badge disappears (or decrements to 0 after all are reviewed)
+
+[ ] TB-A3  Approve or reject a verification request inside the tab
+           →  badge count decrements by 1 for each resolved item
+           →  badge disappears entirely when count reaches 0
+
+────────────────────────────────────────────────────────────────────────────────
+TAB-BADGE-2 — Admin Panel: Users tab badge (new registrations)
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] TB-B1  A new user registers on the platform
+           →  Login as admin@ratehub.com  →  /admin
+           →  "Users" tab shows a red badge with the count of users
+              registered since the admin last visited the tab
+
+[ ] TB-B2  Click the "Users" tab
+           →  badge disappears (marked as seen)
+
+────────────────────────────────────────────────────────────────────────────────
+TAB-BADGE-3 — Company Admin: Requests tab badge (already exists — regression)
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] TB-C1  An employee submits an employment verification request
+           →  Login as tech.admin@ratehub.com  →  /company-admin
+           →  "Requests" tab shows a red badge with pending count
+              (this already works — verify it still works after other badge
+               changes are introduced)
+
+[ ] TB-C2  Approve or reject the request inside the Requests tab
+           →  badge decrements / disappears accordingly
+
+────────────────────────────────────────────────────────────────────────────────
+TAB-BADGE-4 — Company Admin: Reviews tab badge (new review posted)
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] TB-D1  An employee posts a new review for the company
+           →  Login as tech.admin@ratehub.com  →  /company-admin
+           →  "Reviews" tab shows a red badge with the count of reviews
+              posted since the admin last visited the tab
+
+[ ] TB-D2  Click the "Reviews" tab
+           →  badge disappears (marked as seen)
+
+────────────────────────────────────────────────────────────────────────────────
+TAB-BADGE-5 — Company Admin: EOTM tab badge (new votes cast)
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] TB-E1  Employees cast votes in an open EOTM event
+           →  Login as tech.admin@ratehub.com  →  /company-admin
+           →  "EOTM" tab shows a red badge indicating new votes since
+              the admin last visited the tab
+
+[ ] TB-E2  Click the "EOTM" tab
+           →  badge disappears
+
+────────────────────────────────────────────────────────────────────────────────
+TAB-BADGE-6 — Company Admin: Team Feedback tab badge (new feedback received)
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] TB-F1  An employee submits peer feedback to a colleague at the same company
+           →  Login as tech.admin@ratehub.com  →  /company-admin
+           →  "Team Feedback" tab shows a red badge with the count of
+              new feedback entries since the admin last visited the tab
+
+[ ] TB-F2  Click the "Team Feedback" tab
+           →  badge disappears
+
+────────────────────────────────────────────────────────────────────────────────
+TAB-BADGE-7 — General badge behaviour (all tabs)
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] TB-G1  Badge count is accurate — matches the real number of unseen items
+           (not always showing 1, not showing stale counts after refresh)
+
+[ ] TB-G2  Badge persists across F5 refresh while items are still unseen
+           →  after page reload the badge count is still visible
+
+[ ] TB-G3  Badge does NOT appear when there are zero new items
+           →  no empty "0" badge shown on any tab
+
+[ ] TB-G4  Visiting a tab marks its items as seen for THAT admin only
+           →  another admin logging in independently still sees the badge
+              until they visit the tab themselves
+

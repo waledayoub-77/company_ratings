@@ -104,7 +104,7 @@ export default function CompanyAdminDashboard() {
             <button
               key={tab.id}
               onClick={() => { setActiveTab(tab.id); window.history.replaceState(null, '', `#${tab.id}`) }}
-              className={`relative flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap transition-colors ${`
+              className={`relative flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap transition-colors ${
                 activeTab === tab.id ? 'text-navy-900' : 'text-navy-400 hover:text-navy-600'
               }`}
             >

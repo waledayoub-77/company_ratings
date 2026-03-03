@@ -114,7 +114,7 @@ export default function AdminPanel() {
             <button
               key={tab.id}
               onClick={() => handleTabChange(tab.id)}
-              className={`relative flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap transition-colors ${`
+              className={`relative flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap transition-colors ${
                 activeTab === tab.id ? 'text-navy-900' : 'text-navy-400 hover:text-navy-600'
               }`}
             >

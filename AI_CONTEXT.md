@@ -10,6 +10,26 @@
 
 ---
 
+## 🏛️ SUPERVISOR FEEDBACK & REQUIREMENTS
+
+> Project approved by supervisor. The following **must be addressed** before final submission.
+
+| # | Requirement | Status |
+|---|-------------|--------|
+| 1 | **Lebanese laws & regulations** — Project must comply with Lebanese data protection and defamation laws | ⏳ Pending |
+| 2 | **No confidential company info** — Prevent publishing of sensitive/confidential company data | ⏳ Pending |
+| 3 | **Strong moderation against defamation** — Use AI filtering to detect and block violating review content | ⏳ Pending |
+| 4 | **Privacy protections** — Encryption in transit/at rest + explicit user consent before data collection | ⏳ Pending |
+| 5 | **Identity verification** — Company email verification (or AI-assisted solution) to reduce fake reviews | ⏳ Pending |
+| 6 | **Lebanese context adaptation** — UI, content, and logic must reflect the Lebanese market/context | ⏳ Pending |
+
+### Notes
+- Supervisor suggested **AI-based content moderation** for defamation filtering on reviews
+- **Company email verification** is the suggested approach for reducing fake reviews (e.g., only allow `@companyname.com` domains)
+- Focus on **Lebanese context**: local company names, Arabic language consideration, LBP currency if relevant
+
+---
+
 ## 📊 PROJECT STATUS: DAY 6 COMPLETE ✅
 
 **Server Status**: ✅ Running on `localhost:5000`  

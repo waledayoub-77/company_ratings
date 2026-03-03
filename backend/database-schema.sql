@@ -559,9 +559,9 @@ SELECT
     r.overall_rating,
     r.content,
     r.is_anonymous,
-    r.departure_reason,
     r.created_at,
-    r.edited_at
+    r.edited_at,
+    r.departure_reason
 FROM company_reviews r
 JOIN employees e ON r.employee_id = e.id
 JOIN users u ON e.user_id = u.id

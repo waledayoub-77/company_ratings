@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Shield,
   Users,
@@ -23,6 +23,7 @@ import {
   ThumbsDown,
   ThumbsUp,
   XCircle,
+  Bell,
 } from 'lucide-react'
 import PageHeader from '../components/ui/PageHeader.jsx'
 import Badge from '../components/ui/Badge.jsx'
@@ -78,18 +79,71 @@ function reasonVariant(reason) {
 
 const VALID_ADMIN_TABS = ['overview', 'reports', 'companies', 'users', 'verifications', 'audit', 'sentiment']
 
+/* ─── Confirm Dialog ─── */
+const DIALOG_STYLES = {
+  danger:  { iconBg: 'bg-red-50',    iconColor: 'text-red-500',   Icon: AlertTriangle, btn: 'bg-red-600 hover:bg-red-700 text-white'   },
+  warning: { iconBg: 'bg-amber-50',  iconColor: 'text-amber-500', Icon: AlertTriangle, btn: 'bg-amber-600 hover:bg-amber-700 text-white' },
+  info:    { iconBg: 'bg-navy-50',   iconColor: 'text-navy-500',  Icon: CheckCircle2,  btn: 'bg-navy-700 hover:bg-navy-800 text-white'  },
+}
+
+function ConfirmDialog({ dialog, onClose }) {
+  if (!dialog) return null
+  const s = DIALOG_STYLES[dialog.variant ?? 'danger']
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 8 }}
+        transition={{ duration: 0.15 }}
+        className="relative bg-white rounded-2xl shadow-2xl border border-navy-100 p-6 w-full max-w-sm"
+      >
+        <div className="flex items-start gap-4 mb-6">
+          <div className={`w-10 h-10 rounded-xl ${s.iconBg} flex items-center justify-center shrink-0`}>
+            <s.Icon size={20} className={s.iconColor} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-navy-900 mb-1">{dialog.title}</h3>
+            <p className="text-sm text-navy-500 leading-relaxed">{dialog.message}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 justify-end">
+          {dialog.cancelLabel !== false && (
+            <button
+              onClick={onClose}
+              className="h-9 px-4 text-sm text-navy-500 hover:text-navy-700 hover:bg-navy-50 rounded-lg transition-colors"
+            >
+              {dialog.cancelLabel ?? 'Cancel'}
+            </button>
+          )}
+          <button
+            onClick={() => { dialog.onConfirm?.(); onClose() }}
+            className={`h-9 px-5 text-sm font-medium rounded-lg transition-colors ${s.btn}`}
+          >
+            {dialog.confirmLabel ?? 'Confirm'}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
 export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState(() => {
     const hash = window.location.hash.replace('#', '')
     return VALID_ADMIN_TABS.includes(hash) ? hash : 'overview'
   })
   const [analytics, setAnalytics] = useState(null)
+  const [dialog, setDialog]       = useState(null)
 
-  useEffect(() => {
-    getAdminAnalytics()
-      .then(res => setAnalytics(res?.data ?? null))
-      .catch(() => {})
-  }, [])
+  const openDialog  = (opts) => setDialog(opts)
+  const closeDialog = ()     => setDialog(null)
+
+  const refreshAnalytics = () =>
+    getAdminAnalytics().then(res => setAnalytics(res?.data ?? null)).catch(() => {})
+
+  useEffect(() => { refreshAnalytics() }, []) // eslint-disable-line
 
   const handleTabChange = (id) => {
     setActiveTab(id)
@@ -116,6 +170,23 @@ export default function AdminPanel() {
       />
 
       <div className="max-w-7xl mx-auto px-6 lg:px-8 pb-20">
+        {/* Pending-actions notification bar */}
+        {(() => {
+          const total = (analytics?.pendingReports ?? 0) + (analytics?.pendingVerifications ?? 0)
+          if (!analytics || total === 0) return null
+          const parts = []
+          if (analytics.pendingReports > 0) parts.push(`${analytics.pendingReports} report${analytics.pendingReports !== 1 ? 's' : ''}`)
+          if (analytics.pendingVerifications > 0) parts.push(`${analytics.pendingVerifications} verification${analytics.pendingVerifications !== 1 ? 's' : ''}`)
+          return (
+            <div className="flex items-center gap-2.5 mb-6 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl">
+              <Bell size={15} className="text-amber-600 shrink-0" />
+              <p className="text-sm font-semibold text-amber-700">
+                {total} item{total !== 1 ? 's' : ''} need{total === 1 ? 's' : ''} your attention
+              </p>
+              <span className="ml-auto text-xs text-amber-500">{parts.join(' · ')}</span>
+            </div>
+          )
+        })()}
         {/* Tabs */}
         <div className="flex items-center gap-1 mb-8 border-b border-navy-100/50 overflow-x-auto">
           {tabs.map(tab => (
@@ -145,13 +216,18 @@ export default function AdminPanel() {
         </div>
 
         {activeTab === 'overview'  && <OverviewTab  analytics={analytics} />}
-        {activeTab === 'reports'   && <ReportsTab   onReportResolved={() => getAdminAnalytics().then(res => setAnalytics(res?.data ?? null)).catch(() => {})} />}
-        {activeTab === 'companies' && <CompaniesTab />}
-        {activeTab === 'users'     && <UsersTab     />}
-        {activeTab === 'verifications' && <VerificationsTab />}
-        {activeTab === 'audit'     && <AuditTab     />}
-        {activeTab === 'sentiment' && <SentimentTab />}
+        {activeTab === 'reports'       && <ReportsTab       onReportResolved={refreshAnalytics} />}
+        {activeTab === 'companies'      && <CompaniesTab     openDialog={openDialog} />}
+        {activeTab === 'users'          && <UsersTab         />}
+        {activeTab === 'verifications'  && <VerificationsTab />}
+        {activeTab === 'audit'          && <AuditTab         />}
+        {activeTab === 'sentiment'      && <SentimentTab     openDialog={openDialog} onActionDone={refreshAnalytics} />}
       </div>
+
+      {/* Soft confirmation dialog */}
+      <AnimatePresence>
+        {dialog && <ConfirmDialog dialog={dialog} onClose={closeDialog} />}
+      </AnimatePresence>
     </div>
   )
 }
@@ -333,7 +409,7 @@ function ReportsTab({ onReportResolved }) {
 }
 
 /* ─── Companies Tab ─── */
-function CompaniesTab() {
+function CompaniesTab({ openDialog }) {
   const [companies, setCompanies] = useState([])
   const [loading, setLoading]     = useState(true)
   const [working, setWorking]     = useState(null)
@@ -355,23 +431,30 @@ function CompaniesTab() {
       await verifyCompany(id)
       setCompanies(prev => prev.map(c => c.id === id ? { ...c, is_verified: true } : c))
     } catch (e) {
-      alert(e?.message || 'Verification failed')
+      openDialog({ title: 'Verification Failed', message: e?.message || 'Could not verify company.', variant: 'danger', cancelLabel: false, confirmLabel: 'OK' })
     } finally {
       setWorking(null)
     }
   }
 
-  const handleReject = async (id) => {
-    if (!window.confirm('Reject (un-verify) this company?')) return
-    setWorking(id)
-    try {
-      await rejectCompany(id)
-      setCompanies(prev => prev.map(c => c.id === id ? { ...c, is_verified: false } : c))
-    } catch (e) {
-      alert(e?.message || 'Rejection failed')
-    } finally {
-      setWorking(null)
-    }
+  const handleReject = (id) => {
+    openDialog({
+      title: 'Reject Company',
+      message: 'Are you sure you want to un-verify this company? This will remove its Verified status.',
+      variant: 'warning',
+      confirmLabel: 'Reject',
+      onConfirm: async () => {
+        setWorking(id)
+        try {
+          await rejectCompany(id)
+          setCompanies(prev => prev.map(c => c.id === id ? { ...c, is_verified: false } : c))
+        } catch (e) {
+          openDialog({ title: 'Rejection Failed', message: e?.message || 'Could not reject company.', variant: 'danger', cancelLabel: false, confirmLabel: 'OK' })
+        } finally {
+          setWorking(null)
+        }
+      },
+    })
   }
 
   const filtered = companies.filter(c =>
@@ -974,7 +1057,7 @@ function SentimentBadge({ label }) {
   )
 }
 
-function SentimentTab() {
+function SentimentTab({ openDialog, onActionDone }) {
   const [reviews, setReviews]           = useState([])
   const [loading, setLoading]           = useState(true)
   const [labelFilter, setLabelFilter]   = useState('')
@@ -995,26 +1078,35 @@ function SentimentTab() {
 
   useEffect(() => { load(1, labelFilter) }, [labelFilter]) // eslint-disable-line
 
-  const handleConfirm = async (userId) => {
-    if (!window.confirm('Are you sure you want to SUSPEND this user?')) return
-    setWorking(userId)
-    try {
-      await confirmPendingSuspension(userId)
-      load(page)
-    } catch (e) {
-      alert(e.message)
-    } finally {
-      setWorking(null)
-    }
+  const handleConfirm = (userId) => {
+    openDialog({
+      title: 'Suspend User',
+      message: 'This user was auto-flagged for very negative content. Confirm to suspend their account permanently.',
+      variant: 'danger',
+      confirmLabel: 'Suspend',
+      onConfirm: async () => {
+        setWorking(userId)
+        try {
+          await confirmPendingSuspension(userId)
+          onActionDone?.()
+          load(page)
+        } catch (e) {
+          openDialog({ title: 'Error', message: e?.message || 'Suspension failed.', variant: 'danger', cancelLabel: false, confirmLabel: 'OK' })
+        } finally {
+          setWorking(null)
+        }
+      },
+    })
   }
 
   const handleDismiss = async (userId) => {
     setWorking(userId)
     try {
       await dismissPendingSuspension(userId)
+      onActionDone?.()
       load(page)
     } catch (e) {
-      alert(e.message)
+      openDialog({ title: 'Error', message: e?.message || 'Dismiss failed.', variant: 'danger', cancelLabel: false, confirmLabel: 'OK' })
     } finally {
       setWorking(null)
     }

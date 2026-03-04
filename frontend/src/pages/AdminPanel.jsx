@@ -19,6 +19,10 @@ import {
   BadgeCheck,
   ShieldCheck,
   Eye,
+  Zap,
+  ThumbsDown,
+  ThumbsUp,
+  XCircle,
 } from 'lucide-react'
 import PageHeader from '../components/ui/PageHeader.jsx'
 import Badge from '../components/ui/Badge.jsx'
@@ -36,6 +40,9 @@ import {
   getAuditLogs,
   bulkSuspendUsers,
   rejectCompany,
+  getSentimentFlaggedReviews,
+  confirmPendingSuspension,
+  dismissPendingSuspension,
 } from '../api/admin.js'
 import {
   getVerificationRequests,
@@ -69,7 +76,7 @@ function reasonVariant(reason) {
   return 'default'
 }
 
-const VALID_ADMIN_TABS = ['overview', 'reports', 'companies', 'users', 'verifications', 'audit']
+const VALID_ADMIN_TABS = ['overview', 'reports', 'companies', 'users', 'verifications', 'audit', 'sentiment']
 
 export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -96,6 +103,7 @@ export default function AdminPanel() {
     { id: 'users',     label: 'Users',     icon: Users     },
     { id: 'verifications', label: 'Verifications', icon: ShieldCheck, badge: (analytics?.pendingVerifications ?? 0) > 0 ? analytics.pendingVerifications : null },
     { id: 'audit',     label: 'Audit Log', icon: Activity  },
+    { id: 'sentiment', label: 'Sentiment', icon: Zap       },
   ]
 
   return (
@@ -142,6 +150,7 @@ export default function AdminPanel() {
         {activeTab === 'users'     && <UsersTab     />}
         {activeTab === 'verifications' && <VerificationsTab />}
         {activeTab === 'audit'     && <AuditTab     />}
+        {activeTab === 'sentiment' && <SentimentTab />}
       </div>
     </div>
   )
@@ -940,6 +949,212 @@ function AuditTab() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ─── Sentiment Tab (ratehub.4) ─── */
+const SENTIMENT_META = {
+  positive:     { label: 'Positive',     color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200', icon: ThumbsUp  },
+  neutral:      { label: 'Neutral',      color: 'text-navy-500',    bg: 'bg-navy-50 border-navy-200',       icon: Activity  },
+  negative:     { label: 'Negative',     color: 'text-amber-600',   bg: 'bg-amber-50 border-amber-200',     icon: ThumbsDown },
+  very_negative:{ label: 'Very Negative',color: 'text-red-600',     bg: 'bg-red-50 border-red-200',         icon: AlertTriangle },
+}
+
+function SentimentBadge({ label }) {
+  const meta = SENTIMENT_META[label] ?? SENTIMENT_META.neutral
+  const Icon = meta.icon
+  return (
+    <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border ${meta.bg} ${meta.color}`}>
+      <Icon size={11} />
+      {meta.label}
+    </span>
+  )
+}
+
+function SentimentTab() {
+  const [reviews, setReviews]           = useState([])
+  const [loading, setLoading]           = useState(true)
+  const [labelFilter, setLabelFilter]   = useState('')
+  const [working, setWorking]           = useState(null)  // userId currently being acted on
+  const [page, setPage]                 = useState(1)
+  const [pagination, setPagination]     = useState(null)
+
+  const load = useCallback((pg = 1, lbl = labelFilter) => {
+    setLoading(true)
+    getSentimentFlaggedReviews({ label: lbl, page: pg, limit: 15 })
+      .then(res => {
+        setReviews(res?.reviews ?? [])
+        setPagination(res?.pagination ?? null)
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [labelFilter])
+
+  useEffect(() => { load(1, labelFilter) }, [labelFilter]) // eslint-disable-line
+
+  const handleConfirm = async (userId) => {
+    if (!window.confirm('Are you sure you want to SUSPEND this user?')) return
+    setWorking(userId)
+    try {
+      await confirmPendingSuspension(userId)
+      load(page)
+    } catch (e) {
+      alert(e.message)
+    } finally {
+      setWorking(null)
+    }
+  }
+
+  const handleDismiss = async (userId) => {
+    setWorking(userId)
+    try {
+      await dismissPendingSuspension(userId)
+      load(page)
+    } catch (e) {
+      alert(e.message)
+    } finally {
+      setWorking(null)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-navy-900">Sentiment Moderation</h2>
+          <p className="text-sm text-navy-400 mt-0.5">
+            Reviews automatically flagged as negative or very negative by AI analysis.
+          </p>
+        </div>
+        <button
+          onClick={() => load(page)}
+          className="flex items-center gap-1.5 text-xs text-navy-500 border border-navy-100 rounded-lg px-3 py-2 hover:bg-navy-50 transition-colors"
+        >
+          <RefreshCw size={12} /> Refresh
+        </button>
+      </div>
+
+      {/* Filter chips */}
+      <div className="flex items-center gap-2">
+        {[['', 'All Flagged'], ['negative', 'Negative'], ['very_negative', 'Very Negative']].map(([val, lbl]) => (
+          <button
+            key={val}
+            onClick={() => { setLabelFilter(val); setPage(1) }}
+            className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
+              labelFilter === val
+                ? 'bg-navy-900 text-white border-navy-900'
+                : 'bg-white text-navy-500 border-navy-200 hover:border-navy-400'
+            }`}
+          >
+            {lbl}
+          </button>
+        ))}
+      </div>
+
+      {/* Content */}
+      {loading ? <Spinner /> : reviews.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-navy-100/50 py-16 text-center">
+          <CheckCircle2 size={32} className="mx-auto text-emerald-400 mb-3" />
+          <p className="text-sm text-navy-400">No auto-flagged reviews found.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {reviews.map(review => {
+            const author      = review.is_anonymous ? 'Anonymous' : (review.employees?.full_name ?? 'Unknown')
+            const company     = review.companies?.name ?? 'Unknown Company'
+            const userId      = review.employees?.user_id
+            const userInfo    = review.employees?.user
+            const isPending   = userInfo?.pending_suspension === true
+            const isSuspended = userInfo?.is_active === false
+
+            return (
+              <Reveal key={review.id}>
+                <div className="bg-white rounded-2xl border border-navy-100/50 p-5">
+                  {/* Top row */}
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <SentimentBadge label={review.sentiment} />
+                      {isPending && (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border bg-orange-50 border-orange-200 text-orange-600">
+                          <AlertTriangle size={11} /> Pending Suspension
+                        </span>
+                      )}
+                      {isSuspended && (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border bg-red-50 border-red-200 text-red-600">
+                          <Ban size={11} /> Suspended
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs text-navy-400 shrink-0">{timeAgo(review.created_at)}</span>
+                  </div>
+
+                  {/* Review content */}
+                  <p className="text-sm text-navy-700 leading-relaxed mb-3 line-clamp-4">
+                    {review.content || <em className="text-navy-400">No text content.</em>}
+                  </p>
+
+                  {/* Meta */}
+                  <div className="flex items-center gap-4 text-xs text-navy-400 mb-4">
+                    <span>★ {review.overall_rating}/5</span>
+                    <span>Score: <code className="font-mono">{review.sentiment_score?.toFixed(3) ?? '—'}</code></span>
+                    <span>Author: <strong className="text-navy-600">{author}</strong></span>
+                    <span>Company: <strong className="text-navy-600">{company}</strong></span>
+                  </div>
+
+                  {/* Action buttons — only shown if user is flagged and not already suspended */}
+                  {isPending && userId && (
+                    <div className="flex items-center gap-2 pt-3 border-t border-navy-50">
+                      <p className="text-xs text-navy-500 flex-1">
+                        This user was auto-flagged for very negative content. Confirm to suspend or dismiss as a false positive.
+                      </p>
+                      <button
+                        onClick={() => handleConfirm(userId)}
+                        disabled={working === userId}
+                        className="flex items-center gap-1.5 text-xs font-medium bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                      >
+                        {working === userId ? <Loader2 size={12} className="animate-spin" /> : <Ban size={12} />}
+                        Suspend
+                      </button>
+                      <button
+                        onClick={() => handleDismiss(userId)}
+                        disabled={working === userId}
+                        className="flex items-center gap-1.5 text-xs font-medium border border-navy-200 text-navy-600 px-4 py-2 rounded-lg hover:bg-navy-50 transition-colors disabled:opacity-50"
+                      >
+                        <XCircle size={12} /> Dismiss
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </Reveal>
+            )
+          })}
+
+          {/* Pagination */}
+          {pagination && pagination.totalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                disabled={page <= 1}
+                onClick={() => { const p = page - 1; setPage(p); load(p) }}
+                className="text-xs px-4 py-2 rounded-lg border border-navy-200 text-navy-600 disabled:opacity-40 hover:bg-navy-50 transition-colors"
+              >
+                Previous
+              </button>
+              <span className="text-xs text-navy-400">
+                Page {pagination.page} of {pagination.totalPages}
+              </span>
+              <button
+                disabled={page >= pagination.totalPages}
+                onClick={() => { const p = page + 1; setPage(p); load(p) }}
+                className="text-xs px-4 py-2 rounded-lg border border-navy-200 text-navy-600 disabled:opacity-40 hover:bg-navy-50 transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -1,4 +1,3 @@
-//this file to make sure that reviewer and rated employee have approved employment in the same company
 const supabase = require("../config/database");
 
 // Get employee.id from logged-in userId

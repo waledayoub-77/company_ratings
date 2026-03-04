@@ -2,7 +2,7 @@ const supabase = require('../config/database');
 const { AppError } = require('../middlewares/errorHandler');
 const { logAdminAction } = require('../utils/auditLogger');
  
-const ALLOWED_REPORT_REASONS = ['false_info', 'spam', 'harassment', 'other'];
+const ALLOWED_REPORT_REASONS = ['false_info', 'spam', 'harassment', 'other', 'auto_flagged'];
 const ALLOWED_RESOLVE_ACTIONS = ['remove', 'dismiss'];
 
 const recalculateCompanyRating = async (companyId) => {
@@ -200,8 +200,37 @@ const resolveReport = async ({ id, action, adminNote, adminId, ipAddress, userAg
   return updatedReport;
 };
 
+/**
+ * Automatically report a review based on sentiment analysis (no human reporter).
+ * reporter_id is NULL to indicate a system-generated report.
+ * Requires migration: ALTER TABLE reported_reviews ALTER COLUMN reporter_id DROP NOT NULL;
+ *
+ * @param {string} reviewId
+ * @param {{ label: string, comparative: number, negative: string[] }} sentiment
+ */
+const autoReportReview = async (reviewId, sentiment) => {
+  const negativeWords = (sentiment.negative || []).slice(0, 10).join(', ');
+  const description = `Auto-flagged by sentiment analysis. Label: ${sentiment.label}. Score: ${sentiment.comparative.toFixed(3)}. Negative words detected: ${negativeWords || 'none'}.`;
+
+  const { error } = await supabase
+    .from('reported_reviews')
+    .insert({
+      reporter_id:  null,           // system-generated — no human reporter
+      review_id:    reviewId,
+      reason:       'auto_flagged',
+      description,
+      status:       'pending',
+    });
+
+  if (error) {
+    // Non-fatal — log but do not crash the review creation flow
+    console.error('❌ autoReportReview failed:', error.message);
+  }
+};
+
 module.exports = {
   createReport,
   getReports,
   resolveReport,
+  autoReportReview,
 };

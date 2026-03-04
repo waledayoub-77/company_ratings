@@ -662,3 +662,57 @@ exports.getAuditLogs = async (req, res) => {
     return res.status(500).json({ success: false, error: { message: 'Server error', code: 'SERVER_ERROR' } });
   }
 };
+
+// ─── SENTIMENT MODERATION ─────────────────────────────────────────────────
+// (ratehub.4 feature)
+
+const adminService = require('../services/adminService');
+
+/**
+ * GET /api/admin/sentiment-reviews
+ * Returns all auto-flagged reviews with optional label filter.
+ */
+exports.getSentimentFlaggedReviews = async (req, res) => {
+  try {
+    const { label, page, limit } = req.query;
+    const result = await adminService.getSentimentFlaggedReviews({ label, page, limit });
+    return res.json({ success: true, ...result });
+  } catch (err) {
+    console.error('getSentimentFlaggedReviews error:', err);
+    return res.status(500).json({ success: false, error: { message: 'Server error', code: 'SERVER_ERROR' } });
+  }
+};
+
+/**
+ * PATCH /api/admin/users/:id/confirm-suspension
+ * Admin confirms the auto-flag and actually suspends the account.
+ */
+exports.confirmPendingSuspension = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.user.userId;
+    const result = await adminService.confirmPendingSuspension(id, adminId, req.ip);
+    return res.json({ success: true, data: result });
+  } catch (err) {
+    console.error('confirmPendingSuspension error:', err);
+    const status = err.statusCode || 500;
+    return res.status(status).json({ success: false, error: { message: err.message, code: err.code || 'SERVER_ERROR' } });
+  }
+};
+
+/**
+ * PATCH /api/admin/users/:id/dismiss-suspension
+ * Admin dismisses the auto-flag as a false positive.
+ */
+exports.dismissPendingSuspension = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.user.userId;
+    const result = await adminService.dismissPendingSuspension(id, adminId);
+    return res.json({ success: true, data: result });
+  } catch (err) {
+    console.error('dismissPendingSuspension error:', err);
+    const status = err.statusCode || 500;
+    return res.status(status).json({ success: false, error: { message: err.message, code: err.code || 'SERVER_ERROR' } });
+  }
+};

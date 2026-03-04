@@ -29,7 +29,12 @@ router.patch('/admin/companies/:id/reject', requireAuth, requireSystemAdmin, adm
 router.patch('/admin/employments/:id/override', requireAuth, requireSystemAdmin, adminController.overrideEmployment);
 
 // ─── ADMIN: ANALYTICS + AUDIT LOGS ───────────────────────────────────────────
-router.get('/admin/analytics', requireAuth, requireSystemAdmin, adminController.getAnalytics);
+router.get('/admin/analytics',  requireAuth, requireSystemAdmin, adminController.getAnalytics);
 router.get('/admin/audit-logs', requireAuth, requireSystemAdmin, adminController.getAuditLogs);
+
+// ─── ADMIN: SENTIMENT MODERATION (ratehub.4) ──────────────────────────
+router.get('/admin/sentiment-reviews',              requireAuth, requireSystemAdmin, adminController.getSentimentFlaggedReviews);
+router.patch('/admin/users/:id/confirm-suspension', requireAuth, requireSystemAdmin, adminController.confirmPendingSuspension);
+router.patch('/admin/users/:id/dismiss-suspension', requireAuth, requireSystemAdmin, adminController.dismissPendingSuspension);
 
 module.exports = router;

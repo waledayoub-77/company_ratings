@@ -74,5 +74,3 @@ const optionalAuth = async (req, res, next) => {
 };
 
 module.exports = { requireAuth, optionalAuth };
-
-

@@ -3,6 +3,8 @@ const supabase = require('../config/database');
 const { AppError } = require('../middlewares/errorHandler');
 const checkVerifiedEmployment = require('../helpers/checkVerifiedEmployment');
 const { saveCategoryRatings, updateCategoryRatings, recalcCompanyCategoryAverages } = require('./categoryRatingService');
+const { analyzeText, shouldAutoReport, shouldFlagForSuspension } = require('./sentimentService');
+const { autoReportReview } = require('./reportService');
 
 /**
  * Check if user already reviewed this company
@@ -137,6 +139,43 @@ const createReview = async (reviewData, userId) => {
 
   // Recalculate company rating
   await recalculateCompanyRating(companyId);
+
+  // ── SENTIMENT ANALYSIS (non-blocking — runs after review is saved) ───────
+  // Analyze the review content and tag it. If too negative:
+  //   negative      → auto-report for admin review
+  //   very_negative → auto-report + flag author for pending suspension
+  try {
+    const sentiment = analyzeText(content || '');
+    const isAutoFlagged = shouldAutoReport(sentiment.label);
+
+    // Persist sentiment on the review row
+    await supabase
+      .from('company_reviews')
+      .update({
+        sentiment:       sentiment.label,
+        sentiment_score: sentiment.comparative,
+        auto_flagged:    isAutoFlagged,
+      })
+      .eq('id', data.id);
+
+    if (isAutoFlagged) {
+      // Create a system-generated report
+      await autoReportReview(data.id, sentiment);
+    }
+
+    if (shouldFlagForSuspension(sentiment.label)) {
+      // Flag the user for admin review (NOT an immediate suspension)
+      await supabase
+        .from('users')
+        .update({ pending_suspension: true })
+        .eq('id', userId);
+      console.warn(`⚠️  User ${userId} flagged for pending suspension — very negative review (${sentiment.comparative.toFixed(3)})`);
+    }
+  } catch (sentimentErr) {
+    // Sentiment is non-critical — never break review creation over it
+    console.error('Sentiment analysis failed (non-fatal):', sentimentErr.message);
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   return data;
 };

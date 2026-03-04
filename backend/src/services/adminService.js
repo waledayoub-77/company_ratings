@@ -592,6 +592,134 @@ const getAuditLogs = async ({ adminId, action, page = 1, limit = 20 }) => {
   };
 };
 
+// ─── SENTIMENT: FLAGGED REVIEWS ──────────────────────────────────────────────
+
+/**
+ * Get all auto-flagged reviews with author + company info.
+ * Supports filtering by sentiment label and pagination.
+ */
+const getSentimentFlaggedReviews = async ({ label, page = 1, limit = 20 } = {}) => {
+  const safePage  = Math.max(Number(page)  || 1,  1);
+  const safeLimit = Math.min(Math.max(Number(limit) || 20, 1), 100);
+  const from = (safePage - 1) * safeLimit;
+  const to   = from + safeLimit - 1;
+
+  let query = supabase
+    .from('company_reviews')
+    .select(
+      `id, content, sentiment, sentiment_score, auto_flagged, is_anonymous,
+       overall_rating, created_at, company_id,
+       companies ( name ),
+       employees ( id, full_name, user_id )`,
+      { count: 'exact' }
+    )
+    .eq('auto_flagged', true)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .range(from, to);
+
+  if (label && ['negative', 'very_negative'].includes(label)) {
+    query = query.eq('sentiment', label);
+  }
+
+  const { data, error, count } = await query;
+  if (error) throw error;
+
+  // Enrich reviews with user pending_suspension status
+  const reviews = data || [];
+  if (reviews.length > 0) {
+    const userIds = [...new Set(reviews.map(r => r.employees?.user_id).filter(Boolean))];
+    if (userIds.length > 0) {
+      const { data: users } = await supabase
+        .from('users')
+        .select('id, is_active, pending_suspension')
+        .in('id', userIds);
+
+      const userMap = {};
+      (users || []).forEach(u => { userMap[u.id] = u; });
+
+      reviews.forEach(r => {
+        if (r.employees?.user_id) {
+          r.employees.user = userMap[r.employees.user_id] || null;
+        }
+      });
+    }
+  }
+
+  return {
+    reviews,
+    pagination: {
+      total: count || 0,
+      page:  safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil((count || 0) / safeLimit) || 1,
+    },
+  };
+};
+
+/**
+ * Confirm a pending suspension: actually suspends the user.
+ * Admin must confirm manually — auto-flagging never auto-suspends.
+ */
+const confirmPendingSuspension = async (targetUserId, adminId, ipAddress) => {
+  // Check user actually has pending_suspension = true
+  const { data: user, error: findErr } = await supabase
+    .from('users')
+    .select('id, email, is_active, pending_suspension')
+    .eq('id', targetUserId)
+    .maybeSingle();
+
+  if (findErr || !user) throw new AppError('User not found', 404);
+  if (!user.pending_suspension) throw new AppError('This user does not have a pending suspension flag', 400);
+
+  const { error } = await supabase
+    .from('users')
+    .update({ is_active: false, pending_suspension: false })
+    .eq('id', targetUserId);
+
+  if (error) throw error;
+
+  await logAdminAction({
+    adminId,
+    action:     'CONFIRM_SUSPENSION',
+    entityType: 'user',
+    entityId:   targetUserId,
+    details:    { reason: 'Confirmed from sentiment auto-flag' },
+    ipAddress,
+  });
+
+  // Send suspension email (non-fatal)
+  try {
+    await sendAccountSuspendedEmail({ to: user.email, reason: 'Your account was flagged for posting harmful content.' });
+  } catch (e) {
+    console.error('Failed to send suspension email:', e.message);
+  }
+
+  return { suspended: true };
+};
+
+/**
+ * Dismiss a pending suspension flag (admin decides it is a false positive).
+ */
+const dismissPendingSuspension = async (targetUserId, adminId) => {
+  const { error } = await supabase
+    .from('users')
+    .update({ pending_suspension: false })
+    .eq('id', targetUserId);
+
+  if (error) throw error;
+
+  await logAdminAction({
+    adminId,
+    action:     'DISMISS_SUSPENSION_FLAG',
+    entityType: 'user',
+    entityId:   targetUserId,
+    details:    { reason: 'Admin dismissed auto-flag as false positive' },
+  });
+
+  return { dismissed: true };
+};
+
 module.exports = {
   // Reports (delegated)
   getReports,
@@ -610,4 +738,8 @@ module.exports = {
   getAnalytics,
   // Audit
   getAuditLogs,
+  // Sentiment moderation
+  getSentimentFlaggedReviews,
+  confirmPendingSuspension,
+  dismissPendingSuspension,
 };

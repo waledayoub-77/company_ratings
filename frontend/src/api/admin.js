@@ -150,3 +150,33 @@ export async function getAuditLogs(params = {}) {
   ).toString()
   return authRequest(`/admin/audit-logs${qs ? `?${qs}` : ''}`)
 }
+
+// ─── Sentiment Moderation (ratehub.4) ────────────────────────────────────────
+
+/**
+ * GET /admin/sentiment-reviews
+ * Returns all auto-flagged reviews with sentiment info.
+ * @param {Object} params — label ('negative'|'very_negative'), page, limit
+ */
+export async function getSentimentFlaggedReviews(params = {}) {
+  const qs = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v !== '' && v != null)
+  ).toString()
+  return authRequest(`/admin/sentiment-reviews${qs ? `?${qs}` : ''}`)
+}
+
+/**
+ * PATCH /admin/users/:id/confirm-suspension
+ * Admin confirms and actually suspends the flagged user.
+ */
+export async function confirmPendingSuspension(userId) {
+  return authRequest(`/admin/users/${userId}/confirm-suspension`, { method: 'PATCH' })
+}
+
+/**
+ * PATCH /admin/users/:id/dismiss-suspension
+ * Admin dismisses the auto-flag as a false positive.
+ */
+export async function dismissPendingSuspension(userId) {
+  return authRequest(`/admin/users/${userId}/dismiss-suspension`, { method: 'PATCH' })
+}

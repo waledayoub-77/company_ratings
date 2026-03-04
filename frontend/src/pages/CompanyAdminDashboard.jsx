@@ -519,9 +519,11 @@ function ReviewsListTab({ companyId }) {
         </div>
       )}
       {reviews.map((review, i) => {
-        const authorName = review.isAnonymous
+        const authorName = (review.is_anonymous ?? review.isAnonymous)
           ? 'Anonymous Verified Employee'
-          : (review.employee?.user?.fullName ?? review.employee?.fullName ?? 'Employee')
+          : (review.reviewer_name ?? review.employee?.user?.fullName ?? review.employee?.fullName ?? 'Employee')
+        const reviewContent = review.content ?? review.review_text ?? review.reviewText ?? ''
+        const reviewDate    = review.created_at ?? review.createdAt
         return (
           <Reveal key={review.id} delay={i * 0.05}>
             <div className="bg-white rounded-2xl border border-navy-100/50 p-5 hover:border-navy-200 transition-all">
@@ -529,12 +531,12 @@ function ReviewsListTab({ companyId }) {
                 <div>
                   <p className="text-sm font-semibold text-navy-900">{authorName}</p>
                   <p className="text-xs text-navy-400 mt-0.5">
-                    {new Date(review.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                    {reviewDate ? new Date(reviewDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : ''}
                   </p>
                 </div>
-                <StarRating value={review.rating} readOnly size="sm" />
+                <StarRating rating={review.overall_rating} size={14} />
               </div>
-              <p className="text-sm text-navy-600 leading-relaxed">{review.reviewText}</p>
+              <p className="text-sm text-navy-600 leading-relaxed">{reviewContent}</p>
             </div>
           </Reveal>
         )
@@ -851,13 +853,23 @@ function EotmTab({ companyId }) {
               Hall of Fame
             </h3>
             <div className="grid sm:grid-cols-3 gap-3">
-              {winners.map((w, i) => (
+              {winners.map((w, i) => w.employee_name ? (
                 <div key={i} className="bg-amber-50/50 rounded-xl p-4 text-center border border-amber-100/50">
                   <div className="w-12 h-12 mx-auto rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mb-2">
-                    <span className="text-white font-bold text-sm">{(w.employee_name || '?')[0].toUpperCase()}</span>
+                    <span className="text-white font-bold text-sm">{w.employee_name[0].toUpperCase()}</span>
                   </div>
-                  <p className="text-sm font-semibold text-navy-900">{w.employee_name ?? 'Unknown'}</p>
+                  <p className="text-sm font-semibold text-navy-900">{w.employee_name}</p>
                   <p className="text-xs text-navy-400 mt-0.5">
+                    {MONTHS[(w.month ?? 1) - 1]} {w.year}
+                  </p>
+                </div>
+              ) : (
+                <div key={i} className="bg-gray-50 rounded-xl p-4 text-center border border-gray-200 opacity-60">
+                  <div className="w-12 h-12 mx-auto rounded-full bg-gray-300 flex items-center justify-center mb-2">
+                    <span className="text-white font-bold text-sm">—</span>
+                  </div>
+                  <p className="text-sm font-semibold text-gray-500">No Winner</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
                     {MONTHS[(w.month ?? 1) - 1]} {w.year}
                   </p>
                 </div>

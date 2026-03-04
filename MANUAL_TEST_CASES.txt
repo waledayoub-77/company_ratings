@@ -14,13 +14,7 @@ KNOWN OPEN ISSUES  (not yet fixed)
   ⚠️  G17    — UI may not always surface the duplicate-email error visually
                (Supabase email_verified state edge case)
   ⚠️  S11    — Rate limiting intentionally disabled in NODE_ENV=development
-  ⚠️  C12/E21 — star ratings may display as 0 in some tab views
   ⚠️  C16    — offline/network-error save on settings may fail silently
-  ⚠️  C17    — company_admin can access /write-review form (should be blocked)
-  ⚠️  V2-E6  — tie-breaking: if two nominees have equal votes, one is picked;
-               logic unclear (random? earliest vote?) — needs clarification
-  ⚠️  V2-E7  — Hall of Fame: "No Winner" card is not rendered for months with
-               zero votes; the card is simply missing
 
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -42,6 +36,68 @@ PENDING — items not yet verified
 [ ] V2-M4  company_reviews table → confirm columns:
            departure_reason (varchar), helpful_count (int),
            ai_toxicity_score, ai_sentiment, is_hidden_by_ai
+
+
+════════════════════════════════════════════════════════════════════════════════
+  RE-TEST ROUND 8 — Bugs fixed this session
+  4 code fixes applied across 6 files + 1 SQL migration.
+  Playwright tests: e2e/tests/15-r8-fixes.spec.js (11 tests, all passed)
+════════════════════════════════════════════════════════════════════════════════
+
+────────────────────────────────────────────────────────────────────────────────
+R8-FIX 1 — C17: company_admin blocked from /write-review  (was: C17)
+────────────────────────────────────────────────────────────────────────────────
+Root cause: /companies/:id/review route used <ProtectedRoute> (any
+authenticated user) instead of <RoleRoute role="employee">. Backend already
+had requireEmployee middleware, so only the frontend guard was missing.
+
+[ ] R8-F1-A  Login as tech.admin@ratehub.com → go to
+             /companies/<any-id>/review → should redirect to /company-admin
+
+[ ] R8-F1-B  As company_admin, POST /api/reviews → expect 403
+
+────────────────────────────────────────────────────────────────────────────────
+R8-FIX 2 — C12/E21: Star ratings display correctly  (was: C12/E21)
+────────────────────────────────────────────────────────────────────────────────
+Root cause: CompanyAdminDashboard used wrong field (review.rating instead of
+review.overall_rating) and wrong props (value, readOnly, size="sm" — none of
+which StarRating accepts). EmployeeDashboard also used review.rating.
+
+[ ] R8-F2-A  Login as bob@ratehub.com → Dashboard → Reviews → confirm star
+             ratings are filled (amber stars, not all empty / 0)
+
+[ ] R8-F2-B  Login as tech.admin@ratehub.com → Company Admin → Reviews →
+             confirm star ratings are filled (amber stars, not all empty / 0)
+
+────────────────────────────────────────────────────────────────────────────────
+R8-FIX 3 — V2-E6: EOTM tie-breaking is deterministic  (was: V2-E6)
+────────────────────────────────────────────────────────────────────────────────
+Root cause: closeEvent sorted only by vote count. Equal votes relied on
+JS object iteration order (non-deterministic). Fix: secondary sort by
+earliest first-vote timestamp — the candidate who received their first
+vote earlier wins the tie.
+
+[ ] R8-F3-A  EOTM winners API `/api/eotm/company/:id/winners` returns valid
+             structure: each winner has month, year, voteCount, employee_name
+
+────────────────────────────────────────────────────────────────────────────────
+R8-FIX 4 — V2-E7: "No Winner" card for zero-vote months  (was: V2-E7)
+────────────────────────────────────────────────────────────────────────────────
+Root cause: closeEvent with zero votes inserted nothing into employee_of_month.
+getCompanyWinners used INNER JOIN (employees!inner) so null-employee rows
+were filtered out. Frontend only rendered winner cards.
+Fix: Insert null-winner row on close, use LEFT JOIN, render conditional
+"No Winner" card (gray, opacity-60) in both dashboards.
+⚠️  REQUIRES running backend/migrations/allow_null_winner_eotm.sql
+    in the Supabase SQL Editor.
+
+[ ] R8-F4-A  Run backend/migrations/allow_null_winner_eotm.sql in Supabase
+             → no errors
+
+[ ] R8-F4-B  Company Admin → EOTM tab → Hall of Fame → if any month had
+             zero votes, a gray "No Winner" card with em-dash icon appears
+
+[ ] R8-F4-C  Employee → EOTM tab → Past Winners → same "No Winner" card
 
 
 ════════════════════════════════════════════════════════════════════════════════

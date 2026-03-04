@@ -152,24 +152,41 @@ const closeEvent = async (eventId, userId) => {
     throw new AppError('Only the company admin can close an event', 403);
   }
 
-  // Count votes (candidate_id references employees table)
+  // Count votes with timestamps for deterministic tie-breaking
   const { data: votes } = await supabase
     .from('eotm_votes')
-    .select('candidate_id')
-    .eq('event_id', eventId);
+    .select('candidate_id, created_at')
+    .eq('event_id', eventId)
+    .order('created_at', { ascending: true });
 
   if (!votes || votes.length === 0) {
+    // Record "no winner" so Hall of Fame shows the month
+    await supabase.from('employee_of_month').insert({
+      company_id: event.company_id,
+      employee_id: null,
+      event_id: eventId,
+      department: event.department || 'all',
+      month: event.month,
+      year: event.year,
+      votes_count: 0,
+    });
     await supabase.from('eotm_events').update({ is_active: false }).eq('id', eventId);
     return { message: 'Event closed with no votes', winner: null };
   }
 
-  // Tally votes by candidate_id (employee id)
+  // Tally votes by candidate_id and track earliest vote per candidate
   const tally = {};
+  const earliestVote = {};
   votes.forEach(v => {
     tally[v.candidate_id] = (tally[v.candidate_id] || 0) + 1;
+    if (!earliestVote[v.candidate_id]) {
+      earliestVote[v.candidate_id] = v.created_at;
+    }
   });
 
-  const winnerEmployeeId = Object.entries(tally).sort((a, b) => b[1] - a[1])[0][0];
+  // Sort: highest votes wins; on tie, candidate who received first vote earliest wins
+  const winnerEmployeeId = Object.entries(tally)
+    .sort((a, b) => b[1] - a[1] || new Date(earliestVote[a[0]]) - new Date(earliestVote[b[0]]))[0][0];
 
   // Record the winner in employee_of_month
   await supabase.from('employee_of_month').insert({
@@ -273,7 +290,7 @@ const getEventNominees = async (eventId) => {
 const getCompanyWinners = async (companyId) => {
   const { data } = await supabase
     .from('employee_of_month')
-    .select('*, employees!inner(full_name)')
+    .select('*, employees(full_name)')
     .eq('company_id', companyId)
     .order('year', { ascending: false })
     .order('month', { ascending: false });
@@ -283,7 +300,7 @@ const getCompanyWinners = async (companyId) => {
     month: w.month,
     year: w.year,
     department: w.department,
-    employee_name: w.employees?.full_name || 'Unknown',
+    employee_name: w.employees?.full_name || null,
     voteCount: w.votes_count,
   }));
 };

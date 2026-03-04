@@ -990,7 +990,7 @@ function ReviewsTab({ reviews, employments = [], refetch }) {
                         </p>
                       )}
                     </div>
-                    <StarRating rating={review.rating} size={14} />
+                    <StarRating rating={review.overall_rating} size={14} />
                   </div>
                   <p className="mt-3 text-sm text-navy-600 leading-relaxed">{reviewText}</p>
                   <div className="mt-4 pt-3 border-t border-navy-50 flex items-center justify-between">
@@ -1418,13 +1418,23 @@ function EotmVoteTab({ employments }) {
               Past Winners
             </h3>
             <div className="grid sm:grid-cols-3 gap-3">
-              {winners.map((w, i) => (
+              {winners.map((w, i) => w.employee_name ? (
                 <div key={i} className="bg-amber-50/50 rounded-xl p-4 text-center border border-amber-100/50">
                   <div className="w-10 h-10 mx-auto rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mb-2">
-                    <span className="text-white font-bold text-xs">{(w.employee_name || '?')[0].toUpperCase()}</span>
+                    <span className="text-white font-bold text-xs">{w.employee_name[0].toUpperCase()}</span>
                   </div>
-                  <p className="text-sm font-semibold text-navy-900">{w.employee_name ?? 'Unknown'}</p>
+                  <p className="text-sm font-semibold text-navy-900">{w.employee_name}</p>
                   <p className="text-xs text-navy-400 mt-0.5">
+                    {EOTM_MONTHS[(w.month ?? 1) - 1]} {w.year}
+                  </p>
+                </div>
+              ) : (
+                <div key={i} className="bg-gray-50 rounded-xl p-4 text-center border border-gray-200 opacity-60">
+                  <div className="w-10 h-10 mx-auto rounded-full bg-gray-300 flex items-center justify-center mb-2">
+                    <span className="text-white font-bold text-xs">—</span>
+                  </div>
+                  <p className="text-sm font-semibold text-gray-500">No Winner</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
                     {EOTM_MONTHS[(w.month ?? 1) - 1]} {w.year}
                   </p>
                 </div>

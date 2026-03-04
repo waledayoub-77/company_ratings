@@ -61,8 +61,8 @@ function AppRoutes() {
           <Route path="/companies"    element={<CompaniesPage />} />
           <Route path="/companies/:id" element={<CompanyProfilePage />} />
 
-          {/* Any authenticated user */}
-          <Route path="/companies/:id/review" element={<ProtectedRoute><WriteReviewPage /></ProtectedRoute>} />
+          {/* Only employees can write reviews */}
+          <Route path="/companies/:id/review" element={<RoleRoute role="employee"><WriteReviewPage /></RoleRoute>} />
         </Route>
 
         <Route element={<Layout showFooter={false} noScroll />}>

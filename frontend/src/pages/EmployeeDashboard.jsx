@@ -20,6 +20,7 @@ import {
   Trash2,
   Edit2,
   Flag,
+  ShieldCheck,
 } from 'lucide-react'
 import PageHeader from '../components/ui/PageHeader.jsx'
 import StarRating from '../components/ui/StarRating.jsx'
@@ -368,6 +369,7 @@ function EmploymentTab({ employments, refetch }) {
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
   const [formSuccess, setFormSuccess] = useState('')
+  const [needsIdVerif, setNeedsIdVerif] = useState(false)
   const [loadingCompanies, setLoadingCompanies] = useState(false)
   const searchTimeout = useRef(null)
   const comboRef = useRef(null)
@@ -479,6 +481,7 @@ function EmploymentTab({ employments, refetch }) {
     if (!position.trim()) { setFormError('Position is required.'); return }
     if (!startDate)        { setFormError('Start date is required.'); return }
     setFormError('')
+    setNeedsIdVerif(false)
     setSubmitting(true)
     try {
       await requestEmployment({
@@ -500,7 +503,12 @@ function EmploymentTab({ employments, refetch }) {
       setEndDate('')
       await refetch()
     } catch (err) {
-      setFormError(err?.message ?? 'Failed to submit request. Please try again.')
+      if (err?.message?.toLowerCase().includes('identity verification required')) {
+        setNeedsIdVerif(true)
+        setFormError('')
+      } else {
+        setFormError(err?.message ?? 'Failed to submit request. Please try again.')
+      }
     } finally {
       setSubmitting(false)
     }
@@ -542,6 +550,23 @@ function EmploymentTab({ employments, refetch }) {
             <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-3 py-2 mb-4">
               <AlertCircle size={13} />
               {formError}
+            </div>
+          )}
+          {needsIdVerif && (
+            <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4">
+              <ShieldCheck size={16} className="text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-amber-800">Identity verification required</p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  You must complete ID verification and be approved by a system admin before requesting employment.
+                </p>
+                <Link
+                  to="/profile#verification"
+                  className="inline-flex items-center gap-1 mt-2 text-xs font-medium text-amber-700 underline hover:text-amber-900"
+                >
+                  <ShieldCheck size={12} /> Go to Profile → Verification
+                </Link>
+              </div>
             </div>
           )}
           <div className="grid sm:grid-cols-2 gap-4">

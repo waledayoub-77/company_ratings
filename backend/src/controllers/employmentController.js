@@ -24,6 +24,20 @@ exports.requestEmployment = async (req, res) => {
       return res.status(400).json({ message: "Employee profile not linked to user" });
     }
 
+    // Gate: user must have identity verified by system admin before requesting employment
+    const { data: userRecord, error: userErr } = await supabase
+      .from('users')
+      .select('identity_verified')
+      .eq('id', userId)
+      .single();
+
+    if (userErr || !userRecord?.identity_verified) {
+      return res.status(403).json({
+        message: "Identity verification required. Please submit your ID document on your Profile page and wait for admin approval.",
+        code: "IDENTITY_NOT_VERIFIED"
+      });
+    }
+
     const { companyId, position, department, startDate } = req.body;
     if (!companyId || !position || !startDate) {
       return res.status(400).json({ message: "companyId, position, startDate are required" });

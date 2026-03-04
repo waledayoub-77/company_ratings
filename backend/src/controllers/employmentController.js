@@ -268,10 +268,11 @@ exports.listAllEmployments = async (req, res) => {
         verification_status,
         rejection_note,
         created_at,
-        employees:employee_id ( id, full_name )
+        employees:employee_id!inner ( id, full_name, deleted_at )
       `)
       .in('company_id', companyIds)
       .is('deleted_at', null)
+      .is('employees.deleted_at', null)
       .order('created_at', { ascending: false });
 
     if (error) throw error;

@@ -17,44 +17,7 @@ KNOWN OPEN ISSUES  (not yet fixed)
   ⚠️  C16    — offline/network-error save on settings may fail silently
 
 
-────────────────────────────────────────────────────────────────────────────────
-PENDING — items not yet verified
-────────────────────────────────────────────────────────────────────────────────
 
-[ ] V2-M1  Open Supabase Dashboard → SQL Editor
-           → paste contents of backend/migration-v2.sql → click Run
-           → no errors; all CREATE TABLE / ALTER TABLE succeed
-
-[ ] V2-M2  In Supabase Table Editor verify these new tables exist:
-           verification_requests, category_ratings, review_replies,
-           review_votes, eotm_events, eotm_votes, employee_of_month,
-           notification_preferences
-
-[ ] V2-M3  companies table → confirm columns:
-           is_document_verified (bool), category_averages (jsonb)
-
-[ ] V2-M4  company_reviews table → confirm columns:
-           departure_reason (varchar), helpful_count (int),
-           ai_toxicity_score, ai_sentiment, is_hidden_by_ai
-
-
-════════════════════════════════════════════════════════════════════════════════
-  RE-TEST ROUND 8 — Bugs fixed this session
-  4 code fixes applied across 6 files + 1 SQL migration.
-  Playwright tests: e2e/tests/15-r8-fixes.spec.js (11 tests, all passed)
-════════════════════════════════════════════════════════════════════════════════
-
-────────────────────────────────────────────────────────────────────────────────
-R8-FIX 1 — C17: company_admin blocked from /write-review  (was: C17)
-────────────────────────────────────────────────────────────────────────────────
-Root cause: /companies/:id/review route used <ProtectedRoute> (any
-authenticated user) instead of <RoleRoute role="employee">. Backend already
-had requireEmployee middleware, so only the frontend guard was missing.
-
-[ ] R8-F1-A  Login as tech.admin@ratehub.com → go to
-             /companies/<any-id>/review → should redirect to /company-admin
-
-[ ] R8-F1-B  As company_admin, POST /api/reviews → expect 403
 
 ────────────────────────────────────────────────────────────────────────────────
 R8-FIX 2 — C12/E21: Star ratings display correctly  (was: C12/E21)
@@ -63,97 +26,13 @@ Root cause: CompanyAdminDashboard used wrong field (review.rating instead of
 review.overall_rating) and wrong props (value, readOnly, size="sm" — none of
 which StarRating accepts). EmployeeDashboard also used review.rating.
 
-[ ] R8-F2-A  Login as bob@ratehub.com → Dashboard → Reviews → confirm star
+[ --] R8-F2-A  Login as bob@ratehub.com → Dashboard → Reviews → confirm star
              ratings are filled (amber stars, not all empty / 0)
 
 [ ] R8-F2-B  Login as tech.admin@ratehub.com → Company Admin → Reviews →
              confirm star ratings are filled (amber stars, not all empty / 0)
+             ➜  Fixed in R9: ReviewsListTab now reads res.data (not res.data.reviews)
 
-────────────────────────────────────────────────────────────────────────────────
-R8-FIX 3 — V2-E6: EOTM tie-breaking is deterministic  (was: V2-E6)
-────────────────────────────────────────────────────────────────────────────────
-Root cause: closeEvent sorted only by vote count. Equal votes relied on
-JS object iteration order (non-deterministic). Fix: secondary sort by
-earliest first-vote timestamp — the candidate who received their first
-vote earlier wins the tie.
-
-[ ] R8-F3-A  EOTM winners API `/api/eotm/company/:id/winners` returns valid
-             structure: each winner has month, year, voteCount, employee_name
-
-────────────────────────────────────────────────────────────────────────────────
-R8-FIX 4 — V2-E7: "No Winner" card for zero-vote months  (was: V2-E7)
-────────────────────────────────────────────────────────────────────────────────
-Root cause: closeEvent with zero votes inserted nothing into employee_of_month.
-getCompanyWinners used INNER JOIN (employees!inner) so null-employee rows
-were filtered out. Frontend only rendered winner cards.
-Fix: Insert null-winner row on close, use LEFT JOIN, render conditional
-"No Winner" card (gray, opacity-60) in both dashboards.
-⚠️  REQUIRES running backend/migrations/allow_null_winner_eotm.sql
-    in the Supabase SQL Editor.
-
-[ ] R8-F4-A  Run backend/migrations/allow_null_winner_eotm.sql in Supabase
-             → no errors
-
-[ ] R8-F4-B  Company Admin → EOTM tab → Hall of Fame → if any month had
-             zero votes, a gray "No Winner" card with em-dash icon appears
-
-[ ] R8-F4-C  Employee → EOTM tab → Past Winners → same "No Winner" card
-
-
-════════════════════════════════════════════════════════════════════════════════
-  RE-TEST ROUND 7 — Bugs fixed this session
-  4 code fixes applied across 5 files + 1 SQL migration.
-  Re-test only the items below.
-════════════════════════════════════════════════════════════════════════════════
-
-────────────────────────────────────────────────────────────────────────────────
-R7-FIX 1 — Deleted user is fully blocked from login & email freed for re-use
-           (was: BUG 1, R6-F5-B/C)
-────────────────────────────────────────────────────────────────────────────────
-Root causes (3 separate gaps):
-  a) adminController.deleteUser set is_deleted + is_active but never set
-     deleted_at — so authService.registerUser's .is('deleted_at', null) filter
-     still found the old row and blocked re-registration.
-  b) registerUser relied on deleted_at which was never set.
-     Changed to .eq('is_deleted', false) which is the source of truth.
-  c) refreshToken never checked user status — a deleted user could silently
-     refresh their access token and keep using the app.
-     Added is_deleted + is_active DB check inside refreshToken.
-
-[ ] R7-F1-A  Login as admin@ratehub.com → /admin → Users tab
-             → delete a non-critical test user (e.g. bob)
-             → user disappears from the list
-
-[ ] R7-F1-B  Try to login with the deleted user's email + password
-             → "Invalid email or password" error (login blocked)
-
-[ ] R7-F1-C  Go to /register → enter the SAME email as the deleted user
-             → fill in all required fields → click "Register"
-             → registration SUCCEEDS (no "Email already exists" error)
-
-[ ] R7-F1-D  If the deleted user had an existing browser session open:
-             → on next API call or token refresh, they get logged out
-             → cannot continue using the app
-
-
-────────────────────────────────────────────────────────────────────────────────
-R7-FIX 2 — Suspend user enforces min 3-char reason  (was: R3-F4-A/B)
-────────────────────────────────────────────────────────────────────────────────
-Root cause: Single-user suspend (handleSuspend) only checked !reason.trim()
-on the frontend, with no minimum length. Backend also only checked !reason.
-Both bulk and single suspend now enforce 3-char minimum.
-
-[ ] R7-F2-A  Login as admin@ratehub.com → /admin → Users tab
-             → click the Ban icon on an active user
-             → type "ab" (2 chars) as reason
-             → "Confirm" button is DISABLED (greyed out)
-
-[ ] R7-F2-B  Type "abc" (3 chars) → button becomes enabled
-             → click "Confirm" → user is suspended
-
-[ ] R7-F2-C  Bulk suspend: check multiple users → click "Suspend X Selected"
-             → type "ab" → "Confirm Bulk Suspend" button is DISABLED
-             → type "abc" → button becomes enabled → confirm → users suspended
 
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -190,72 +69,82 @@ Fix: Updated the view definition to include r.departure_reason.
   ✅  R6-F4   — Active tab persists across F5 refresh
 
 
+────────────────────────────────────────────────────────────────────────────────
+RE-TEST ROUND 9
+────────────────────────────────────────────────────────────────────────────────
+
+R9-FIX 1 — Company-admin Reviews tab loads reviews
+  Root cause: ReviewsListTab used res?.data?.reviews but API returns res?.data
+             directly as an array. Fixed to res?.data ?? []
+
+[ ] R9-F1-A  Login as tech.admin@ratehub.com → Company Admin → Reviews tab
+             → reviews are displayed (not empty/blank)
+
+[ ] R9-F1-B  Review cards show author name, date, star rating, and content
+
+────────────────────────────────────────────────────────────────────────────────
+R9-FIX 2 — Deleted user excluded from verified employee list
+  Root cause: deleteUser only soft-deleted the users row, not the
+             employees/employments rows. Queries didn't filter by deletion.
+  Fix: deleteUser now cascades deleted_at to employees + employments.
+       Queries filter employees.deleted_at IS NULL.
+  ⚠️  REQUIRES running backend/migrations/cascade_soft_delete_to_employees.sql
+      in the Supabase SQL Editor
+
+[ ] R9-F2-A  Run backend/migrations/cascade_soft_delete_to_employees.sql
+             → no errors
+
+[ ] R9-F2-B  Login as admin → delete an employee account
+             → go to that company's profile → Verified Employees section
+             → the deleted user is NOT shown
+
+[ ] R9-F2-C  Register a new account with the same email as the deleted user
+             → verify employment at the same company
+             → company admin approves → write a review
+             → should NOT get "already reviewed" error
+
+────────────────────────────────────────────────────────────────────────────────
+R9-FIX 3 — Company stats: employees + feedback score now calculated
+  Root cause: get_company_stats RPC only returned review stats.
+             total_employees and avg_feedback_score were missing.
+  Fix: Backend supplements RPC with employee count + feedback average.
+
+[ ] R9-F3-A  Login as tech.admin@ratehub.com → Company Admin → Analytics tab
+             → "Verified Employees" card shows a number (not "–")
+
+[ ] R9-F3-B  "Avg Feedback Score" card shows a number if feedback exists,
+             or "–" if no feedback yet (not broken/NaN)
+
+────────────────────────────────────────────────────────────────────────────────
+R9-FIX 4 — Tab notification badges implemented
+  Implemented: Admin Verifications badge, CompanyAdmin Reviews/EOTM/Feedback
+  badges. Uses simple item counts (not "last viewed" tracking).
+
+[ ] R9-F4-A  Login as admin → Admin Panel → Verifications tab shows red badge
+             with count of pending verification requests (if any)
+
+[ ] R9-F4-B  Login as tech.admin → Company Admin → Reviews tab shows badge
+             with total review count
+
+[ ] R9-F4-C  EOTM tab shows badge with count of active/open EOTM events
+
+[ ] R9-F4-D  Team Feedback tab shows badge with feedback received count
+
+[ ] R9-F4-E  Requests tab badge (already worked) still shows pending count
+
+[ ] R9-F4-F  Badge shows as red circle with white number next to tab label
+
+[ ] R9-F4-G  No "0" badge shown when count is zero
+
+
 ════════════════════════════════════════════════════════════════════════════════
-  PENDING FEATURE — Tab Notification Badges (unread counts)
-  NOT YET IMPLEMENTED — test cases for future verification.
+  BADGE NOTES — Items NOT implemented (require "last viewed" tracking)
 ════════════════════════════════════════════════════════════════════════════════
 
-────────────────────────────────────────────────────────────────────────────────
-TAB-BADGE-1 — Admin Panel: Verifications tab badge
-────────────────────────────────────────────────────────────────────────────────
-
-[ ] TB-A1  A new verification request is submitted by an employee
-           →  Login as admin → /admin → "Verifications" tab shows red badge
-
-[ ] TB-A2  Click the "Verifications" tab → badge disappears
-
-[ ] TB-A3  Approve or reject a request → badge decrements by 1
-           → badge disappears when count reaches 0
-
-────────────────────────────────────────────────────────────────────────────────
-TAB-BADGE-2 — Admin Panel: Users tab badge (new registrations)
-────────────────────────────────────────────────────────────────────────────────
-
-[ ] TB-B1  A new user registers → admin's "Users" tab shows red badge
-
-[ ] TB-B2  Click the "Users" tab → badge disappears
-
-────────────────────────────────────────────────────────────────────────────────
-TAB-BADGE-3 — Company Admin: Requests tab badge (regression)
-────────────────────────────────────────────────────────────────────────────────
-
-[ ] TB-C1  An employee submits an employment request
-           → "Requests" tab shows a red badge with pending count
-
-[ ] TB-C2  Approve or reject → badge decrements / disappears
-
-────────────────────────────────────────────────────────────────────────────────
-TAB-BADGE-4 — Company Admin: Reviews tab badge
-────────────────────────────────────────────────────────────────────────────────
-
-[ ] TB-D1  An employee posts a review → "Reviews" tab shows red badge
-
-[ ] TB-D2  Click the "Reviews" tab → badge disappears
-
-────────────────────────────────────────────────────────────────────────────────
-TAB-BADGE-5 — Company Admin: EOTM tab badge
-────────────────────────────────────────────────────────────────────────────────
-
-[ ] TB-E1  Employees cast votes → "EOTM" tab shows red badge
-
-[ ] TB-E2  Click the "EOTM" tab → badge disappears
-
-────────────────────────────────────────────────────────────────────────────────
-TAB-BADGE-6 — Company Admin: Team Feedback tab badge
-────────────────────────────────────────────────────────────────────────────────
-
-[ ] TB-F1  Employee submits peer feedback → "Team Feedback" tab shows badge
-
-[ ] TB-F2  Click the tab → badge disappears
-
-────────────────────────────────────────────────────────────────────────────────
-TAB-BADGE-7 — General badge behaviour
-────────────────────────────────────────────────────────────────────────────────
-
-[ ] TB-G1  Badge count is accurate (matches real unseen items)
-
-[ ] TB-G2  Badge persists across F5 refresh
-
-[ ] TB-G3  No empty "0" badge shown when items are all seen
-
-[ ] TB-G4  Visiting a tab marks items as seen for THAT admin only
+  ⚠️  TB-A2/A3  "Click tab to dismiss" — would need a notifications/last_viewed
+               table to track per-user read state (not yet built)
+  ⚠️  TB-B1/B2  Admin Users tab badge (new registrations) — not implemented
+  ⚠️  TB-D2     Reviews badge dismiss on click — no last_viewed tracking
+  ⚠️  TB-E2     EOTM badge dismiss on click — no last_viewed tracking
+  ⚠️  TB-F2     Feedback badge dismiss on click — no last_viewed tracking
+  ⚠️  TB-G4     Per-admin seen tracking — requires notifications table

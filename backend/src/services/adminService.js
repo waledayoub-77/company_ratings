@@ -258,13 +258,36 @@ const deleteUser = async ({ userId, adminId, ipAddress, userAgent }) => {
     throw new AppError('Cannot delete a system administrator', 403, 'CANNOT_DELETE_ADMIN');
   }
 
-  // Soft delete
+  // Soft delete user
+  const now = new Date().toISOString();
   const { error: deleteError } = await supabase
     .from('users')
-    .update({ deleted_at: new Date().toISOString(), is_deleted: true, is_active: false })
+    .update({ deleted_at: now, is_deleted: true, is_active: false })
     .eq('id', userId);
 
   if (deleteError) throw deleteError;
+
+  // Cascade soft-delete to employee + employments so they vanish from
+  // "Verified Employees" lists and don't block re-registration reviews.
+  const { data: empRow } = await supabase
+    .from('employees')
+    .select('id')
+    .eq('user_id', userId)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (empRow) {
+    await supabase
+      .from('employees')
+      .update({ deleted_at: now })
+      .eq('id', empRow.id);
+
+    await supabase
+      .from('employments')
+      .update({ deleted_at: now })
+      .eq('employee_id', empRow.id)
+      .is('deleted_at', null);
+  }
 
   // Revoke all refresh tokens
   await supabase

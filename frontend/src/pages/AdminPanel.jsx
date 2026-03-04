@@ -94,7 +94,7 @@ export default function AdminPanel() {
     { id: 'reports',   label: 'Reports',   icon: Flag,     badge: (analytics?.pendingReports ?? 0) > 0 ? analytics.pendingReports : null },
     { id: 'companies', label: 'Companies', icon: Building2 },
     { id: 'users',     label: 'Users',     icon: Users     },
-    { id: 'verifications', label: 'Verifications', icon: ShieldCheck },
+    { id: 'verifications', label: 'Verifications', icon: ShieldCheck, badge: (analytics?.pendingVerifications ?? 0) > 0 ? analytics.pendingVerifications : null },
     { id: 'audit',     label: 'Audit Log', icon: Activity  },
   ]
 

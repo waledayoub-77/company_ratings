@@ -50,6 +50,9 @@ export default function CompanyAdminDashboard() {
     return VALID_CA_TABS.includes(hash) ? hash : 'overview'
   })
   const [pendingCount, setPendingCount] = useState(0)
+  const [reviewCount, setReviewCount] = useState(0)
+  const [activeEotmCount, setActiveEotmCount] = useState(0)
+  const [feedbackCount, setFeedbackCount] = useState(0)
   const [companyName, setCompanyName] = useState('')
   const { user } = useAuth()
   const companyId = user?.companyId
@@ -68,14 +71,33 @@ export default function CompanyAdminDashboard() {
         setPendingCount(Array.isArray(list) ? list.length : 0)
       })
       .catch(() => {})
+    getCompanyReviews(companyId)
+      .then(res => {
+        const list = res?.data ?? []
+        setReviewCount(Array.isArray(list) ? list.length : 0)
+      })
+      .catch(() => {})
+    getCompanyEotmEvents(companyId)
+      .then(res => {
+        const events = res?.data ?? []
+        const active = Array.isArray(events) ? events.filter(e => e.status === 'open' || e.status === 'active').length : 0
+        setActiveEotmCount(active)
+      })
+      .catch(() => {})
+    getFeedbackReceived()
+      .then(res => {
+        const list = res?.data?.feedback ?? res?.data ?? []
+        setFeedbackCount(Array.isArray(list) ? list.length : 0)
+      })
+      .catch(() => {})
   }, [companyId])
 
   const tabs = [
     { id: 'overview', label: 'Analytics', icon: BarChart3 },
     { id: 'requests', label: 'Requests', icon: Users, badge: pendingCount || null },
-    { id: 'reviews', label: 'Reviews', icon: FileText },
-    { id: 'eotm', label: 'EOTM', icon: Award },
-    { id: 'feedback', label: 'Team Feedback', icon: MessageSquare },
+    { id: 'reviews', label: 'Reviews', icon: FileText, badge: reviewCount || null },
+    { id: 'eotm', label: 'EOTM', icon: Award, badge: activeEotmCount || null },
+    { id: 'feedback', label: 'Team Feedback', icon: MessageSquare, badge: feedbackCount || null },
     { id: 'settings', label: 'Settings', icon: Settings },
   ]
 
@@ -501,7 +523,7 @@ function ReviewsListTab({ companyId }) {
   useEffect(() => {
     if (!companyId) return
     getCompanyReviews(companyId)
-      .then(res => setReviews(res?.data?.reviews ?? []))
+      .then(res => setReviews(res?.data ?? []))
       .catch(() => setReviews([]))
       .finally(() => setLoading(false))
   }, [companyId])

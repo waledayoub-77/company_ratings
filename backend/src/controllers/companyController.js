@@ -167,13 +167,15 @@ const getCompanyEmployees = async (req, res, next) => {
       .maybeSingle();
 
     // Get all approved employments at this company with employee details
+    // employees!inner excludes rows where the employee row is soft-deleted
     let query = supabase
       .from('employments')
-      .select('employee_id, position, department, employees!inner(id, full_name, current_position)')
+      .select('employee_id, position, department, employees!inner(id, full_name, current_position, deleted_at)')
       .eq('company_id', companyId)
       .eq('verification_status', 'approved')
       .eq('is_current', true)
-      .is('deleted_at', null);
+      .is('deleted_at', null)
+      .is('employees.deleted_at', null);
 
     // Exclude self
     if (selfEmployee) {

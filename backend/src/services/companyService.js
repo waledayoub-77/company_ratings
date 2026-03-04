@@ -247,6 +247,7 @@ const deleteCompany = async (companyId, userId, userRole) => {
 const getCompanyStats = async (companyId) => {
   await getCompanyById(companyId); // Verify company exists
 
+  // 1) Review stats from RPC
   const { data, error } = await supabase
     .rpc('get_company_stats', { p_company_id: companyId });
 
@@ -255,7 +256,38 @@ const getCompanyStats = async (companyId) => {
     throw new AppError('Failed to fetch company statistics', 500);
   }
 
-  return data;
+  // RPC returns an array of one row — normalise
+  const stats = Array.isArray(data) ? (data[0] || {}) : (data || {});
+
+  // 2) Count verified (approved + current) employees, excluding deleted users
+  const { count: totalEmployees } = await supabase
+    .from('employments')
+    .select('id', { count: 'exact', head: true })
+    .eq('company_id', companyId)
+    .eq('verification_status', 'approved')
+    .eq('is_current', true)
+    .is('deleted_at', null);
+
+  // 3) Average feedback score across all non-deleted feedback for this company
+  const { data: fbRows } = await supabase
+    .from('employee_feedback')
+    .select('professionalism, communication, teamwork, reliability')
+    .eq('company_id', companyId)
+    .is('deleted_at', null);
+
+  let avgFeedbackScore = null;
+  if (fbRows && fbRows.length > 0) {
+    const total = fbRows.reduce((sum, f) => {
+      return sum + (f.professionalism + f.communication + f.teamwork + f.reliability) / 4;
+    }, 0);
+    avgFeedbackScore = Number((total / fbRows.length).toFixed(2));
+  }
+
+  return {
+    ...stats,
+    total_employees: totalEmployees || 0,
+    avg_feedback_score: avgFeedbackScore,
+  };
 };
 
 /**

@@ -602,6 +602,7 @@ exports.getAnalytics = async (req, res) => {
       { count: totalReports },
       { count: pendingEmployments },
       { count: activeUsers },
+      { count: pendingVerifications },
     ] = await Promise.all([
       supabase.from('users').select('id', { count: 'exact', head: true }).eq('is_deleted', false),
       supabase.from('companies').select('id', { count: 'exact', head: true }).is('deleted_at', null),
@@ -609,6 +610,7 @@ exports.getAnalytics = async (req, res) => {
       supabase.from('reported_reviews').select('id', { count: 'exact', head: true }),
       supabase.from('employments').select('id', { count: 'exact', head: true }).eq('verification_status', 'pending').is('deleted_at', null),
       supabase.from('users').select('id', { count: 'exact', head: true }).eq('is_active', true).eq('is_deleted', false),
+      supabase.from('verification_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     ]);
 
     const { count: pendingReports } = await supabase.from('reported_reviews').select('id', { count: 'exact', head: true }).eq('status', 'pending');
@@ -623,6 +625,7 @@ exports.getAnalytics = async (req, res) => {
         totalReports: totalReports || 0,
         pendingReports: pendingReports || 0,
         pendingEmployments: pendingEmployments || 0,
+        pendingVerifications: pendingVerifications || 0,
       },
     });
   } catch (err) {

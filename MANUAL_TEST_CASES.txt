@@ -1,0 +1,150 @@
+﻿================================================================================
+  RATEHUB — MANUAL TEST CASES
+  Credentials:
+    Employee       : bob@ratehub.com         / Test1234!
+    Company Admin  : tech.admin@ratehub.com  / Test1234!
+    System Admin   : admin@ratehub.com       / Test1234!
+================================================================================
+
+
+────────────────────────────────────────────────────────────────────────────────
+KNOWN OPEN ISSUES  (not yet fixed)
+────────────────────────────────────────────────────────────────────────────────
+
+  ⚠️  G17    — UI may not always surface the duplicate-email error visually
+               (Supabase email_verified state edge case)
+  ⚠️  S11    — Rate limiting intentionally disabled in NODE_ENV=development
+  ⚠️  C16    — offline/network-error save on settings may fail silently
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+R8-FIX 2 — C12/E21: Star ratings display correctly  (was: C12/E21)
+────────────────────────────────────────────────────────────────────────────────
+Root cause: CompanyAdminDashboard used wrong field (review.rating instead of
+review.overall_rating) and wrong props (value, readOnly, size="sm" — none of
+which StarRating accepts). EmployeeDashboard also used review.rating.
+
+[ --] R8-F2-A  Login as bob@ratehub.com → Dashboard → Reviews → confirm star
+             ratings are filled (amber stars, not all empty / 0)
+
+[ ] R8-F2-B  Login as tech.admin@ratehub.com → Company Admin → Reviews →
+             confirm star ratings are filled (amber stars, not all empty / 0)
+             ➜  Fixed in R9: ReviewsListTab now reads res.data (not res.data.reviews)
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+R7-FIX 3 — Departure reason badge shown on reviews  (was: V2-CR7)
+────────────────────────────────────────────────────────────────────────────────
+Root cause: The public_company_reviews database view did not include the
+departure_reason column, so it was always undefined on the frontend.
+Fix: Updated the view definition to include r.departure_reason.
+⚠️  REQUIRES running backend/migrations/add_departure_reason_to_view.sql
+    in the Supabase SQL Editor.
+
+[ ] R7-F3-A  Run backend/migrations/add_departure_reason_to_view.sql in Supabase
+             → no errors
+
+[ ] R7-F3-B  Login as bob@ratehub.com → write a review with a departure reason
+             (e.g. select "Better Opportunity" from the departure dropdown)
+             → go to that company's profile page
+             → below the review text, a badge appears:
+               "Left: better opportunity" (with a briefcase icon)
+
+[ ] R7-F3-C  Write another review with "Still Employed"
+             → go to that company's profile page
+             → NO departure badge shown on that review
+
+
+════════════════════════════════════════════════════════════════════════════════
+  PASSED — items verified this session
+════════════════════════════════════════════════════════════════════════════════
+  ✅  C4      — /company-admin with no company → works (loads normally)
+  ✅  BUG 2   — Employee current position is saved correctly (infra fixed)
+  ✅  R6-F1   — Helpful vote shows error on own review
+  ✅  R6-F2   — Feedback notification goes to /feedback
+  ✅  R6-F3   — Own review shows "Your review" label, not Report button
+  ✅  R6-F4   — Active tab persists across F5 refresh
+
+
+────────────────────────────────────────────────────────────────────────────────
+RE-TEST ROUND 9
+────────────────────────────────────────────────────────────────────────────────
+
+R9-FIX 1 — Company-admin Reviews tab loads reviews
+  Root cause: ReviewsListTab used res?.data?.reviews but API returns res?.data
+             directly as an array. Fixed to res?.data ?? []
+
+[ ] R9-F1-A  Login as tech.admin@ratehub.com → Company Admin → Reviews tab
+             → reviews are displayed (not empty/blank)
+
+[ ] R9-F1-B  Review cards show author name, date, star rating, and content
+
+────────────────────────────────────────────────────────────────────────────────
+R9-FIX 2 — Deleted user excluded from verified employee list
+  Root cause: deleteUser only soft-deleted the users row, not the
+             employees/employments rows. Queries didn't filter by deletion.
+  Fix: deleteUser now cascades deleted_at to employees + employments.
+       Queries filter employees.deleted_at IS NULL.
+  ⚠️  REQUIRES running backend/migrations/cascade_soft_delete_to_employees.sql
+      in the Supabase SQL Editor
+
+[ ] R9-F2-A  Run backend/migrations/cascade_soft_delete_to_employees.sql
+             → no errors
+
+[ ] R9-F2-B  Login as admin → delete an employee account
+             → go to that company's profile → Verified Employees section
+             → the deleted user is NOT shown
+
+[ ] R9-F2-C  Register a new account with the same email as the deleted user
+             → verify employment at the same company
+             → company admin approves → write a review
+             → should NOT get "already reviewed" error
+
+────────────────────────────────────────────────────────────────────────────────
+R9-FIX 3 — Company stats: employees + feedback score now calculated
+  Root cause: get_company_stats RPC only returned review stats.
+             total_employees and avg_feedback_score were missing.
+  Fix: Backend supplements RPC with employee count + feedback average.
+
+[ ] R9-F3-A  Login as tech.admin@ratehub.com → Company Admin → Analytics tab
+             → "Verified Employees" card shows a number (not "–")
+
+[ ] R9-F3-B  "Avg Feedback Score" card shows a number if feedback exists,
+             or "–" if no feedback yet (not broken/NaN)
+
+────────────────────────────────────────────────────────────────────────────────
+R9-FIX 4 — Tab notification badges implemented
+  Implemented: Admin Verifications badge, CompanyAdmin Reviews/EOTM/Feedback
+  badges. Uses simple item counts (not "last viewed" tracking).
+
+[ ] R9-F4-A  Login as admin → Admin Panel → Verifications tab shows red badge
+             with count of pending verification requests (if any)
+
+[ ] R9-F4-B  Login as tech.admin → Company Admin → Reviews tab shows badge
+             with total review count
+
+[ ] R9-F4-C  EOTM tab shows badge with count of active/open EOTM events
+
+[ ] R9-F4-D  Team Feedback tab shows badge with feedback received count
+
+[ ] R9-F4-E  Requests tab badge (already worked) still shows pending count
+
+[ ] R9-F4-F  Badge shows as red circle with white number next to tab label
+
+[ ] R9-F4-G  No "0" badge shown when count is zero
+
+
+════════════════════════════════════════════════════════════════════════════════
+  BADGE NOTES — Items NOT implemented (require "last viewed" tracking)
+════════════════════════════════════════════════════════════════════════════════
+
+  ⚠️  TB-A2/A3  "Click tab to dismiss" — would need a notifications/last_viewed
+               table to track per-user read state (not yet built)
+  ⚠️  TB-B1/B2  Admin Users tab badge (new registrations) — not implemented
+  ⚠️  TB-D2     Reviews badge dismiss on click — no last_viewed tracking
+  ⚠️  TB-E2     EOTM badge dismiss on click — no last_viewed tracking
+  ⚠️  TB-F2     Feedback badge dismiss on click — no last_viewed tracking
+  ⚠️  TB-G4     Per-admin seen tracking — requires notifications table

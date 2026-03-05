@@ -12,14 +12,6 @@ dist
 dist-ssr
 *.local
 
-# Environment variables (credentials)
-.env
-.env.local
-e2e/.env
-
-# Archived / cleanup folder
-clean/
-
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

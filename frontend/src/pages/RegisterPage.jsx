@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Mail, Lock, User, Briefcase, ArrowRight, Eye, EyeOff, CheckCircle2, AlertCircle } from 'lucide-react'
 import { apiRegister } from '../api/auth'
 
 export default function RegisterPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const inviteToken = searchParams.get('inviteToken') || ''
 
   const [showPassword, setShowPassword] = useState(false)
   const [role, setRole] = useState('employee')
@@ -45,6 +47,10 @@ export default function RegisterPage() {
         companyName: role === 'company_admin' ? companyName.trim()                      : undefined,
       })
       setSuccess(true)
+      // If invite token exists, redirect to accept-invite after success
+      if (inviteToken) {
+        setTimeout(() => navigate(`/accept-invite?token=${inviteToken}`), 1500)
+      }
     } catch (err) {
       setError(err.message)
     } finally {

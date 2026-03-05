@@ -86,3 +86,11 @@ export async function deleteCompany(id) {
 export async function getCompanyEmployees(id) {
   return authRequest(`/companies/${id}/employees`)
 }
+
+/**
+ * GET /companies/filter-options — Feature 3
+ * Returns { countries: [...], citiesByCountry: { countryName: [...] } }
+ */
+export async function getFilterOptions() {
+  return request('/companies/filter-options')
+}

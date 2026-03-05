@@ -2,7 +2,7 @@ import { authRequest } from './client'
 
 /**
  * POST /feedback
- * @param {Object} data — toEmployeeId, scores: { professionalism, communication, teamwork, reliability }, comment
+ * @param {Object} data — toEmployeeId, scores: { professionalism, communication, teamwork, reliability }, comment, isAnonymous
  */
 export async function submitFeedback(data) {
   return authRequest('/feedback', {

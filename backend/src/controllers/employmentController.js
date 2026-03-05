@@ -3,7 +3,9 @@ const employmentService = require('../services/employmentService');
 const {
   sendEmploymentRequestEmail,
   sendEmploymentApprovedEmail,
-  sendEmploymentRejectedEmail
+  sendEmploymentRejectedEmail,
+  sendInviteEmail,
+  sendEmploymentEndedByAdminEmail,
 } = require('../services/emailService');
 const { createNotification } = require('../services/notificationService');
 
@@ -461,6 +463,207 @@ exports.cancelEmployment = async (req, res) => {
     return res.json({ message: 'Employment request cancelled' });
   } catch (e) {
     console.error('cancelEmployment error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// ─── Feature 1: POST /api/employments/invite ─────────────────────────────────
+exports.inviteEmployee = async (req, res) => {
+  try {
+    const adminUserId = req.user?.userId;
+    if (!adminUserId || req.user.role !== 'company_admin') {
+      return res.status(403).json({ message: 'Company admin only' });
+    }
+    const { companyId, inviteEmail, position, department, startDate } = req.body;
+    if (!companyId || !inviteEmail || !position || !startDate) {
+      return res.status(400).json({ message: 'companyId, inviteEmail, position, startDate are required' });
+    }
+
+    const result = await employmentService.inviteEmployee({
+      companyId, adminUserId, inviteEmail, position, department, startDate,
+    });
+    if (result.error) return res.status(400).json({ message: result.error });
+
+    // Send invite email (non-blocking)
+    try {
+      const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').split(',')[0].trim();
+      await sendInviteEmail({
+        to: inviteEmail,
+        companyName: result.company.name,
+        inviteUrl: `${frontendUrl}/accept-invite?token=${result.token}`,
+        position,
+      });
+    } catch (_) {}
+
+    return res.status(201).json({ success: true, data: result.data });
+  } catch (e) {
+    console.error('inviteEmployee error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// ─── Feature 1: POST /api/employments/accept-invite ──────────────────────────
+exports.acceptInvite = async (req, res) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ message: 'token required' });
+
+    const result = await employmentService.acceptInvite({ token, userId });
+    if (result.error) return res.status(400).json({ message: result.error });
+
+    // Notify company admin that invitation was accepted (non-blocking)
+    try {
+      const { data: empData } = await supabase.from('employees').select('full_name, user_id').eq('user_id', userId).single();
+      const { data: compData } = await supabase.from('companies').select('name, user_id').eq('id', result.data.company_id).single();
+      if (compData?.user_id) {
+        await createNotification({
+          userId: compData.user_id,
+          type: 'employment_request',
+          title: 'Invitation Accepted',
+          message: `${empData?.full_name || 'An employee'} accepted the invitation to join ${compData.name}.`,
+          link: '/company-admin#requests',
+        });
+      }
+    } catch (_) {}
+
+    return res.json({ success: true, data: result.data });
+  } catch (e) {
+    console.error('acceptInvite error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// ─── Feature 1: GET /api/employments/pending-invites ─────────────────────────
+exports.getPendingInvites = async (req, res) => {
+  try {
+    const adminUserId = req.user?.userId;
+    if (!adminUserId || req.user.role !== 'company_admin') {
+      return res.status(403).json({ message: 'Company admin only' });
+    }
+    const { data: companies } = await supabase
+      .from('companies')
+      .select('id')
+      .eq('user_id', adminUserId)
+      .is('deleted_at', null);
+    if (!companies?.length) return res.json({ data: [] });
+
+    // Collect all pending invites for all companies
+    const allInvites = [];
+    for (const c of companies) {
+      const result = await employmentService.getPendingInvites(c.id);
+      if (result.data) allInvites.push(...result.data);
+    }
+    return res.json({ success: true, data: allInvites });
+  } catch (e) {
+    console.error('getPendingInvites error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// ─── Feature 1: DELETE /api/employments/:id/cancel-invite ────────────────────
+exports.cancelInvite = async (req, res) => {
+  try {
+    const adminUserId = req.user?.userId;
+    if (!adminUserId || req.user.role !== 'company_admin') {
+      return res.status(403).json({ message: 'Company admin only' });
+    }
+    const { id } = req.params;
+    // Verify admin owns this invite's company
+    const { data: invite } = await supabase
+      .from('employments')
+      .select('id, company_id, source, verification_status')
+      .eq('id', id)
+      .is('deleted_at', null)
+      .single();
+    if (!invite) return res.status(404).json({ message: 'Invite not found' });
+
+    const { data: company } = await supabase
+      .from('companies')
+      .select('id')
+      .eq('id', invite.company_id)
+      .eq('user_id', adminUserId)
+      .single();
+    if (!company) return res.status(403).json({ message: 'Not authorized for this company' });
+
+    if (invite.source !== 'invite' || invite.verification_status !== 'pending') {
+      return res.status(400).json({ message: 'Only pending invites can be cancelled' });
+    }
+
+    await supabase.from('employments').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+    return res.json({ success: true, message: 'Invite cancelled' });
+  } catch (e) {
+    console.error('cancelInvite error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// ─── Feature 2: PATCH /api/employments/:id/end-by-admin ──────────────────────
+exports.endByAdmin = async (req, res) => {
+  try {
+    const adminUserId = req.user?.userId;
+    if (!adminUserId || req.user.role !== 'company_admin') {
+      return res.status(403).json({ message: 'Company admin only' });
+    }
+    const { id } = req.params;
+    const { endReason, endDate } = req.body;
+
+    // Get admin's company
+    const { data: companies } = await supabase
+      .from('companies')
+      .select('id, name')
+      .eq('user_id', adminUserId)
+      .is('deleted_at', null);
+    if (!companies?.length) return res.status(400).json({ message: 'No companies found' });
+
+    const { data: employment } = await supabase
+      .from('employments')
+      .select('company_id')
+      .eq('id', id)
+      .single();
+    const company = companies.find(c => c.id === employment?.company_id);
+    if (!company) return res.status(403).json({ message: 'Not authorized for this employment' });
+
+    const result = await employmentService.endByAdmin({
+      employmentId: id,
+      companyId: company.id,
+      adminUserId,
+      endReason,
+      endDate,
+    });
+    if (result.error) return res.status(400).json({ message: result.error });
+
+    // Notify employee (non-blocking)
+    try {
+      const { data: empData } = await supabase
+        .from('employees')
+        .select('full_name, user_id')
+        .eq('id', result.data.employee_id)
+        .single();
+      if (empData?.user_id) {
+        const { data: empUser } = await supabase.from('users').select('email').eq('id', empData.user_id).single();
+        if (empUser) {
+          await sendEmploymentEndedByAdminEmail({
+            to: empUser.email,
+            name: empData.full_name,
+            companyName: company.name,
+            reason: endReason || null,
+          });
+        }
+        await createNotification({
+          userId: empData.user_id,
+          type: 'employment_ended',
+          title: 'Employment Ended',
+          message: `Your employment at ${company.name} has been ended by the company admin.${endReason ? ` Reason: ${endReason}` : ''}`,
+          link: '/dashboard#employment',
+        });
+      }
+    } catch (_) {}
+
+    return res.json({ success: true, data: result.data });
+  } catch (e) {
+    console.error('endByAdmin error:', e);
     return res.status(500).json({ message: 'Server error' });
   }
 };

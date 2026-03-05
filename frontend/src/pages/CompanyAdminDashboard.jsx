@@ -18,6 +18,13 @@ import {
   Award,
   Trophy,
   Calendar,
+  Briefcase,
+  UserPlus,
+  Download,
+  Mail,
+  Ban,
+  Trash2,
+  Plus,
 } from 'lucide-react'
 import {
   BarChart,
@@ -36,13 +43,16 @@ import Reveal from '../components/ui/Reveal.jsx'
 import StarRating from '../components/ui/StarRating.jsx'
 import Button from '../components/ui/Button.jsx'
 import Input from '../components/ui/Input.jsx'
+import CertificateModal from '../components/ui/CertificateModal.jsx'
 import { useAuth } from '../context/AuthContext'
 import { getCompanyStats, getCompanyAnalytics, getCompanyReviews, getCompanyById, updateCompany } from '../api/companies'
-import { getPendingEmployments, approveEmployment, rejectEmployment, getAllEmploymentsForAdmin } from '../api/employments'
+import { getPendingEmployments, approveEmployment, rejectEmployment, getAllEmploymentsForAdmin, inviteEmployee, getPendingInvites, cancelInvite, endEmploymentByAdmin } from '../api/employments'
 import { getFeedbackReceived } from '../api/feedback'
-import { createEotmEvent, closeEotmEvent, getCompanyEotmEvents, getEotmNominees, getCompanyEotmWinners } from '../api/eotm'
+import { createEotmEvent, closeEotmEvent, getCompanyEotmEvents, getEotmNominees, getCompanyEotmWinners, getEotmCertificate } from '../api/eotm'
+import { createEotyEvent, closeEotyEvent, getEotyEvents, getEotyNominees, getEotyCertificate } from '../api/eoty'
+import { createPosition, deletePosition, getCompanyPositions, getApplicationsForPosition, updateApplicationStatus } from '../api/jobs'
 
-const VALID_CA_TABS = ['overview', 'requests', 'reviews', 'eotm', 'feedback', 'settings']
+const VALID_CA_TABS = ['overview', 'requests', 'reviews', 'eotm', 'eoty', 'jobs', 'feedback', 'settings']
 
 export default function CompanyAdminDashboard() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -93,12 +103,14 @@ export default function CompanyAdminDashboard() {
   }, [companyId])
 
   const tabs = [
-    { id: 'overview', label: 'Analytics', icon: BarChart3 },
-    { id: 'requests', label: 'Requests', icon: Users, badge: pendingCount || null },
-    { id: 'reviews', label: 'Reviews', icon: FileText, badge: reviewCount || null },
-    { id: 'eotm', label: 'EOTM', icon: Award, badge: activeEotmCount || null },
-    { id: 'feedback', label: 'Team Feedback', icon: MessageSquare, badge: feedbackCount || null },
-    { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'overview', label: 'Analytics',    icon: BarChart3 },
+    { id: 'requests', label: 'Team',         icon: Users,      badge: pendingCount || null },
+    { id: 'reviews',  label: 'Reviews',      icon: FileText,   badge: reviewCount || null },
+    { id: 'eotm',     label: 'EOTM',         icon: Award,      badge: activeEotmCount || null },
+    { id: 'eoty',     label: 'EOTY',         icon: Trophy },
+    { id: 'jobs',     label: 'Jobs',         icon: Briefcase },
+    { id: 'feedback', label: 'Team Feedback',icon: MessageSquare, badge: feedbackCount || null },
+    { id: 'settings', label: 'Settings',     icon: Settings },
   ]
 
   if (!companyId) return (
@@ -152,6 +164,8 @@ export default function CompanyAdminDashboard() {
         {activeTab === 'requests'  && <RequestsTab companyId={companyId} onCountChange={setPendingCount} />}
         {activeTab === 'reviews'   && <ReviewsListTab companyId={companyId} />}
         {activeTab === 'eotm'      && <EotmTab companyId={companyId} />}
+        {activeTab === 'eoty'      && <EotyAdminTab companyId={companyId} />}
+        {activeTab === 'jobs'      && <JobsTab companyId={companyId} />}
         {activeTab === 'feedback'  && <TeamFeedbackTab />}
         {activeTab === 'settings'  && <SettingsTab companyId={companyId} onNameChange={setCompanyName} />}
       </div>
@@ -283,20 +297,34 @@ const REQ_STATUS = {
 }
 
 function RequestsTab({ companyId, onCountChange }) {
-  const [allRequests, setAllRequests] = useState([])
-  const [loading, setLoading]         = useState(true)
-  const [search, setSearch]           = useState('')
-  const [expandedId, setExpandedId]   = useState(null)
-  const [processing, setProcessing]   = useState({})
-  const [rejectNote, setRejectNote]   = useState({})
-  const [actionResult, setActionResult] = useState({})
+  const [allRequests, setAllRequests]       = useState([])
+  const [pendingInvites, setPendingInvites] = useState([])
+  const [loading, setLoading]               = useState(true)
+  const [search, setSearch]                 = useState('')
+  const [expandedId, setExpandedId]         = useState(null)
+  const [processing, setProcessing]         = useState({})
+  const [rejectNote, setRejectNote]         = useState({})
+  const [actionResult, setActionResult]     = useState({})
+  const [showInviteForm, setShowInviteForm] = useState(false)
+  const [inviteForm, setInviteForm]         = useState({ email: '', position: '', department: '', startDate: '' })
+  const [inviting, setInviting]             = useState(false)
+  const [inviteError, setInviteError]       = useState('')
+  const [inviteSuccess, setInviteSuccess]   = useState('')
+  const [cancellingId, setCancellingId]     = useState(null)
+  const [endingId, setEndingId]             = useState(null)
+  const [endingReason, setEndingReason]     = useState('')
+  const [endingSubmitting, setEndingSubmitting] = useState(false)
 
   const load = async () => {
     setLoading(true)
     try {
-      const res  = await getAllEmploymentsForAdmin()
-      const list = Array.isArray(res?.data) ? res.data : []
+      const [reqRes, invRes] = await Promise.all([
+        getAllEmploymentsForAdmin(),
+        getPendingInvites().catch(() => ({ data: [] })),
+      ])
+      const list = Array.isArray(reqRes?.data) ? reqRes.data : []
       setAllRequests(list)
+      setPendingInvites(Array.isArray(invRes?.data) ? invRes.data : [])
       onCountChange?.(list.filter(r => r.verification_status === 'pending').length)
     } catch {
       setAllRequests([])
@@ -306,6 +334,35 @@ function RequestsTab({ companyId, onCountChange }) {
   }
 
   useEffect(() => { load() }, [])
+
+  const handleInvite = async () => {
+    if (!inviteForm.email.trim())    { setInviteError('Email is required'); return }
+    if (!inviteForm.position.trim()) { setInviteError('Position is required'); return }
+    setInviting(true); setInviteError(''); setInviteSuccess('')
+    try {
+      await inviteEmployee(inviteForm)
+      setInviteSuccess(`Invitation sent to ${inviteForm.email}`)
+      setInviteForm({ email: '', position: '', department: '', startDate: '' })
+      setShowInviteForm(false)
+      await load()
+    } catch (e) { setInviteError(e?.message || 'Failed to send invitation') }
+    finally { setInviting(false) }
+  }
+
+  const handleCancelInvite = async (id) => {
+    setCancellingId(id)
+    try { await cancelInvite(id); await load() }
+    catch {} finally { setCancellingId(null) }
+  }
+
+  const handleEndByAdmin = async (id) => {
+    setEndingSubmitting(true)
+    try {
+      await endEmploymentByAdmin(id, { reason: endingReason })
+      setEndingId(null); setEndingReason('')
+      await load()
+    } catch {} finally { setEndingSubmitting(false) }
+  }
 
   const handle = async (id, action) => {
     setProcessing(p => ({ ...p, [id]: true }))
@@ -351,10 +408,98 @@ function RequestsTab({ companyId, onCountChange }) {
 
   return (
     <div className="space-y-5">
+      {/* Invite employee section */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-navy-900">Team Management</h2>
+        <button
+          onClick={() => { setShowInviteForm(!showInviteForm); setInviteError(''); setInviteSuccess('') }}
+          className="h-10 px-5 bg-navy-900 text-white text-sm font-medium rounded-xl inline-flex items-center gap-2 hover:bg-navy-800 transition-all"
+        >
+          <UserPlus size={15} />
+          Invite Employee
+        </button>
+      </div>
+
+      {inviteSuccess && (
+        <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-xl px-4 py-3">
+          <CheckCircle2 size={15} />{inviteSuccess}
+        </div>
+      )}
+
+      {showInviteForm && (
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl border border-navy-200 p-6">
+          <h3 className="text-sm font-semibold text-navy-900 mb-4">Invite Employee by Email</h3>
+          {inviteError && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-4">{inviteError}</p>}
+          <div className="grid sm:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="text-xs font-medium text-navy-600 block mb-1">Email *</label>
+              <input type="email" placeholder="employee@company.com" value={inviteForm.email}
+                onChange={e => setInviteForm(f => ({ ...f, email: e.target.value }))}
+                className="w-full h-10 rounded-xl border border-navy-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-navy-600 block mb-1">Position *</label>
+              <input type="text" placeholder="e.g. Software Engineer" value={inviteForm.position}
+                onChange={e => setInviteForm(f => ({ ...f, position: e.target.value }))}
+                className="w-full h-10 rounded-xl border border-navy-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-navy-600 block mb-1">Department</label>
+              <input type="text" placeholder="e.g. Engineering" value={inviteForm.department}
+                onChange={e => setInviteForm(f => ({ ...f, department: e.target.value }))}
+                className="w-full h-10 rounded-xl border border-navy-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-navy-600 block mb-1">Start Date</label>
+              <input type="date" value={inviteForm.startDate}
+                onChange={e => setInviteForm(f => ({ ...f, startDate: e.target.value }))}
+                className="w-full h-10 rounded-xl border border-navy-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={handleInvite} disabled={inviting}
+              className="h-9 px-5 bg-navy-900 text-white text-xs font-semibold rounded-xl hover:bg-navy-800 transition-colors flex items-center gap-1.5 disabled:opacity-50">
+              {inviting ? <Loader2 size={13} className="animate-spin" /> : <Mail size={13} />}
+              {inviting ? 'Sending…' : 'Send Invitation'}
+            </button>
+            <button onClick={() => setShowInviteForm(false)} className="h-9 px-4 text-xs font-medium text-navy-500 border border-navy-200 rounded-xl hover:bg-navy-50 transition-colors">Cancel</button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Pending invites */}
+      {pendingInvites.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-xs font-semibold uppercase tracking-widest text-navy-400">Pending Invitations ({pendingInvites.length})</h3>
+          {pendingInvites.map((inv, i) => (
+            <div key={inv.id ?? i} className="bg-white rounded-2xl border border-amber-100 p-4 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center">
+                  <Mail size={15} className="text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-navy-900">{inv.email ?? inv.employees?.user?.email ?? 'Invited'}</p>
+                  <p className="text-xs text-navy-400">{inv.position ?? '—'}{inv.department ? ` · ${inv.department}` : ''}</p>
+                </div>
+              </div>
+              <button onClick={() => handleCancelInvite(inv.id)} disabled={cancellingId === inv.id}
+                className="h-8 px-3 text-xs font-medium text-red-500 border border-red-200 rounded-lg hover:bg-red-50 transition-colors flex items-center gap-1.5 disabled:opacity-50">
+                {cancellingId === inv.id ? <Loader2 size={12} className="animate-spin" /> : <Ban size={12} />}
+                Cancel
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Header + search */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
         <h2 className="text-lg font-semibold text-navy-900">
-          Employment Requests
+          Employment Records
           <span className="ml-2 text-sm font-normal text-navy-400">({allRequests.length})</span>
         </h2>
         <div className="relative w-full sm:w-72">
@@ -496,9 +641,33 @@ function RequestsTab({ companyId, onCountChange }) {
 
                           {/* Already resolved label */}
                           {status === 'approved' && (
-                            <div className="flex items-center gap-2 text-emerald-700 text-xs font-medium">
-                              <CheckCircle2 size={14} />
-                              This request has been approved.
+                            <div className="space-y-3">
+                              <div className="flex items-center gap-2 text-emerald-700 text-xs font-medium">
+                                <CheckCircle2 size={14} />
+                                This request has been approved.
+                              </div>
+                              {endingId === req.id ? (
+                                <div className="space-y-2">
+                                  <input type="text" placeholder="Reason for ending employment (optional)"
+                                    value={endingReason} onChange={e => setEndingReason(e.target.value)}
+                                    className="w-full h-9 rounded-xl border border-navy-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
+                                  />
+                                  <div className="flex gap-2">
+                                    <button onClick={() => handleEndByAdmin(req.id)} disabled={endingSubmitting}
+                                      className="h-8 px-4 bg-red-600 text-white text-xs font-semibold rounded-xl hover:bg-red-700 transition-colors flex items-center gap-1.5 disabled:opacity-50">
+                                      {endingSubmitting ? <Loader2 size={12} className="animate-spin" /> : <XCircle size={12} />}
+                                      Confirm End
+                                    </button>
+                                    <button onClick={() => { setEndingId(null); setEndingReason('') }}
+                                      className="h-8 px-3 text-xs font-medium text-navy-500 border border-navy-200 rounded-xl hover:bg-navy-50 transition-colors">Cancel</button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <button onClick={() => setEndingId(req.id)}
+                                  className="h-8 px-4 text-xs font-medium text-red-500 border border-red-200 rounded-xl hover:bg-red-50 transition-colors flex items-center gap-1.5">
+                                  <Ban size={12} /> End Employment
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
@@ -678,6 +847,7 @@ function EotmTab({ companyId }) {
   const [newYear, setNewYear]   = useState(new Date().getFullYear())
   const [nominees, setNominees] = useState({}) // { eventId: [...] }
   const [expanded, setExpanded] = useState(null)
+  const [certData, setCertData] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -729,6 +899,7 @@ function EotmTab({ companyId }) {
 
   return (
     <div className="space-y-6">
+      {certData && <CertificateModal {...certData} onClose={() => setCertData(null)} />}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-navy-900">Employee of the Month</h2>
       </div>
@@ -884,6 +1055,14 @@ function EotmTab({ companyId }) {
                   <p className="text-xs text-navy-400 mt-0.5">
                     {MONTHS[(w.month ?? 1) - 1]} {w.year}
                   </p>
+                  {w.event_id && (
+                    <button
+                      onClick={async () => { try { const r = await getEotmCertificate(w.event_id); setCertData(r?.data) } catch {} }}
+                      className="mt-2 text-[10px] font-medium text-amber-700 border border-amber-200 rounded-lg px-2 py-1 hover:bg-amber-100 transition-colors flex items-center gap-1 mx-auto"
+                    >
+                      <Download size={10} /> Certificate
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div key={i} className="bg-gray-50 rounded-xl p-4 text-center border border-gray-200 opacity-60">
@@ -910,6 +1089,7 @@ function SettingsTab({ companyId, onNameChange }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [employeeCount, setEmployeeCount] = useState(null)
 
   useEffect(() => {
     if (!companyId) return
@@ -924,6 +1104,13 @@ function SettingsTab({ companyId, onNameChange }) {
       })
       .catch(() => {})
       .finally(() => setLoading(false))
+    getCompanyStats(companyId)
+      .then(res => {
+        const raw = res?.data?.stats ?? res?.data ?? null
+        const s = Array.isArray(raw) ? raw[0] : raw
+        setEmployeeCount(s?.totalEmployees ?? s?.total_employees ?? s?.employee_count ?? null)
+      })
+      .catch(() => {})
   }, [companyId])
 
   const handleSave = async () => {
@@ -944,6 +1131,20 @@ function SettingsTab({ companyId, onNameChange }) {
   return (
     <div className="space-y-6">
       <h2 className="text-lg font-semibold text-navy-900">Company Profile Settings</h2>
+
+      {employeeCount !== null && (
+        <Reveal>
+          <div className="bg-white rounded-2xl border border-navy-100/50 p-5 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-navy-50 flex items-center justify-center">
+              <Users size={20} className="text-navy-500" />
+            </div>
+            <div>
+              <p className="text-2xl font-serif font-bold text-navy-900">{employeeCount}</p>
+              <p className="text-xs text-navy-400">Verified Employees</p>
+            </div>
+          </div>
+        </Reveal>
+      )}
 
       <Reveal>
         <div className="bg-white rounded-2xl border border-navy-100/50 p-6">
@@ -980,10 +1181,341 @@ function SettingsTab({ companyId, onNameChange }) {
   )
 }
 
+/* ─── Jobs Tab ─── */
+function JobsTab({ companyId }) {
+  const [positions, setPositions]   = useState([])
+  const [loading, setLoading]       = useState(true)
+  const [showCreate, setShowCreate] = useState(false)
+  const [creating, setCreating]     = useState(false)
+  const [expanded, setExpanded]     = useState(null)
+  const [applications, setApplications] = useState({})
+  const [form, setForm] = useState({ title: '', description: '', requirements: '', salaryMin: '', salaryMax: '' })
+  const [createError, setCreateError] = useState('')
+  const [updatingApp, setUpdatingApp] = useState({})
 
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await getCompanyPositions(companyId)
+      setPositions(res?.data ?? [])
+    } catch {} finally { setLoading(false) }
+  }, [companyId])
 
+  useEffect(() => { if (companyId) load() }, [companyId, load])
 
+  const handleCreate = async () => {
+    if (!form.title.trim()) { setCreateError('Title is required'); return }
+    setCreating(true); setCreateError('')
+    try {
+      await createPosition({ ...form, companyId, salaryMin: form.salaryMin || null, salaryMax: form.salaryMax || null })
+      setForm({ title: '', description: '', requirements: '', salaryMin: '', salaryMax: '' })
+      setShowCreate(false)
+      await load()
+    } catch (e) { setCreateError(e?.message || 'Failed to create position') }
+    finally { setCreating(false) }
+  }
 
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this position and all its applications?')) return
+    try { await deletePosition(id, companyId); await load() } catch {}
+  }
+
+  const toggleApplications = async (posId) => {
+    if (expanded === posId) { setExpanded(null); return }
+    setExpanded(posId)
+    if (!applications[posId]) {
+      try {
+        const res = await getApplicationsForPosition(posId, companyId)
+        setApplications(prev => ({ ...prev, [posId]: res?.data ?? [] }))
+      } catch { setApplications(prev => ({ ...prev, [posId]: [] })) }
+    }
+  }
+
+  const handleUpdateApp = async (appId, status, posId) => {
+    setUpdatingApp(p => ({ ...p, [appId]: true }))
+    try {
+      await updateApplicationStatus(appId, { status })
+      setApplications(prev => ({ ...prev, [posId]: (prev[posId] ?? []).map(a => a.id === appId ? { ...a, status } : a) }))
+    } catch {} finally { setUpdatingApp(p => ({ ...p, [appId]: false })) }
+  }
+
+  const statusColors = {
+    submitted:   'bg-blue-50 text-blue-700 border-blue-200',
+    reviewing:   'bg-amber-50 text-amber-700 border-amber-200',
+    shortlisted: 'bg-violet-50 text-violet-700 border-violet-200',
+    rejected:    'bg-red-50 text-red-700 border-red-200',
+    accepted:    'bg-emerald-50 text-emerald-700 border-emerald-200',
+    withdrawn:   'bg-gray-50 text-gray-500 border-gray-200',
+  }
+
+  if (loading) return <div className="py-20 text-center text-navy-400 text-sm"><Loader2 size={20} className="animate-spin mx-auto" /></div>
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-navy-900">Job Positions</h2>
+        <button onClick={() => setShowCreate(!showCreate)}
+          className="h-10 px-5 bg-navy-900 text-white text-sm font-medium rounded-xl inline-flex items-center gap-2 hover:bg-navy-800 transition-all">
+          <Plus size={15} /> New Position
+        </button>
+      </div>
+
+      {showCreate && (
+        <Reveal>
+          <div className="bg-white rounded-2xl border border-navy-200 p-6">
+            <h3 className="text-sm font-semibold text-navy-900 mb-4">Create Position</h3>
+            {createError && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-4">{createError}</p>}
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-medium text-navy-600 block mb-1">Title *</label>
+                <input type="text" placeholder="e.g. Senior Software Engineer" value={form.title}
+                  onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                  className="w-full h-10 rounded-xl border border-navy-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-navy-600 block mb-1">Description</label>
+                <textarea placeholder="Role overview…" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3}
+                  className="w-full rounded-xl border border-navy-200 bg-white px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-navy-600 block mb-1">Requirements</label>
+                <textarea placeholder="Skills and qualifications…" value={form.requirements} onChange={e => setForm(f => ({ ...f, requirements: e.target.value }))} rows={2}
+                  className="w-full rounded-xl border border-navy-200 bg-white px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all" />
+              </div>
+              <div className="flex gap-3">
+                <div>
+                  <label className="text-xs font-medium text-navy-600 block mb-1">Min Salary</label>
+                  <input type="number" placeholder="50000" value={form.salaryMin} onChange={e => setForm(f => ({ ...f, salaryMin: e.target.value }))}
+                    className="w-32 h-10 rounded-xl border border-navy-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-navy-600 block mb-1">Max Salary</label>
+                  <input type="number" placeholder="80000" value={form.salaryMax} onChange={e => setForm(f => ({ ...f, salaryMax: e.target.value }))}
+                    className="w-32 h-10 rounded-xl border border-navy-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all" />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={handleCreate} disabled={creating}
+                  className="h-9 px-5 bg-navy-900 text-white text-xs font-semibold rounded-xl hover:bg-navy-800 transition-colors flex items-center gap-1.5 disabled:opacity-50">
+                  {creating ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
+                  {creating ? 'Creating…' : 'Create Position'}
+                </button>
+                <button onClick={() => setShowCreate(false)} className="h-9 px-4 text-xs font-medium text-navy-500 border border-navy-200 rounded-xl hover:bg-navy-50 transition-colors">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </Reveal>
+      )}
+
+      {!positions.length && !showCreate && (
+        <div className="bg-white rounded-2xl border border-navy-100/50 p-12 text-center">
+          <Briefcase size={28} className="text-navy-200 mx-auto mb-3" />
+          <p className="text-sm text-navy-400">No open positions. Create one to start receiving applications.</p>
+        </div>
+      )}
+
+      {positions.map((pos, i) => (
+        <Reveal key={pos.id} delay={i * 0.05}>
+          <div className="bg-white rounded-2xl border border-navy-100/50 hover:border-navy-200 transition-all">
+            <div className="px-6 py-4 flex items-start justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2.5 mb-1">
+                  <p className="text-sm font-semibold text-navy-900">{pos.title}</p>
+                  <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                    pos.status === 'open'   ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                    pos.status === 'filled' ? 'bg-violet-50 text-violet-700 border-violet-200' :
+                    'bg-gray-50 text-gray-500 border-gray-200'
+                  }`}>{pos.status}</span>
+                </div>
+                {pos.description && <p className="text-xs text-navy-400 line-clamp-2">{pos.description}</p>}
+                {(pos.salary_min || pos.salary_max) && (
+                  <p className="text-xs text-navy-500 mt-1">
+                    💰 {pos.salary_min ? `$${Number(pos.salary_min).toLocaleString()}` : ''}
+                    {pos.salary_min && pos.salary_max ? ' – ' : ''}
+                    {pos.salary_max ? `$${Number(pos.salary_max).toLocaleString()}` : ''}
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button onClick={() => toggleApplications(pos.id)}
+                  className="h-8 px-3 text-xs font-medium text-navy-500 border border-navy-200 rounded-lg hover:bg-navy-50 transition-colors">
+                  {expanded === pos.id ? 'Hide' : 'View'} Applications
+                </button>
+                <button onClick={() => handleDelete(pos.id)} className="h-8 w-8 flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
+            <AnimatePresence>
+              {expanded === pos.id && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                  <div className="px-6 pb-5 border-t border-navy-100 pt-4 space-y-2">
+                    {!(applications[pos.id] ?? []).length ? (
+                      <p className="text-xs text-navy-400 text-center py-3">No applications yet.</p>
+                    ) : (applications[pos.id] ?? []).map(app => (
+                      <div key={app.id} className="flex items-center justify-between bg-navy-50/50 rounded-xl px-4 py-2.5 gap-4">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-navy-900 truncate">{app.employees?.full_name ?? app.employee_name ?? 'Applicant'}</p>
+                          {app.cover_letter && <p className="text-xs text-navy-400 truncate mt-0.5">{app.cover_letter}</p>}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {app.resume_url && (
+                            <a href={app.resume_url} target="_blank" rel="noopener noreferrer"
+                              className="h-7 px-2.5 text-xs font-medium text-navy-500 border border-navy-200 rounded-lg hover:bg-navy-50 transition-colors flex items-center gap-1">
+                              <Download size={11} /> CV
+                            </a>
+                          )}
+                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${statusColors[app.status] ?? 'bg-gray-50 text-gray-500 border-gray-200'}`}>{app.status}</span>
+                          <select value={app.status} onChange={e => handleUpdateApp(app.id, e.target.value, pos.id)} disabled={!!updatingApp[app.id]}
+                            className="h-7 text-xs rounded-lg border border-navy-200 bg-white px-1.5 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500">
+                            {['submitted','reviewing','shortlisted','rejected','accepted'].map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </Reveal>
+      ))}
+    </div>
+  )
+}
+
+/* ─── EOTY Admin Tab ─── */
+function EotyAdminTab({ companyId }) {
+  const [events, setEvents]   = useState([])
+  const [loading, setLoading] = useState(true)
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState('')
+  const [nominees, setNominees] = useState({})
+  const [expanded, setExpanded] = useState(null)
+  const [closing, setClosing]   = useState(null)
+  const [certData, setCertData] = useState(null)
+  const year = new Date().getFullYear()
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await getEotyEvents()
+      setEvents(res?.data ?? [])
+    } catch {} finally { setLoading(false) }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const handleCreate = async () => {
+    setCreating(true); setCreateError('')
+    try { await createEotyEvent(year); await load() }
+    catch (e) { setCreateError(e?.message || 'Failed to create event') }
+    finally { setCreating(false) }
+  }
+
+  const handleClose = async (id) => {
+    setClosing(id)
+    try { await closeEotyEvent(id); await load() }
+    catch {} finally { setClosing(null) }
+  }
+
+  const toggleNominees = async (id) => {
+    if (expanded === id) { setExpanded(null); return }
+    setExpanded(id)
+    if (!nominees[id]) {
+      try {
+        const res = await getEotyNominees(id)
+        setNominees(p => ({ ...p, [id]: res?.data ?? [] }))
+      } catch { setNominees(p => ({ ...p, [id]: [] })) }
+    }
+  }
+
+  if (loading) return <div className="py-20 text-center text-navy-400 text-sm"><Loader2 size={20} className="animate-spin mx-auto" /></div>
+
+  const hasCurrentYear = events.some(e => e.year === year)
+
+  return (
+    <div className="space-y-6">
+      {certData && <CertificateModal {...certData} onClose={() => setCertData(null)} />}
+      <h2 className="text-lg font-semibold text-navy-900">Employee of the Year</h2>
+
+      {!hasCurrentYear && (
+        <Reveal>
+          <div className="bg-white rounded-2xl border border-navy-100/50 p-6">
+            <h3 className="text-sm font-semibold text-navy-900 mb-2 flex items-center gap-2">
+              <Trophy size={16} className="text-amber-500" /> Start EOTY {year}
+            </h3>
+            {createError && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-3">{createError}</p>}
+            <p className="text-sm text-navy-500 mb-4">Create the annual Employee of the Year event to open nominations and voting.</p>
+            <button onClick={handleCreate} disabled={creating}
+              className="h-10 px-5 bg-navy-900 text-white text-xs font-semibold rounded-xl hover:bg-navy-800 transition-colors flex items-center gap-1.5 disabled:opacity-50">
+              {creating ? <Loader2 size={13} className="animate-spin" /> : <Trophy size={13} />}
+              {creating ? 'Creating…' : `Create ${year} EOTY Event`}
+            </button>
+          </div>
+        </Reveal>
+      )}
+
+      {events.map((ev, i) => (
+        <Reveal key={ev.id} delay={i * 0.05}>
+          <div className="bg-white rounded-2xl border border-navy-100/50 hover:border-navy-200 transition-all">
+            <div className="px-6 py-4 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${ev.is_active ? 'bg-emerald-100' : 'bg-amber-100'}`}>
+                  <Trophy size={16} className={ev.is_active ? 'text-emerald-600' : 'text-amber-600'} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-navy-900">EOTY {ev.year}</p>
+                  <Badge variant={ev.is_active ? 'success' : 'default'}>{ev.is_active ? 'Active' : 'Closed'}</Badge>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => toggleNominees(ev.id)}
+                  className="h-8 px-3 text-xs font-medium text-navy-500 border border-navy-200 rounded-lg hover:bg-navy-50 transition-colors">
+                  {expanded === ev.id ? 'Hide' : 'View'} Nominees
+                </button>
+                {!ev.is_active && (
+                  <button onClick={async () => { try { const r = await getEotyCertificate(ev.id); setCertData(r?.data) } catch {} }}
+                    className="h-8 px-3 text-xs font-medium text-amber-600 border border-amber-200 rounded-lg hover:bg-amber-50 transition-colors flex items-center gap-1.5">
+                    <Download size={12} /> Certificate
+                  </button>
+                )}
+                {ev.is_active && (
+                  <button onClick={() => handleClose(ev.id)} disabled={closing === ev.id}
+                    className="h-8 px-3 bg-amber-600 text-white text-xs font-medium rounded-lg hover:bg-amber-700 transition-colors flex items-center gap-1.5 disabled:opacity-50">
+                    {closing === ev.id ? <Loader2 size={12} className="animate-spin" /> : <Trophy size={12} />}
+                    Close &amp; Declare Winner
+                  </button>
+                )}
+              </div>
+            </div>
+            <AnimatePresence>
+              {expanded === ev.id && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                  <div className="px-6 pb-5 border-t border-navy-100 pt-4 space-y-2">
+                    {!(nominees[ev.id] ?? []).length ? (
+                      <p className="text-xs text-navy-400 text-center py-3">No nominees yet.</p>
+                    ) : (nominees[ev.id] ?? []).map((nom, j) => (
+                      <div key={j} className="flex items-center justify-between bg-navy-50/50 rounded-xl px-4 py-2.5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+                            <span className="text-white text-xs font-semibold">{(nom.employees?.full_name || nom.full_name || '?')[0].toUpperCase()}</span>
+                          </div>
+                          <p className="text-sm font-medium text-navy-900">{nom.employees?.full_name ?? nom.full_name ?? 'Unknown'}</p>
+                        </div>
+                        {nom.vote_count != null && <span className="text-sm font-bold text-navy-700">{nom.vote_count} votes</span>}
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </Reveal>
+      ))}
+    </div>
+  )
+}
 
 
 

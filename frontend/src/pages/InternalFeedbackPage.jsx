@@ -32,6 +32,7 @@ export default function InternalFeedbackPage() {
   const [search, setSearch] = useState('')
   const [ratings, setRatings] = useState({})
   const [comment, setComment] = useState('')
+  const [isAnonymous, setIsAnonymous] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -91,6 +92,7 @@ export default function InternalFeedbackPage() {
         writtenFeedback: comment.trim() || undefined,
         quarter:         parseInt(selectedPerson.quarter, 10),
         year:            parseInt(selectedPerson.year,    10),
+        isAnonymous,
       })
       /* mark as rated locally so UI reflects it immediately */
       setCoworkers(prev => prev.map(c =>
@@ -376,14 +378,30 @@ export default function InternalFeedbackPage() {
                 </div>
               </Reveal>
 
-              {/* Visibility notice */}
-              <div className="bg-ice-500/20 rounded-xl p-4 mb-6 flex items-start gap-3">
-                <MessageSquare size={16} className="text-navy-500 mt-0.5 shrink-0" />
-                <p className="text-xs text-navy-600 leading-relaxed">
-                  <strong>Visibility:</strong> This feedback will be visible to <strong>{selectedPerson?.fullName}</strong> and 
-                  your <strong>company admin</strong>. Your name will be shown as the reviewer.
-                  Feedback is immutable — it cannot be deleted after submission.
-                </p>
+              {/* Visibility notice + anonymous toggle */}
+              <div className="bg-ice-500/20 rounded-xl p-4 mb-6">
+                <div className="flex items-start gap-3 mb-3">
+                  <MessageSquare size={16} className="text-navy-500 mt-0.5 shrink-0" />
+                  <p className="text-xs text-navy-600 leading-relaxed">
+                    {isAnonymous
+                      ? <><strong>Anonymous mode:</strong> The recipient and company admin will see your feedback but your name will be hidden.</>
+                      : <><strong>Visibility:</strong> This feedback will be visible to <strong>{selectedPerson?.fullName}</strong> and your <strong>company admin</strong>. Your name will be shown as the reviewer.</>
+                    }
+                    {' '}Feedback is immutable — it cannot be deleted after submission.
+                  </p>
+                </div>
+                {/* Anonymous toggle */}
+                <label className="flex items-center gap-3 cursor-pointer select-none">
+                  <div
+                    onClick={() => setIsAnonymous(v => !v)}
+                    className={`relative w-10 h-5 rounded-full transition-colors duration-200 ${isAnonymous ? 'bg-navy-700' : 'bg-navy-200'}`}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${isAnonymous ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </div>
+                  <span className="text-xs text-navy-700 font-medium">
+                    {isAnonymous ? 'Anonymous (name hidden from recipient)' : 'Show my name to the recipient'}
+                  </span>
+                </label>
               </div>
 
               {/* Error */}

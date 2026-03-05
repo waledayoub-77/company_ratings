@@ -7,6 +7,17 @@ const { AppError } = require('../middlewares/errorHandler');
  * Schema: eotm_events(id, company_id, department, month, year, start_date, end_date, is_active, created_by, created_at)
  */
 const createEvent = async (companyId, userId, { department, month, year, startDate, endDate }) => {
+  // Feature 6: Only allow creating an event for the CURRENT month/year
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear  = now.getFullYear();
+  if (parseInt(month) !== currentMonth || parseInt(year) !== currentYear) {
+    throw new AppError(
+      `Events can only be created for the current month (${currentMonth}/${currentYear})`,
+      400
+    );
+  }
+
   // Verify the user owns this company
   const { data: company } = await supabase
     .from('companies')
@@ -280,7 +291,20 @@ const getEventNominees = async (eventId) => {
       vote_count: tally[empId] || 0,
     });
   }
-  return nominees.sort((a, b) => b.vote_count - a.vote_count);
+  const sorted = nominees.sort((a, b) => b.vote_count - a.vote_count);
+
+  // Feature 8: hide vote counts from employees while the event is still active
+  const { data: eventRow } = await supabase
+    .from('eotm_events')
+    .select('is_active')
+    .eq('id', eventId)
+    .single();
+
+  if (eventRow?.is_active) {
+    return sorted.map(n => { const { vote_count, ...rest } = n; return rest; });
+  }
+
+  return sorted;
 };
 
 /**
@@ -297,12 +321,49 @@ const getCompanyWinners = async (companyId) => {
 
   return (data || []).map(w => ({
     id: w.id,
+    event_id: w.event_id ?? null,
     month: w.month,
     year: w.year,
     department: w.department,
     employee_name: w.employees?.full_name || null,
     voteCount: w.votes_count,
   }));
+};
+
+/**
+ * Get certificate data for EOTM winner (Feature 9)
+ * Returns { employeeName, companyName, award, month, year }
+ */
+const getCertificateData = async (eventId) => {
+  const { data: event } = await supabase
+    .from('eotm_events')
+    .select('company_id, month, year')
+    .eq('id', eventId)
+    .single();
+
+  if (!event) throw new AppError('Event not found', 404);
+
+  const { data: winner } = await supabase
+    .from('employee_of_month')
+    .select('employee_id, employees(full_name)')
+    .eq('event_id', eventId)
+    .single();
+
+  if (!winner) throw new AppError('No winner for this event', 404);
+
+  const { data: company } = await supabase
+    .from('companies')
+    .select('name')
+    .eq('id', event.company_id)
+    .single();
+
+  return {
+    employeeName: winner.employees?.full_name || 'Unknown',
+    companyName: company?.name || 'Unknown Company',
+    award: 'Employee of the Month',
+    month: event.month,
+    year: event.year,
+  };
 };
 
 module.exports = {
@@ -312,4 +373,5 @@ module.exports = {
   getCompanyEvents,
   getEventNominees,
   getCompanyWinners,
+  getCertificateData,
 };

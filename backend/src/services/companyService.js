@@ -14,7 +14,9 @@ const getCompanies = async (filters = {}) => {
     minRating,
     search,
     sortBy = 'created_at',
-    sortOrder = 'desc'
+    sortOrder = 'desc',
+    country,
+    city,
   } = filters;
 
   // Day 6: Clamp pagination inputs — guard against page=0 or negative
@@ -31,6 +33,11 @@ const getCompanies = async (filters = {}) => {
     if (location) {
       const safeLocation = sanitizeSearch(location);
       if (safeLocation) q = q.ilike('location', `%${safeLocation}%`);
+    }
+    if (country) q = q.eq('country', country);
+    if (city) {
+      const safeCity = sanitizeSearch(city);
+      if (safeCity) q = q.ilike('city', `%${safeCity}%`);
     }
     if (minRating) q = q.gte('overall_rating', parseFloat(minRating));
     if (search) {
@@ -342,6 +349,30 @@ const getCompanyAnalytics = async (companyId) => {
   };
 };
 
+const getFilterOptions = async () => {
+  const { data, error } = await supabase
+    .from('companies')
+    .select('country, city')
+    .is('deleted_at', null)
+    .not('country', 'is', null)
+    .order('country', { ascending: true });
+
+  if (error) throw new AppError('Failed to fetch filter options', 500);
+
+  const countries = [...new Set(data.map(r => r.country).filter(Boolean))].sort();
+  const citiesByCountry = {};
+  for (const row of data) {
+    if (!row.country || !row.city) continue;
+    if (!citiesByCountry[row.country]) citiesByCountry[row.country] = new Set();
+    citiesByCountry[row.country].add(row.city);
+  }
+  // Convert Sets to sorted arrays
+  for (const c of Object.keys(citiesByCountry)) {
+    citiesByCountry[c] = [...citiesByCountry[c]].sort();
+  }
+  return { countries, citiesByCountry };
+};
+
 module.exports = {
   getCompanies,
   getCompanyById,
@@ -349,5 +380,6 @@ module.exports = {
   updateCompany,
   deleteCompany,
   getCompanyStats,
-  getCompanyAnalytics
+  getCompanyAnalytics,
+  getFilterOptions,
 };

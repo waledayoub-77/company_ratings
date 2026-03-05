@@ -16,6 +16,8 @@ import AdminPanel from './pages/AdminPanel.jsx'
 import WriteReviewPage from './pages/WriteReviewPage.jsx'
 import InternalFeedbackPage from './pages/InternalFeedbackPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
+import AcceptInvitePage from './pages/AcceptInvitePage.jsx'
+import CompanyJobsPage from './pages/CompanyJobsPage.jsx'
 import NotFoundPage from './pages/NotFoundPage.jsx'
 
 const ROLE_HOME = { employee: '/dashboard', company_admin: '/company-admin', system_admin: '/admin' }
@@ -60,6 +62,7 @@ function AppRoutes() {
           {/* Public */}
           <Route path="/companies"    element={<CompaniesPage />} />
           <Route path="/companies/:id" element={<CompanyProfilePage />} />
+          <Route path="/companies/:id/jobs" element={<CompanyJobsPage />} />
 
           {/* Only employees can write reviews */}
           <Route path="/companies/:id/review" element={<RoleRoute role="employee"><WriteReviewPage /></RoleRoute>} />
@@ -74,6 +77,7 @@ function AppRoutes() {
           <Route path="/dashboard"           element={<RoleRoute role="employee"><EmployeeDashboard /></RoleRoute>} />
           <Route path="/dashboard/feedback"  element={<RoleRoute role="employee"><InternalFeedbackPage /></RoleRoute>} />
           <Route path="/feedback"            element={<RoleRoute role="employee"><InternalFeedbackPage /></RoleRoute>} />
+          <Route path="/accept-invite"       element={<ProtectedRoute><AcceptInvitePage /></ProtectedRoute>} />
           <Route path="/company-admin"       element={<RoleRoute role="company_admin"><CompanyAdminDashboard /></RoleRoute>} />
           <Route path="/admin"               element={<RoleRoute role="system_admin"><AdminPanel /></RoleRoute>} />
         </Route>

@@ -20,7 +20,8 @@ exports.createFeedback = async (req, res) => {
       reliability,
       writtenFeedback,
       quarter,
-      year
+      year,
+      isAnonymous,
     } = req.body;
 
     // ── Required fields ────────────────────────────────────────────────────────
@@ -169,6 +170,7 @@ exports.createFeedback = async (req, res) => {
       writtenFeedback: writtenFeedback || null,
       quarter,
       year,
+      isAnonymous: isAnonymous === true || isAnonymous === 'true',
     });
 
     if (createRes.error) {
@@ -188,12 +190,16 @@ exports.createFeedback = async (req, res) => {
         .eq('id', ratedEmployeeId)
         .single();
       if (ratedEmp?.user_id) {
+        const isAnon = isAnonymous === true || isAnonymous === 'true';
+        const senderLabel = isAnon ? 'Anonymous' : (reviewerEmp?.full_name || 'A coworker');
         await createNotification({
           userId: ratedEmp.user_id,
           type: 'feedback_received',
           title: 'New Peer Feedback',
-          message: `${reviewerEmp?.full_name || 'A coworker'} submitted feedback for you (Q${quarter} ${year}).`,
-          link: '/feedback',
+          message: `${senderLabel} submitted feedback for you (Q${quarter} ${year}).`,
+          link: '/dashboard#feedback',
+          entityType: 'feedback',
+          entityId: createRes.data?.id,
         });
         // Send email notification (non-blocking)
         const { data: ratedUser } = await supabase.from('users').select('email').eq('id', ratedEmp.user_id).maybeSingle();
@@ -202,7 +208,7 @@ exports.createFeedback = async (req, res) => {
           sendFeedbackReceivedEmail({
             to: ratedUser.email,
             recipientName: ratedEmp.full_name || 'Employee',
-            senderName: reviewerEmp?.full_name || 'A coworker',
+            senderName: senderLabel,
             companyName: companyRow?.name || 'your company',
           }).catch(emailErr => console.error('Feedback email failed (non-fatal):', emailErr.message));
         }

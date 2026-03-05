@@ -28,6 +28,7 @@ import Badge from '../components/ui/Badge.jsx'
 import Reveal from '../components/ui/Reveal.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { getCompanyById, getCompanyReviews, getCompanyAnalytics, getCompanyEmployees } from '../api/companies'
+import { getCompanyPositions } from '../api/jobs'
 import { submitReport } from '../api/admin'
 import { toggleReviewVote, createReviewReply } from '../api/reviews'
 
@@ -96,6 +97,11 @@ export default function CompanyProfilePage() {
   const [employees, setEmployees] = useState([])
   const [employeesLoading, setEmployeesLoading] = useState(false)
 
+  // Tab & Jobs state
+  const [activeTab, setActiveTab] = useState('reviews')
+  const [positions, setPositions] = useState([])
+  const [jobsLoading, setJobsLoading] = useState(false)
+
   // Fetch company + analytics
   useEffect(() => {
     let cancelled = false
@@ -143,6 +149,16 @@ export default function CompanyProfilePage() {
 
   // Reset review page when sort changes
   useEffect(() => { setReviewPage(1) }, [sortReviews])
+
+  // Load jobs when tab changes to 'jobs'
+  useEffect(() => {
+    if (activeTab !== 'jobs' || !id) return
+    setJobsLoading(true)
+    getCompanyPositions(id)
+      .then(res => setPositions(res?.data ?? []))
+      .catch(() => setPositions([]))
+      .finally(() => setJobsLoading(false))
+  }, [id, activeTab])
 
   // Fetch employees (only if logged in)
   useEffect(() => {
@@ -372,13 +388,36 @@ export default function CompanyProfilePage() {
             </Reveal>
           </div>
 
-          {/* Main content — Reviews */}
+          {/* Main content — Reviews & Jobs */}
           <div className="lg:col-span-8 order-1 lg:order-2">
+            {/* Tab navigation */}
+            <div className="flex items-center gap-1 mb-8 border-b border-navy-100/50 overflow-x-auto">
+              {['reviews', 'jobs'].map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`relative px-5 py-3 text-sm font-medium whitespace-nowrap transition-colors ${
+                    activeTab === tab ? 'text-navy-900' : 'text-navy-400 hover:text-navy-600'
+                  }`}
+                >
+                  {tab === 'reviews' ? 'Employee Reviews' : 'Job Openings'}
+                  {activeTab === tab && (
+                    <motion.div
+                      layoutId="cpTab"
+                      className="absolute bottom-0 left-2 right-2 h-[2px] bg-navy-500 rounded-full"
+                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                    />
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Reviews Tab */}
+            {activeTab === 'reviews' && (
+            <>
             {/* Sort & filter bar */}
             <div className="flex items-center justify-between mb-6">
-              <h2 className="section-header text-xl font-serif font-semibold text-navy-900">
-                Employee Reviews
-              </h2>
+              <h3 className="text-lg font-semibold text-navy-900">Reviews</h3>
               <div className="relative">
                 <select
                   value={sortReviews}
@@ -685,7 +724,48 @@ export default function CompanyProfilePage() {
               </button>
             </div>
             )}
-          </div>
+            </>
+            )}
+
+            {/* Jobs Tab */}
+            {activeTab === 'jobs' && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold text-navy-900">Open Positions</h3>
+                {jobsLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 size={20} className="animate-spin text-navy-300" />
+                  </div>
+                ) : !positions.length ? (
+                  <div className="bg-white rounded-2xl border border-navy-100/50 p-12 text-center">
+                    <Briefcase size={28} className="text-navy-200 mx-auto mb-3" />
+                    <p className="text-sm text-navy-400">No open positions at this company.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {positions.map(pos => (
+                      <div key={pos.id} className="bg-white rounded-2xl border border-navy-100/50 p-5 hover:border-navy-200 transition-all">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-navy-900">{pos.title}</h4>
+                            <p className="text-xs text-navy-400 mt-1">{pos.description}</p>
+                            {(pos.salary_min || pos.salary_max) && (
+                              <p className="text-xs text-navy-500 mt-2">
+                                💰 {pos.salary_min ? `$${pos.salary_min.toLocaleString()}` : ''} 
+                                {pos.salary_min && pos.salary_max ? ' – ' : ''}
+                                {pos.salary_max ? `$${pos.salary_max.toLocaleString()}` : ''}
+                              </p>
+                            )}
+                          </div>
+                          <Link to={`/companies/${id}/jobs`} className="h-9 px-4 bg-navy-900 text-white text-xs font-medium rounded-lg hover:bg-navy-800 transition-colors whitespace-nowrap">
+                            Apply Now
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
         </div>
 
         {/* ─── Verified Employees (full-width below the grid) ─── */}
@@ -739,6 +819,10 @@ export default function CompanyProfilePage() {
           </Reveal>
         )}
       </div>
+    </div>
+    </div>
+    </div>
+    </div>
     </div>
   )
 }

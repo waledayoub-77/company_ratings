@@ -9,6 +9,9 @@ const { requireRole, requireCompanyAdmin } = require('../middlewares/roleMiddlew
  * Public routes (no auth required)
  */
 
+// GET /companies/filter-options - Distinct countries + cities for dropdowns (Feature 3)
+router.get('/filter-options', companyController.getFilterOptions);
+
 // GET /companies - List all companies with filters
 router.get(
   '/',

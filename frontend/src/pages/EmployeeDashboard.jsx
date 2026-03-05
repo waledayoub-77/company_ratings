@@ -15,6 +15,7 @@ import {
   Calendar,
   Plus,
   Award,
+  Trophy,
   Search,
   AlertCircle,
   Trash2,
@@ -32,6 +33,8 @@ import { getMyEmployments, requestEmployment, endEmployment, cancelEmployment } 
 import { getFeedbackReceived, reportFeedback } from '../api/feedback.js'
 import { getCompanies } from '../api/companies.js'
 import { getCompanyEotmEvents, getEotmNominees, castEotmVote, getCompanyEotmWinners } from '../api/eotm.js'
+import { getMyApplications } from '../api/jobs.js'
+import { getEotyEventsByCompany, voteEoty, getEotyNominees } from '../api/eoty.js'
 
 const statusConfig = {
   approved: { icon: CheckCircle2, color: 'text-emerald-500', badge: 'success', label: 'Verified' },
@@ -49,7 +52,11 @@ const gradients = [
 
 export default function EmployeeDashboard() {
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState('overview')
+  const VALID_EMP_TABS = ['overview','employment','reviews','feedback','eotm','eoty','applications']
+  const [activeTab, setActiveTab] = useState(() => {
+    const hash = window.location.hash.replace('#', '')
+    return VALID_EMP_TABS.includes(hash) ? hash : 'overview'
+  })
   const [employments, setEmployments] = useState([])
   const [reviews, setReviews] = useState([])
   const [feedback, setFeedback] = useState([])
@@ -79,11 +86,13 @@ export default function EmployeeDashboard() {
   const firstName = user?.full_name?.split(' ')[0] ?? user?.fullName?.split(' ')[0] ?? 'there'
 
   const tabs = [
-    { id: 'overview',   label: 'Overview'   },
-    { id: 'employment', label: 'Employment' },
-    { id: 'reviews',    label: 'My Reviews' },
-    { id: 'feedback',   label: 'Feedback'   },
-    { id: 'eotm',       label: 'EOTM'       },
+    { id: 'overview',      label: 'Overview'        },
+    { id: 'employment',    label: 'Employment'      },
+    { id: 'reviews',       label: 'My Reviews'      },
+    { id: 'feedback',      label: 'Feedback'        },
+    { id: 'eotm',          label: 'EOTM'            },
+    { id: 'eoty',          label: 'EOTY'            },
+    { id: 'applications',  label: 'My Applications' },
   ]
 
   return (
@@ -101,7 +110,7 @@ export default function EmployeeDashboard() {
           {tabs.map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => { setActiveTab(tab.id); window.history.replaceState(null, '', `#${tab.id}`) }}
               className={`relative px-5 py-3 text-sm font-medium whitespace-nowrap transition-colors ${
                 activeTab === tab.id ? 'text-navy-900' : 'text-navy-400 hover:text-navy-600'
               }`}
@@ -128,7 +137,9 @@ export default function EmployeeDashboard() {
             {activeTab === 'employment' && <EmploymentTab employments={employments} refetch={refetchEmployments} />}
             {activeTab === 'reviews'    && <ReviewsTab    reviews={reviews} employments={employments} refetch={refetchReviews} />}
             {activeTab === 'feedback'   && <FeedbackTab   feedback={feedback} />}
-            {activeTab === 'eotm'       && <EotmVoteTab   employments={employments} />}
+            {activeTab === 'eotm'         && <EotmVoteTab      employments={employments} />}
+            {activeTab === 'eoty'         && <EotyVoteTab      employments={employments} />}
+            {activeTab === 'applications' && <MyApplicationsTab />}
           </>
         )}
       </div>
@@ -520,15 +531,6 @@ function EmploymentTab({ employments, refetch }) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-navy-900">Employment History</h2>
-        {!hasApproved && (
-          <button
-            onClick={() => { setShowRequest(!showRequest); setFormError(''); setFormSuccess('') }}
-            className="h-10 px-5 bg-navy-900 text-white text-sm font-medium rounded-xl inline-flex items-center gap-2 hover:bg-navy-800 transition-all"
-          >
-            <Plus size={15} />
-            Request Verification
-          </button>
-        )}
       </div>
 
       {formSuccess && (
@@ -705,7 +707,8 @@ function EmploymentTab({ employments, refetch }) {
       {employments.length === 0 ? (
         <div className="text-center py-12 text-navy-400">
           <Building2 size={32} className="mx-auto mb-3 text-navy-200" />
-          <p className="text-sm">No employment records yet. Request your first verification above.</p>
+          <p className="text-sm">No employment records yet.</p>
+          <p className="text-xs mt-1">Your company admin will invite you when your employment is added.</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -1467,6 +1470,202 @@ function EotmVoteTab({ employments }) {
             </div>
           </div>
         </Reveal>
+      )}
+    </div>
+  )
+}
+
+/* ─── EOTY Vote Tab ─── */
+function EotyVoteTab({ employments }) {
+  const approvedEmployments = employments.filter(e => (e.verification_status ?? e.status) === 'approved')
+  const [selectedCompany, setSelectedCompany] = useState(approvedEmployments[0]?.company_id ?? null)
+  const [events, setEvents]     = useState([])
+  const [nominees, setNominees] = useState({})
+  const [loading, setLoading]   = useState(true)
+  const [voting, setVoting]     = useState(null)
+  const [expanded, setExpanded] = useState(null)
+  const [voteError, setVoteError] = useState('')
+
+  useEffect(() => {
+    if (!selectedCompany) { setLoading(false); return }
+    setLoading(true)
+    getEotyEventsByCompany(selectedCompany)
+      .then(res => setEvents(res?.data ?? []))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [selectedCompany])
+
+  const loadNominees = async (eventId) => {
+    if (expanded === eventId) { setExpanded(null); return }
+    setExpanded(eventId)
+    if (!nominees[eventId]) {
+      try {
+        const res = await getEotyNominees(eventId)
+        setNominees(prev => ({ ...prev, [eventId]: res?.data ?? [] }))
+      } catch { setNominees(prev => ({ ...prev, [eventId]: [] })) }
+    }
+  }
+
+  const handleVote = async (eventId, nomineeId) => {
+    setVoting(nomineeId)
+    setVoteError('')
+    try {
+      await voteEoty(eventId, nomineeId)
+      const res = await getEotyNominees(eventId)
+      setNominees(prev => ({ ...prev, [eventId]: res?.data ?? [] }))
+    } catch (e) { setVoteError(e?.message || 'Vote failed. You may have already voted.') }
+    finally { setVoting(null) }
+  }
+
+  if (approvedEmployments.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border border-navy-100/50 p-12 text-center">
+        <Trophy size={28} className="mx-auto mb-3 text-navy-200" />
+        <p className="text-sm text-navy-400">You need a verified employment to participate in EOTY voting.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="text-lg font-semibold text-navy-900 flex items-center gap-2">
+          <Trophy size={20} className="text-amber-500" />
+          Employee of the Year
+        </h2>
+        {approvedEmployments.length > 1 && (
+          <select value={selectedCompany ?? ''} onChange={e => setSelectedCompany(e.target.value)}
+            className="h-9 rounded-xl border border-navy-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-navy-500/20">
+            {approvedEmployments.map(emp => (
+              <option key={emp.company_id ?? emp.companyId} value={emp.company_id ?? emp.companyId}>
+                {emp.companies?.name ?? emp.company_name ?? 'Company'}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="py-16 text-center"><Loader2 size={20} className="animate-spin mx-auto text-navy-400" /></div>
+      ) : events.filter(ev => ev.is_active).length === 0 ? (
+        <div className="bg-white rounded-2xl border border-navy-100/50 p-12 text-center">
+          <Trophy size={28} className="mx-auto mb-3 text-navy-200" />
+          <p className="text-sm text-navy-400">No active EOTY events for this company.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {events.filter(ev => ev.is_active).map((ev, i) => (
+            <Reveal key={ev.id} delay={i * 0.05}>
+              <div className="bg-white rounded-2xl border border-navy-100/50 p-5 hover:border-navy-200 transition-all">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-semibold text-navy-900">EOTY {ev.year}</p>
+                  <Badge variant="success">Open for Voting</Badge>
+                </div>
+                <button onClick={() => loadNominees(ev.id)} className="text-xs text-navy-500 hover:text-navy-700 font-medium transition-colors">
+                  {expanded === ev.id ? 'Hide Nominees' : 'View & Vote'}
+                </button>
+                <AnimatePresence>
+                  {expanded === ev.id && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                      <div className="mt-4 pt-4 border-t border-navy-100 space-y-2">
+                        {(nominees[ev.id] ?? []).length === 0 ? (
+                          <p className="text-xs text-navy-400 text-center py-3">No nominees yet.</p>
+                        ) : (nominees[ev.id] ?? []).map((nom, j) => (
+                          <div key={j} className="flex items-center justify-between bg-navy-50/50 rounded-xl px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+                                <span className="text-white text-xs font-bold">{(nom.employees?.full_name || nom.full_name || '?')[0].toUpperCase()}</span>
+                              </div>
+                              <p className="text-sm font-medium text-navy-900">{nom.employees?.full_name ?? nom.full_name ?? 'Unknown'}</p>
+                            </div>
+                            <button onClick={() => handleVote(ev.id, nom.employee_id)} disabled={voting === nom.employee_id}
+                              className="h-8 px-3 border border-amber-300 text-amber-700 text-xs font-medium rounded-lg hover:bg-amber-50 transition-colors disabled:opacity-50">
+                              {voting === nom.employee_id ? <Loader2 size={11} className="animate-spin" /> : 'Vote'}
+                            </button>
+                          </div>
+                        ))}
+                        {voteError && <p className="text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mt-2">{voteError}</p>}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ─── My Applications Tab ─── */
+function MyApplicationsTab() {
+  const [applications, setApplications] = useState([])
+  const [loading, setLoading]           = useState(true)
+
+  useEffect(() => {
+    getMyApplications()
+      .then(res => setApplications(res?.data ?? []))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  const statusColors = {
+    submitted:   'bg-blue-50 text-blue-700 border-blue-200',
+    reviewing:   'bg-amber-50 text-amber-700 border-amber-200',
+    shortlisted: 'bg-violet-50 text-violet-700 border-violet-200',
+    rejected:    'bg-red-50 text-red-700 border-red-200',
+    accepted:    'bg-emerald-50 text-emerald-700 border-emerald-200',
+    withdrawn:   'bg-gray-50 text-gray-500 border-gray-200',
+  }
+
+  if (loading) return <div className="py-20 text-center text-navy-400 text-sm"><Loader2 size={20} className="animate-spin mx-auto" /></div>
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-lg font-semibold text-navy-900">My Applications</h2>
+      {!applications.length ? (
+        <div className="bg-white rounded-2xl border border-navy-100/50 p-12 text-center">
+          <Building2 size={28} className="text-navy-200 mx-auto mb-3" />
+          <p className="text-sm text-navy-400">No applications yet.</p>
+          <p className="text-xs text-navy-400 mt-1">Browse open positions on company pages to apply.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {applications.map((app, i) => (
+            <Reveal key={app.id} delay={i * 0.05}>
+              <div className="bg-white rounded-2xl border border-navy-100/50 p-5 hover:border-navy-200 transition-all">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-navy-900 truncate">
+                      {app.job_positions?.title ?? app.position_title ?? 'Position'}
+                    </p>
+                    <p className="text-xs text-navy-400 mt-0.5">
+                      {app.companies?.name ?? app.company_name ?? 'Company'}
+                    </p>
+                    {app.cover_letter && (
+                      <p className="text-xs text-navy-500 mt-1 line-clamp-2">{app.cover_letter}</p>
+                    )}
+                    <p className="text-xs text-navy-300 mt-1">
+                      Applied {app.created_at ? new Date(app.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {app.resume_url && (
+                      <a href={app.resume_url} target="_blank" rel="noopener noreferrer"
+                        className="h-7 px-2.5 text-xs font-medium text-navy-500 border border-navy-200 rounded-lg hover:bg-navy-50 transition-colors flex items-center gap-1">
+                        <Download size={11} /> CV
+                      </a>
+                    )}
+                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${statusColors[app.status] ?? 'bg-gray-50 text-gray-500 border-gray-200'}`}>
+                      {app.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </Reveal>
+          ))}
+        </div>
       )}
     </div>
   )

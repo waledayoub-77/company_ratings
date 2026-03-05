@@ -67,3 +67,36 @@ export async function endEmployment(id, data = {}) {
 export async function cancelEmployment(id) {
   return authRequest(`/employments/${id}/cancel`, { method: 'DELETE' })
 }
+
+// ─── Feature 1: Admin invite ──────────────────────────────────────────────────
+
+export async function inviteEmployee(data) {
+  return authRequest('/employments/invite', {
+    method: 'POST',
+    body:   JSON.stringify(data),
+  })
+}
+
+export async function acceptInvite(token) {
+  return authRequest('/employments/accept-invite', {
+    method: 'POST',
+    body:   JSON.stringify({ token }),
+  })
+}
+
+export async function getPendingInvites() {
+  return authRequest('/employments/pending-invites')
+}
+
+export async function cancelInvite(id) {
+  return authRequest(`/employments/${id}/cancel-invite`, { method: 'DELETE' })
+}
+
+// ─── Feature 2: Admin end employment ─────────────────────────────────────────
+
+export async function endEmploymentByAdmin(id, data = {}) {
+  return authRequest(`/employments/${id}/end-by-admin`, {
+    method: 'PATCH',
+    body:   JSON.stringify(data),
+  })
+}

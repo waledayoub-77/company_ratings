@@ -12,6 +12,8 @@ const getCompanies = async (req, res, next) => {
       location: req.query.location,
       minRating: req.query.minRating,
       search: req.query.search,
+      country: req.query.country,
+      city: req.query.city,
       page: req.query.page || 1,
       limit: req.query.limit || 10,
       sortBy: req.query.sortBy || 'created_at',
@@ -206,6 +208,19 @@ const getCompanyEmployees = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /companies/filter-options
+ * Returns distinct countries and city map for filter dropdowns (Feature 3)
+ */
+const getFilterOptions = async (req, res, next) => {
+  try {
+    const options = await companyService.getFilterOptions();
+    res.status(200).json({ success: true, data: options });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getCompanies,
   getCompanyById,
@@ -214,5 +229,6 @@ module.exports = {
   deleteCompany,
   getCompanyStats,
   getCompanyAnalytics,
-  getCompanyEmployees
+  getCompanyEmployees,
+  getFilterOptions,
 };

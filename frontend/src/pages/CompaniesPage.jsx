@@ -15,7 +15,7 @@ import {
 import PageHeader from '../components/ui/PageHeader.jsx'
 import Reveal from '../components/ui/Reveal.jsx'
 import StarRating from '../components/ui/StarRating.jsx'
-import { getCompanies } from '../api/companies'
+import { getCompanies, getFilterOptions } from '../api/companies'
 
 /* ─── Constants ─── */
 const industries = [
@@ -24,16 +24,6 @@ const industries = [
   'Real Estate', 'Transportation', 'Food & Beverage', 'Energy',
   'Telecommunications', 'Automotive', 'Aerospace', 'Pharmaceuticals',
   'Legal', 'Marketing & Advertising', 'Construction', 'Hospitality',
-]
-const locations = [
-  'All Locations', 'San Francisco', 'New York', 'Los Angeles', 'Chicago',
-  'Seattle', 'Austin', 'Boston', 'Denver', 'Washington DC', 'Atlanta',
-  'Dallas', 'Miami', 'Portland', 'San Diego', 'Phoenix', 'Philadelphia',
-  'Minneapolis', 'Detroit', 'Houston', 'Nashville', 'Charlotte',
-  'San Jose', 'Remote',
-  'Toronto', 'Vancouver', 'Montreal', 'London', 'Berlin', 'Paris',
-  'Dubai', 'Beirut', 'Lebanon', 'Riyadh', 'Cairo', 'Mumbai',
-  'Singapore', 'Tokyo', 'Sydney', 'Melbourne', 'Amsterdam', 'Zurich',
 ]
 const sortOptions = [
   { label: 'Highest Rated',  sortBy: 'overall_rating', sortOrder: 'desc' },
@@ -68,7 +58,8 @@ export default function CompaniesPage() {
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [industry, setIndustry] = useState('All Industries')
-  const [locationFilter, setLocationFilter] = useState('All Locations')
+  const [country, setCountry] = useState('')
+  const [city, setCity] = useState('')
   const [sort, setSort] = useState('Highest Rated')
   const [showFilters, setShowFilters] = useState(false)
   const [ratingFilter, setRatingFilter] = useState(0)
@@ -79,6 +70,16 @@ export default function CompaniesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
+  // Feature 3: Dynamic country/city filter options
+  const [filterOptions, setFilterOptions] = useState({ countries: [], citiesByCountry: {} })
+  useEffect(() => {
+    getFilterOptions().then(res => {
+      if (res?.data) setFilterOptions(res.data)
+    }).catch(() => {})
+  }, [])
+
+  const availableCities = country ? (filterOptions.citiesByCountry[country] || []) : []
+
   // Debounce search input
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 400)
@@ -86,7 +87,7 @@ export default function CompaniesPage() {
   }, [search])
 
   // Reset to page 1 when any filter changes
-  useEffect(() => { setPage(1) }, [debouncedSearch, industry, locationFilter, sort, ratingFilter])
+  useEffect(() => { setPage(1) }, [debouncedSearch, industry, country, city, sort, ratingFilter])
 
   // Fetch companies from API
   useEffect(() => {
@@ -99,7 +100,8 @@ export default function CompaniesPage() {
         const params = { page, limit: LIMIT, sortBy: s.sortBy, sortOrder: s.sortOrder }
         if (debouncedSearch) params.search = debouncedSearch
         if (industry !== 'All Industries') params.industry = industry
-        if (locationFilter && locationFilter !== 'All Locations') params.location = locationFilter
+        if (country) params.country = country
+        if (city) params.city = city
         if (ratingFilter > 0) params.minRating = ratingFilter
 
         const res = await getCompanies(params)
@@ -114,11 +116,12 @@ export default function CompaniesPage() {
       }
     })()
     return () => { cancelled = true }
-  }, [page, debouncedSearch, industry, locationFilter, sort, ratingFilter])
+  }, [page, debouncedSearch, industry, country, city, sort, ratingFilter])
 
   const activeFilters = [
     industry !== 'All Industries' && industry,
-    locationFilter !== 'All Locations' && `📍 ${locationFilter}`,
+    country && `🌍 ${country}`,
+    city && `📍 ${city}`,
     ratingFilter > 0 && `${ratingFilter}+ stars`,
   ].filter(Boolean)
 
@@ -165,9 +168,39 @@ export default function CompaniesPage() {
         {/* Filters panel */}
         <AnimatedPanel show={showFilters}>
           <div className="mb-8 p-6 rounded-2xl bg-white border border-navy-100/50 shadow-sm">
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
               <SelectFilter label="Industry" value={industry} options={industries} onChange={setIndustry} />
-              <SelectFilter label="Location" value={locationFilter} options={locations} onChange={setLocationFilter} />
+              {/* Country dropdown */}
+              <div className="space-y-1.5">
+                <label className="block text-[13px] font-medium text-navy-700">Country</label>
+                <div className="relative">
+                  <select
+                    value={country}
+                    onChange={(e) => { setCountry(e.target.value); setCity('') }}
+                    className="w-full h-10 rounded-xl border border-navy-200 bg-white pl-3 pr-8 text-sm text-navy-700 appearance-none focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all cursor-pointer"
+                  >
+                    <option value="">All Countries</option>
+                    {filterOptions.countries.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-400 pointer-events-none" />
+                </div>
+              </div>
+              {/* City dropdown */}
+              <div className="space-y-1.5">
+                <label className="block text-[13px] font-medium text-navy-700">City</label>
+                <div className="relative">
+                  <select
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    disabled={!country || availableCities.length === 0}
+                    className="w-full h-10 rounded-xl border border-navy-200 bg-white pl-3 pr-8 text-sm text-navy-700 appearance-none focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <option value="">All Cities</option>
+                    {availableCities.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-400 pointer-events-none" />
+                </div>
+              </div>
               <SelectFilter label="Sort by" value={sort} options={sortOptions.map(s => s.label)} onChange={setSort} />
               <div className="space-y-1.5">
                 <label className="block text-[13px] font-medium text-navy-700">Min Rating</label>
@@ -200,13 +233,14 @@ export default function CompaniesPage() {
                 {f}
                 <X size={12} className="cursor-pointer hover:text-navy-900" onClick={() => {
                   if (f === industry) setIndustry('All Industries')
-                  if (typeof f === 'string' && f.startsWith('📍')) setLocationFilter('All Locations')
+                  if (typeof f === 'string' && f.startsWith('🌍')) setCountry('')
+                  if (typeof f === 'string' && f.startsWith('📍')) setCity('')
                   if (typeof f === 'string' && f.includes('stars')) setRatingFilter(0)
                 }} />
               </span>
             ))}
             <button
-              onClick={() => { setIndustry('All Industries'); setLocationFilter('All Locations'); setRatingFilter(0) }}
+              onClick={() => { setIndustry('All Industries'); setCountry(''); setCity(''); setRatingFilter(0) }}
               className="text-xs text-navy-500 hover:text-navy-700 transition-colors"
             >
               Clear all

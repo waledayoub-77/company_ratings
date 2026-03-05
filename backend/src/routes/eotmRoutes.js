@@ -18,6 +18,9 @@ router.get('/company/:companyId', requireAuth, eotmController.getCompanyEvents);
 // Get nominees/standings for an event
 router.get('/events/:id/nominees', requireAuth, eotmController.getEventNominees);
 
+// Get certificate data for winner (Feature 9)
+router.get('/events/:id/certificate', requireAuth, eotmController.getCertificate);
+
 // Get past winners for a company
 router.get('/company/:companyId/winners', eotmController.getCompanyWinners);
 

@@ -239,6 +239,55 @@ async function sendFeedbackReceivedEmail({ to, recipientName, senderName, compan
   });
 }
 
+// ─── Feature 1: Employee Invite ───────────────────────────────────────────────
+function inviteEmployeeTemplate(companyName, inviteUrl, position) {
+  return `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px;">
+      <h2 style="color:#4f46e5;">You've Been Invited to Join ${companyName} 🎉</h2>
+      <p>You have been invited to verify your employment at <strong>${companyName}</strong> as <strong>${position}</strong> on RateHub.</p>
+      <div style="text-align:center;margin:32px 0;">
+        <a href="${inviteUrl}"
+           style="background:#4f46e5;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">
+          Accept Invitation
+        </a>
+      </div>
+      <p style="color:#888;font-size:13px;">Or copy this link: ${inviteUrl}</p>
+      <p style="color:#888;font-size:13px;">This invitation expires in 7 days. If you don't have a RateHub account yet, you'll be able to create one.</p>
+      <p style="color:#888;font-size:13px;">— The RateHub Team</p>
+    </div>
+  `;
+}
+
+async function sendInviteEmail({ to, companyName, inviteUrl, position }) {
+  return sendEmail({
+    to,
+    subject: `You've been invited to join ${companyName} on RateHub`,
+    html: inviteEmployeeTemplate(companyName, inviteUrl, position),
+  });
+}
+
+// ─── Feature 2: Employment Ended by Admin ────────────────────────────────────
+function employmentEndedByAdminTemplate(name, companyName, reason) {
+  return `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px;">
+      <h2 style="color:#dc2626;">Employment Record Updated</h2>
+      <p>Hi <strong>${name}</strong>,</p>
+      <p>Your employment record at <strong>${companyName}</strong> has been ended by the company administrator.</p>
+      ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
+      <p>If you have any questions, please contact the company admin directly.</p>
+      <p style="color:#888;font-size:13px;">— The RateHub Team</p>
+    </div>
+  `;
+}
+
+async function sendEmploymentEndedByAdminEmail({ to, name, companyName, reason }) {
+  return sendEmail({
+    to,
+    subject: `Your employment at ${companyName} has been updated — RateHub`,
+    html: employmentEndedByAdminTemplate(name, companyName, reason),
+  });
+}
+
 module.exports = {
   sendWelcomeEmail,
   sendVerifyEmail,
@@ -251,4 +300,6 @@ module.exports = {
   sendAccountDeletedEmail,
   sendReportResolutionEmail,
   sendFeedbackReceivedEmail,
+  sendInviteEmail,
+  sendEmploymentEndedByAdminEmail,
 };

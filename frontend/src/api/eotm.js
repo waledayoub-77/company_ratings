@@ -35,3 +35,8 @@ export async function getEotmNominees(eventId) {
 export async function getCompanyEotmWinners(companyId) {
   return request(`/eotm/company/${companyId}/winners`)
 }
+
+/** GET /eotm/events/:id/certificate (Feature 9) */
+export async function getEotmCertificate(eventId) {
+  return authRequest(`/eotm/events/${eventId}/certificate`)
+}

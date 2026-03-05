@@ -50,4 +50,12 @@ const getCompanyWinners = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { createEvent, castVote, closeEvent, getCompanyEvents, getEventNominees, getCompanyWinners };
+// GET /api/eotm/events/:id/certificate (Feature 9)
+const getCertificate = async (req, res, next) => {
+  try {
+    const data = await eotmService.getCertificateData(req.params.id);
+    res.json({ success: true, data });
+  } catch (err) { next(err); }
+};
+
+module.exports = { createEvent, castVote, closeEvent, getCompanyEvents, getEventNominees, getCompanyWinners, getCertificate };

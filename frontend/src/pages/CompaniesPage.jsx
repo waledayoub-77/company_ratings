@@ -15,7 +15,7 @@ import {
 import PageHeader from '../components/ui/PageHeader.jsx'
 import Reveal from '../components/ui/Reveal.jsx'
 import StarRating from '../components/ui/StarRating.jsx'
-import { getCompanies } from '../api/companies'
+import { getCompanies, getFilterOptions } from '../api/companies'
 
 /* ─── Constants ─── */
 const industries = [
@@ -69,6 +69,8 @@ export default function CompaniesPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [industry, setIndustry] = useState('All Industries')
   const [locationFilter, setLocationFilter] = useState('All Locations')
+  const [countryFilter, setCountryFilter] = useState('All Countries')
+  const [cityFilter, setCityFilter] = useState('All Cities')
   const [sort, setSort] = useState('Highest Rated')
   const [showFilters, setShowFilters] = useState(false)
   const [ratingFilter, setRatingFilter] = useState(0)
@@ -78,6 +80,7 @@ export default function CompaniesPage() {
   const [pagination, setPagination] = useState({ total: 0, totalPages: 1 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [filterOptions, setFilterOptions] = useState({ countries: [], citiesByCountry: {} })
 
   // Debounce search input
   useEffect(() => {
@@ -85,8 +88,18 @@ export default function CompaniesPage() {
     return () => clearTimeout(t)
   }, [search])
 
+  // Fetch country/city filter options
+  useEffect(() => {
+    getFilterOptions()
+      .then(res => setFilterOptions(res?.data ?? { countries: [], citiesByCountry: {} }))
+      .catch(() => {})
+  }, [])
+
+  // Reset city when country changes
+  useEffect(() => { setCityFilter('All Cities') }, [countryFilter])
+
   // Reset to page 1 when any filter changes
-  useEffect(() => { setPage(1) }, [debouncedSearch, industry, locationFilter, sort, ratingFilter])
+  useEffect(() => { setPage(1) }, [debouncedSearch, industry, locationFilter, countryFilter, cityFilter, sort, ratingFilter])
 
   // Fetch companies from API
   useEffect(() => {
@@ -100,6 +113,8 @@ export default function CompaniesPage() {
         if (debouncedSearch) params.search = debouncedSearch
         if (industry !== 'All Industries') params.industry = industry
         if (locationFilter && locationFilter !== 'All Locations') params.location = locationFilter
+        if (countryFilter && countryFilter !== 'All Countries') params.country = countryFilter
+        if (cityFilter && cityFilter !== 'All Cities') params.city = cityFilter
         if (ratingFilter > 0) params.minRating = ratingFilter
 
         const res = await getCompanies(params)
@@ -114,11 +129,13 @@ export default function CompaniesPage() {
       }
     })()
     return () => { cancelled = true }
-  }, [page, debouncedSearch, industry, locationFilter, sort, ratingFilter])
+  }, [page, debouncedSearch, industry, locationFilter, countryFilter, cityFilter, sort, ratingFilter])
 
   const activeFilters = [
     industry !== 'All Industries' && industry,
     locationFilter !== 'All Locations' && `📍 ${locationFilter}`,
+    countryFilter !== 'All Countries' && `🌍 ${countryFilter}`,
+    cityFilter !== 'All Cities' && `🏙️ ${cityFilter}`,
     ratingFilter > 0 && `${ratingFilter}+ stars`,
   ].filter(Boolean)
 
@@ -168,6 +185,10 @@ export default function CompaniesPage() {
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <SelectFilter label="Industry" value={industry} options={industries} onChange={setIndustry} />
               <SelectFilter label="Location" value={locationFilter} options={locations} onChange={setLocationFilter} />
+              <SelectFilter label="Country" value={countryFilter} options={['All Countries', ...(filterOptions.countries || [])]} onChange={setCountryFilter} />
+              <SelectFilter label="City" value={cityFilter} options={['All Cities', ...(countryFilter !== 'All Countries' ? (filterOptions.citiesByCountry?.[countryFilter] || []) : Object.values(filterOptions.citiesByCountry || {}).flat())]} onChange={setCityFilter} />
+            </div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
               <SelectFilter label="Sort by" value={sort} options={sortOptions.map(s => s.label)} onChange={setSort} />
               <div className="space-y-1.5">
                 <label className="block text-[13px] font-medium text-navy-700">Min Rating</label>
@@ -201,12 +222,14 @@ export default function CompaniesPage() {
                 <X size={12} className="cursor-pointer hover:text-navy-900" onClick={() => {
                   if (f === industry) setIndustry('All Industries')
                   if (typeof f === 'string' && f.startsWith('📍')) setLocationFilter('All Locations')
+                  if (typeof f === 'string' && f.startsWith('🌍')) setCountryFilter('All Countries')
+                  if (typeof f === 'string' && f.startsWith('🏙️')) setCityFilter('All Cities')
                   if (typeof f === 'string' && f.includes('stars')) setRatingFilter(0)
                 }} />
               </span>
             ))}
             <button
-              onClick={() => { setIndustry('All Industries'); setLocationFilter('All Locations'); setRatingFilter(0) }}
+              onClick={() => { setIndustry('All Industries'); setLocationFilter('All Locations'); setCountryFilter('All Countries'); setCityFilter('All Cities'); setRatingFilter(0) }}
               className="text-xs text-navy-500 hover:text-navy-700 transition-colors"
             >
               Clear all

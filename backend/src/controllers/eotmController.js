@@ -37,7 +37,7 @@ const getCompanyEvents = async (req, res, next) => {
 // GET /api/eotm/events/:id/nominees
 const getEventNominees = async (req, res, next) => {
   try {
-    const data = await eotmService.getEventNominees(req.params.id);
+    const data = await eotmService.getEventNominees(req.params.id, req.user?.role);
     res.json({ success: true, data });
   } catch (err) { next(err); }
 };

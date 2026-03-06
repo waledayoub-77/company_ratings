@@ -19,6 +19,14 @@ const createEvent = async (companyId, userId, { department, month, year, startDa
     throw new AppError('You do not own this company', 403);
   }
 
+  // Feature 6: EOTM events can only be created for the current month
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+  if (parseInt(month) !== currentMonth || parseInt(year) !== currentYear) {
+    throw new AppError('EOTM events can only be created for the current month', 400);
+  }
+
   // Check for existing event in same department/month/year
   const dept = department || 'General';
   const { data: existing } = await supabase
@@ -240,10 +248,10 @@ const getCompanyEvents = async (companyId) => {
  * employments.employee_id → employees.id, employees.user_id → users.id
  * eotm_votes.candidate_id → employees.id
  */
-const getEventNominees = async (eventId) => {
+const getEventNominees = async (eventId, userRole) => {
   const { data: event } = await supabase
     .from('eotm_events')
-    .select('company_id')
+    .select('company_id, is_active')
     .eq('id', eventId)
     .single();
 
@@ -280,6 +288,12 @@ const getEventNominees = async (eventId) => {
       vote_count: tally[empId] || 0,
     });
   }
+
+  // Feature 8: Hide vote counts from non-admin users while event is active
+  if (event.is_active && userRole !== 'company_admin' && userRole !== 'system_admin') {
+    return nominees.map(n => ({ employee_id: n.employee_id, full_name: n.full_name, vote_count: null }));
+  }
+
   return nominees.sort((a, b) => b.vote_count - a.vote_count);
 };
 

@@ -18,6 +18,10 @@ import {
   Award,
   Trophy,
   Calendar,
+  Mail,
+  Plus,
+  Briefcase,
+  Trash2,
 } from 'lucide-react'
 import {
   BarChart,
@@ -38,11 +42,13 @@ import Button from '../components/ui/Button.jsx'
 import Input from '../components/ui/Input.jsx'
 import { useAuth } from '../context/AuthContext'
 import { getCompanyStats, getCompanyAnalytics, getCompanyReviews, getCompanyById, updateCompany } from '../api/companies'
-import { getPendingEmployments, approveEmployment, rejectEmployment, getAllEmploymentsForAdmin } from '../api/employments'
+import { getPendingEmployments, approveEmployment, rejectEmployment, getAllEmploymentsForAdmin, inviteEmployee, getPendingInvites, cancelInvite, resendInvite, endEmploymentByAdmin } from '../api/employments'
 import { getFeedbackReceived } from '../api/feedback'
 import { createEotmEvent, closeEotmEvent, getCompanyEotmEvents, getEotmNominees, getCompanyEotmWinners } from '../api/eotm'
+import { createEotyEvent, closeEotyEvent, getCompanyEotyEvents, getEotyNominees, getCompanyEotyWinners } from '../api/eoty'
+import { getJobPositions, createJobPosition, closeJobPosition, deleteJobPosition, getApplications, updateApplicationStatus } from '../api/jobs'
 
-const VALID_CA_TABS = ['overview', 'requests', 'reviews', 'eotm', 'feedback', 'settings']
+const VALID_CA_TABS = ['overview', 'requests', 'reviews', 'eotm', 'eoty', 'jobs', 'feedback', 'settings']
 
 export default function CompanyAdminDashboard() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -52,6 +58,8 @@ export default function CompanyAdminDashboard() {
   const [pendingCount, setPendingCount] = useState(0)
   const [reviewCount, setReviewCount] = useState(0)
   const [activeEotmCount, setActiveEotmCount] = useState(0)
+  const [activeEotyCount, setActiveEotyCount] = useState(0)
+  const [jobCount, setJobCount] = useState(0)
   const [feedbackCount, setFeedbackCount] = useState(0)
   const [companyName, setCompanyName] = useState('')
   const { user } = useAuth()
@@ -84,6 +92,19 @@ export default function CompanyAdminDashboard() {
         setActiveEotmCount(active)
       })
       .catch(() => {})
+    getCompanyEotyEvents(companyId)
+      .then(res => {
+        const events = res?.data ?? []
+        const active = Array.isArray(events) ? events.filter(e => e.status === 'open' || e.status === 'active').length : 0
+        setActiveEotyCount(active)
+      })
+      .catch(() => {})
+    getJobPositions()
+      .then(res => {
+        const list = res?.data ?? []
+        setJobCount(Array.isArray(list) ? list.filter(j => j.status === 'open').length : 0)
+      })
+      .catch(() => {})
     getFeedbackReceived()
       .then(res => {
         const list = res?.data?.feedback ?? res?.data ?? []
@@ -94,9 +115,11 @@ export default function CompanyAdminDashboard() {
 
   const tabs = [
     { id: 'overview', label: 'Analytics', icon: BarChart3 },
-    { id: 'requests', label: 'Requests', icon: Users, badge: pendingCount || null },
+    { id: 'requests', label: 'Employees', icon: Users, badge: pendingCount || null },
     { id: 'reviews', label: 'Reviews', icon: FileText, badge: reviewCount || null },
     { id: 'eotm', label: 'EOTM', icon: Award, badge: activeEotmCount || null },
+    { id: 'eoty', label: 'EOTY', icon: Trophy, badge: activeEotyCount || null },
+    { id: 'jobs', label: 'Jobs', icon: Briefcase, badge: jobCount || null },
     { id: 'feedback', label: 'Team Feedback', icon: MessageSquare, badge: feedbackCount || null },
     { id: 'settings', label: 'Settings', icon: Settings },
   ]
@@ -152,6 +175,8 @@ export default function CompanyAdminDashboard() {
         {activeTab === 'requests'  && <RequestsTab companyId={companyId} onCountChange={setPendingCount} />}
         {activeTab === 'reviews'   && <ReviewsListTab companyId={companyId} />}
         {activeTab === 'eotm'      && <EotmTab companyId={companyId} />}
+        {activeTab === 'eoty'      && <EotyTab companyId={companyId} />}
+        {activeTab === 'jobs'      && <JobsTab companyId={companyId} />}
         {activeTab === 'feedback'  && <TeamFeedbackTab />}
         {activeTab === 'settings'  && <SettingsTab companyId={companyId} onNameChange={setCompanyName} />}
       </div>
@@ -496,9 +521,30 @@ function RequestsTab({ companyId, onCountChange }) {
 
                           {/* Already resolved label */}
                           {status === 'approved' && (
-                            <div className="flex items-center gap-2 text-emerald-700 text-xs font-medium">
-                              <CheckCircle2 size={14} />
-                              This request has been approved.
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2 text-emerald-700 text-xs font-medium">
+                                <CheckCircle2 size={14} />
+                                This request has been approved.
+                              </div>
+                              {req.is_current !== false && (
+                                <button
+                                  onClick={async () => {
+                                    if (!confirm(`End employment for ${name}? This will revoke their company email access.`)) return
+                                    setProcessing(p => ({ ...p, [req.id]: true }))
+                                    try {
+                                      await endEmploymentByAdmin(req.id, { reason: 'Ended by company admin' })
+                                      await load()
+                                    } catch { /* silent */ } finally {
+                                      setProcessing(p => ({ ...p, [req.id]: false }))
+                                    }
+                                  }}
+                                  disabled={isProcessing}
+                                  className="h-8 px-4 border border-red-200 text-red-600 text-xs font-semibold rounded-xl hover:bg-red-50 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                                >
+                                  {isProcessing ? <Loader2 size={12} className="animate-spin" /> : <XCircle size={12} />}
+                                  End Employment
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
@@ -511,6 +557,91 @@ function RequestsTab({ companyId, onCountChange }) {
           })}
         </div>
       ))}
+
+      {/* Invite Employee Section */}
+      <InviteSection onInvited={load} />
+    </div>
+  )
+}
+
+/* ─── Invite Employee Section ─── */
+function InviteSection({ onInvited }) {
+  const [email, setEmail] = useState('')
+  const [position, setPosition] = useState('')
+  const [department, setDepartment] = useState('')
+  const [sending, setSending] = useState(false)
+  const [invites, setInvites] = useState([])
+  const [loadingInvites, setLoadingInvites] = useState(true)
+
+  const loadInvites = async () => {
+    setLoadingInvites(true)
+    try {
+      const res = await getPendingInvites()
+      setInvites(res?.data ?? [])
+    } catch { setInvites([]) }
+    finally { setLoadingInvites(false) }
+  }
+
+  useEffect(() => { loadInvites() }, [])
+
+  const handleInvite = async (e) => {
+    e.preventDefault()
+    if (!email.trim()) return
+    setSending(true)
+    try {
+      await inviteEmployee({ email: email.trim(), position: position.trim() || undefined, department: department.trim() || undefined })
+      setEmail(''); setPosition(''); setDepartment('')
+      await loadInvites()
+      onInvited?.()
+    } catch { /* silent */ }
+    finally { setSending(false) }
+  }
+
+  return (
+    <div className="space-y-4 mt-8">
+      <h3 className="text-sm font-semibold text-navy-900 flex items-center gap-2">
+        <Mail size={15} className="text-navy-500" /> Invite Employee
+      </h3>
+      <form onSubmit={handleInvite} className="bg-white rounded-2xl border border-navy-100/50 p-5 space-y-3">
+        <div className="grid sm:grid-cols-3 gap-3">
+          <input type="email" required placeholder="Email address *" value={email} onChange={e => setEmail(e.target.value)}
+            className="w-full h-10 rounded-xl border border-navy-200 bg-white px-3 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all" />
+          <input type="text" placeholder="Position (optional)" value={position} onChange={e => setPosition(e.target.value)}
+            className="w-full h-10 rounded-xl border border-navy-200 bg-white px-3 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all" />
+          <input type="text" placeholder="Department (optional)" value={department} onChange={e => setDepartment(e.target.value)}
+            className="w-full h-10 rounded-xl border border-navy-200 bg-white px-3 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all" />
+        </div>
+        <button type="submit" disabled={sending || !email.trim()}
+          className="h-9 px-5 bg-navy-900 text-white text-xs font-semibold rounded-xl hover:bg-navy-800 transition-colors flex items-center gap-1.5 disabled:opacity-50">
+          {sending ? <Loader2 size={13} className="animate-spin" /> : <Mail size={13} />}
+          Send Invite
+        </button>
+      </form>
+
+      {/* Pending invites list */}
+      {!loadingInvites && invites.length > 0 && (
+        <div className="space-y-2">
+          <h4 className="text-xs font-semibold uppercase tracking-widest text-navy-400">Pending Invites ({invites.length})</h4>
+          {invites.map(inv => (
+            <div key={inv.id} className="bg-white rounded-xl border border-navy-100/50 px-5 py-3 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-navy-900">{inv.invite_email}</p>
+                <p className="text-xs text-navy-400">{inv.position || 'No position'} · Expires {new Date(inv.invite_expires_at).toLocaleDateString()}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={async () => { await resendInvite(inv.id); await loadInvites() }}
+                  className="h-8 px-3 border border-navy-200 text-navy-600 text-xs font-medium rounded-lg hover:bg-navy-50 transition-colors">
+                  Resend
+                </button>
+                <button onClick={async () => { await cancelInvite(inv.id); await loadInvites() }}
+                  className="h-8 px-3 border border-red-200 text-red-600 text-xs font-medium rounded-lg hover:bg-red-50 transition-colors">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -900,6 +1031,350 @@ function EotmTab({ companyId }) {
           </div>
         </Reveal>
       )}
+    </div>
+  )
+}
+
+/* ─── EOTY Tab ─── */
+function EotyTab({ companyId }) {
+  const [events, setEvents] = useState([])
+  const [winners, setWinners] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [creating, setCreating] = useState(false)
+  const [closing, setClosing] = useState({})
+  const [nominees, setNominees] = useState({})
+  const [loadingNominees, setLoadingNominees] = useState({})
+
+  const load = async () => {
+    setLoading(true)
+    try {
+      const [evRes, wRes] = await Promise.all([
+        getCompanyEotyEvents(companyId),
+        getCompanyEotyWinners(companyId),
+      ])
+      setEvents(evRes?.data ?? [])
+      setWinners(wRes?.data ?? [])
+    } catch { /* silent */ }
+    finally { setLoading(false) }
+  }
+
+  useEffect(() => { load() }, [companyId])
+
+  const handleCreate = async () => {
+    setCreating(true)
+    try { await createEotyEvent(); await load() }
+    catch { /* silent */ }
+    finally { setCreating(false) }
+  }
+
+  const handleClose = async (eventId) => {
+    setClosing(p => ({ ...p, [eventId]: true }))
+    try { await closeEotyEvent(eventId); await load() }
+    catch { /* silent */ }
+    finally { setClosing(p => ({ ...p, [eventId]: false })) }
+  }
+
+  const toggleNominees = async (eventId) => {
+    if (nominees[eventId]) { setNominees(n => ({ ...n, [eventId]: null })); return }
+    setLoadingNominees(l => ({ ...l, [eventId]: true }))
+    try {
+      const res = await getEotyNominees(eventId)
+      setNominees(n => ({ ...n, [eventId]: res?.data ?? [] }))
+    } catch { /* silent */ }
+    finally { setLoadingNominees(l => ({ ...l, [eventId]: false })) }
+  }
+
+  if (loading) return <div className="py-20 text-center text-navy-400 text-sm">Loading EOTY…</div>
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-navy-900">Employee of the Year</h2>
+        <button onClick={handleCreate} disabled={creating}
+          className="h-9 px-4 bg-navy-900 text-white text-xs font-semibold rounded-xl hover:bg-navy-800 transition-colors flex items-center gap-1.5 disabled:opacity-50">
+          {creating ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
+          Start {new Date().getFullYear()} EOTY
+        </button>
+      </div>
+
+      {events.length === 0 && (
+        <div className="bg-white rounded-2xl border border-navy-100/50 p-12 text-center">
+          <Trophy size={32} className="text-navy-200 mx-auto mb-3" />
+          <p className="text-sm text-navy-400">No EOTY events yet. Create one to start collecting votes!</p>
+        </div>
+      )}
+
+      {events.map((ev, i) => (
+        <Reveal key={ev.id} delay={i * 0.05}>
+          <div className="bg-white rounded-2xl border border-navy-100/50 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <Trophy size={18} className="text-amber-500" />
+                <div>
+                  <p className="text-sm font-semibold text-navy-900">Year {ev.year}</p>
+                  <p className="text-xs text-navy-400 capitalize">{ev.status}</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => toggleNominees(ev.id)}
+                  className="h-8 px-3 border border-navy-200 text-navy-600 text-xs font-medium rounded-lg hover:bg-navy-50 transition-colors">
+                  {loadingNominees[ev.id] ? <Loader2 size={12} className="animate-spin" /> : nominees[ev.id] ? 'Hide Nominees' : 'View Nominees'}
+                </button>
+                {(ev.status === 'open' || ev.status === 'active') && (
+                  <button onClick={() => handleClose(ev.id)} disabled={!!closing[ev.id]}
+                    className="h-8 px-3 bg-amber-500 text-white text-xs font-semibold rounded-lg hover:bg-amber-600 transition-colors flex items-center gap-1.5 disabled:opacity-50">
+                    {closing[ev.id] ? <Loader2 size={12} className="animate-spin" /> : 'Close & Announce'}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <AnimatePresence>
+              {nominees[ev.id] && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                  <div className="border-t border-navy-100 pt-3 mt-3 space-y-2">
+                    {nominees[ev.id].length === 0 && <p className="text-xs text-navy-400">No votes cast yet.</p>}
+                    {nominees[ev.id].map((nom, j) => (
+                      <div key={j} className="flex items-center justify-between bg-ice-50 rounded-xl px-4 py-2">
+                        <span className="text-sm font-medium text-navy-900">{nom.employee_name ?? 'Employee'}</span>
+                        <span className="text-xs text-navy-500">{nom.vote_count != null ? `${nom.vote_count} votes` : ''}</span>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {ev.status === 'closed' && ev.winner_name && (
+              <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center gap-3">
+                <Trophy size={16} className="text-amber-600" />
+                <p className="text-sm text-amber-800 font-medium">Winner: <strong>{ev.winner_name}</strong></p>
+              </div>
+            )}
+          </div>
+        </Reveal>
+      ))}
+
+      {winners.length > 0 && (
+        <Reveal delay={0.1}>
+          <div className="bg-white rounded-2xl border border-navy-100/50 p-6">
+            <h3 className="text-sm font-semibold text-navy-900 mb-4 flex items-center gap-2">
+              <Trophy size={16} className="text-amber-500" /> EOTY Hall of Fame
+            </h3>
+            <div className="grid sm:grid-cols-3 gap-3">
+              {winners.map((w, i) => (
+                <div key={i} className="bg-amber-50/50 rounded-xl p-4 text-center border border-amber-100/50">
+                  <div className="w-12 h-12 mx-auto rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mb-2">
+                    <span className="text-white font-bold text-sm">{(w.employee_name ?? '?')[0].toUpperCase()}</span>
+                  </div>
+                  <p className="text-sm font-semibold text-navy-900">{w.employee_name ?? 'N/A'}</p>
+                  <p className="text-xs text-navy-400 mt-0.5">{w.year}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Reveal>
+      )}
+    </div>
+  )
+}
+
+/* ─── Jobs Tab ─── */
+function JobsTab({ companyId }) {
+  const [positions, setPositions] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showCreate, setShowCreate] = useState(false)
+  const [createForm, setCreateForm] = useState({ title: '', description: '', requirements: '' })
+  const [creating, setCreating] = useState(false)
+  const [expandedId, setExpandedId] = useState(null)
+  const [applications, setApplications] = useState({})
+  const [loadingApps, setLoadingApps] = useState({})
+  const [updatingApp, setUpdatingApp] = useState({})
+
+  const loadPositions = async () => {
+    setLoading(true)
+    try {
+      const res = await getJobPositions()
+      setPositions(res?.data ?? [])
+    } catch { setPositions([]) }
+    finally { setLoading(false) }
+  }
+
+  useEffect(() => { loadPositions() }, [])
+
+  const handleCreate = async (e) => {
+    e.preventDefault()
+    if (!createForm.title.trim()) return
+    setCreating(true)
+    try {
+      await createJobPosition(createForm)
+      setCreateForm({ title: '', description: '', requirements: '' })
+      setShowCreate(false)
+      await loadPositions()
+    } catch { /* silent */ }
+    finally { setCreating(false) }
+  }
+
+  const handleClose = async (id) => {
+    try { await closeJobPosition(id); await loadPositions() }
+    catch { /* silent */ }
+  }
+
+  const handleDelete = async (id) => {
+    if (!confirm('Delete this job position? This cannot be undone.')) return
+    try { await deleteJobPosition(id); await loadPositions() }
+    catch { /* silent */ }
+  }
+
+  const toggleApps = async (positionId) => {
+    if (applications[positionId]) { setApplications(a => ({ ...a, [positionId]: null })); return }
+    setLoadingApps(l => ({ ...l, [positionId]: true }))
+    try {
+      const res = await getApplications(positionId)
+      setApplications(a => ({ ...a, [positionId]: res?.data ?? [] }))
+    } catch { /* silent */ }
+    finally { setLoadingApps(l => ({ ...l, [positionId]: false })) }
+  }
+
+  const handleStatusChange = async (appId, positionId, status) => {
+    setUpdatingApp(u => ({ ...u, [appId]: true }))
+    try {
+      await updateApplicationStatus(appId, { status })
+      // Reload applications for this position
+      const res = await getApplications(positionId)
+      setApplications(a => ({ ...a, [positionId]: res?.data ?? [] }))
+    } catch { /* silent */ }
+    finally { setUpdatingApp(u => ({ ...u, [appId]: false })) }
+  }
+
+  if (loading) return <div className="py-20 text-center text-navy-400 text-sm">Loading jobs…</div>
+
+  const STATUS_COLORS = {
+    pending: 'bg-amber-50 text-amber-700 border-amber-200',
+    interview: 'bg-blue-50 text-blue-700 border-blue-200',
+    approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    rejected: 'bg-red-50 text-red-700 border-red-200',
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-navy-900">Job Positions</h2>
+        <button onClick={() => setShowCreate(!showCreate)}
+          className="h-9 px-4 bg-navy-900 text-white text-xs font-semibold rounded-xl hover:bg-navy-800 transition-colors flex items-center gap-1.5">
+          <Plus size={13} /> New Position
+        </button>
+      </div>
+
+      <AnimatePresence>
+        {showCreate && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+            <form onSubmit={handleCreate} className="bg-white rounded-2xl border border-navy-100/50 p-5 space-y-3 mb-4">
+              <input type="text" required placeholder="Job title *" value={createForm.title}
+                onChange={e => setCreateForm(f => ({ ...f, title: e.target.value }))}
+                className="w-full h-10 rounded-xl border border-navy-200 bg-white px-3 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all" />
+              <textarea placeholder="Description (optional)" value={createForm.description}
+                onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))}
+                className="w-full h-24 rounded-xl border border-navy-200 bg-white px-3 py-2 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all resize-none" />
+              <textarea placeholder="Requirements (optional)" value={createForm.requirements}
+                onChange={e => setCreateForm(f => ({ ...f, requirements: e.target.value }))}
+                className="w-full h-20 rounded-xl border border-navy-200 bg-white px-3 py-2 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all resize-none" />
+              <div className="flex gap-2">
+                <button type="submit" disabled={creating}
+                  className="h-9 px-5 bg-navy-900 text-white text-xs font-semibold rounded-xl hover:bg-navy-800 transition-colors flex items-center gap-1.5 disabled:opacity-50">
+                  {creating ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />} Create
+                </button>
+                <button type="button" onClick={() => setShowCreate(false)}
+                  className="h-9 px-4 text-navy-500 text-xs hover:text-navy-700">Cancel</button>
+              </div>
+            </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {positions.length === 0 && (
+        <div className="bg-white rounded-2xl border border-navy-100/50 p-12 text-center">
+          <Briefcase size={32} className="text-navy-200 mx-auto mb-3" />
+          <p className="text-sm text-navy-400">No job positions yet. Create one to start receiving applications!</p>
+        </div>
+      )}
+
+      {positions.map((pos, i) => (
+        <Reveal key={pos.id} delay={i * 0.05}>
+          <div className="bg-white rounded-2xl border border-navy-100/50 p-5">
+            <div className="flex items-start justify-between mb-2">
+              <div>
+                <h3 className="text-sm font-semibold text-navy-900">{pos.title}</h3>
+                <p className="text-xs text-navy-400 capitalize mt-0.5">{pos.status} · Created {new Date(pos.created_at).toLocaleDateString()}</p>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => toggleApps(pos.id)}
+                  className="h-8 px-3 border border-navy-200 text-navy-600 text-xs font-medium rounded-lg hover:bg-navy-50 transition-colors">
+                  {loadingApps[pos.id] ? <Loader2 size={12} className="animate-spin" /> : applications[pos.id] ? 'Hide Apps' : 'Applications'}
+                </button>
+                {pos.status === 'open' && (
+                  <button onClick={() => handleClose(pos.id)}
+                    className="h-8 px-3 border border-amber-200 text-amber-600 text-xs font-medium rounded-lg hover:bg-amber-50 transition-colors">
+                    Close
+                  </button>
+                )}
+                <button onClick={() => handleDelete(pos.id)}
+                  className="h-8 px-3 border border-red-200 text-red-600 text-xs font-medium rounded-lg hover:bg-red-50 transition-colors">
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            </div>
+            {pos.description && <p className="text-xs text-navy-500 mb-2">{pos.description}</p>}
+
+            <AnimatePresence>
+              {applications[pos.id] && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                  <div className="border-t border-navy-100 pt-3 mt-3 space-y-2">
+                    {applications[pos.id].length === 0 && <p className="text-xs text-navy-400">No applications yet.</p>}
+                    {applications[pos.id].map(app => (
+                      <div key={app.id} className="flex items-center justify-between bg-ice-50 rounded-xl px-4 py-3">
+                        <div>
+                          <p className="text-sm font-medium text-navy-900">{app.applicant_name ?? app.employees?.full_name ?? 'Applicant'}</p>
+                          <p className="text-xs text-navy-400 mt-0.5">{app.cover_letter ? 'Has cover letter' : 'No cover letter'} · Applied {new Date(app.created_at).toLocaleDateString()}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2.5 py-1 rounded-full border text-xs font-semibold ${STATUS_COLORS[app.status] ?? STATUS_COLORS.pending}`}>
+                            {app.status}
+                          </span>
+                          {app.status === 'pending' && (
+                            <>
+                              <button onClick={() => handleStatusChange(app.id, pos.id, 'interview')} disabled={!!updatingApp[app.id]}
+                                className="h-7 px-3 bg-blue-100 text-blue-700 text-xs font-medium rounded-lg hover:bg-blue-200 disabled:opacity-50">
+                                Interview
+                              </button>
+                              <button onClick={() => handleStatusChange(app.id, pos.id, 'rejected')} disabled={!!updatingApp[app.id]}
+                                className="h-7 px-3 bg-red-100 text-red-700 text-xs font-medium rounded-lg hover:bg-red-200 disabled:opacity-50">
+                                Reject
+                              </button>
+                            </>
+                          )}
+                          {app.status === 'interview' && (
+                            <>
+                              <button onClick={() => handleStatusChange(app.id, pos.id, 'approved')} disabled={!!updatingApp[app.id]}
+                                className="h-7 px-3 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-lg hover:bg-emerald-200 disabled:opacity-50">
+                                Approve
+                              </button>
+                              <button onClick={() => handleStatusChange(app.id, pos.id, 'rejected')} disabled={!!updatingApp[app.id]}
+                                className="h-7 px-3 bg-red-100 text-red-700 text-xs font-medium rounded-lg hover:bg-red-200 disabled:opacity-50">
+                                Reject
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </Reveal>
+      ))}
     </div>
   )
 }

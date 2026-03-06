@@ -8,14 +8,18 @@ const supabase = require('../config/database');
  * @param {string} opts.title    — short heading
  * @param {string} opts.message  — full description
  * @param {string} [opts.link]   — optional frontend route
+ * @param {string} [opts.entityType] — e.g. 'feedback', 'review', 'employment'
+ * @param {string} [opts.entityId]   — UUID of the related entity
  */
-async function createNotification({ userId, type, title, message, link = null }) {
+async function createNotification({ userId, type, title, message, link = null, entityType = null, entityId = null }) {
   const { error } = await supabase.from('notifications').insert({
     user_id: userId,
     type,
     title,
     message,
     link,
+    entity_type: entityType,
+    entity_id: entityId,
   });
   if (error) console.error('createNotification error:', error.message);
 }

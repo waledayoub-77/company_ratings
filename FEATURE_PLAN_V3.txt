@@ -1,0 +1,987 @@
+================================================================================
+  RATEHUB — V3 FEATURE PLAN
+  Prepared: March 5, 2026
+  Status: PLAN ONLY — no code written yet
+================================================================================
+
+This document covers the full implementation plan for every new feature
+requested. Each feature is described with:
+  - What it does
+  - Why / business rule
+  - Database changes
+  - Backend changes
+  - Frontend changes
+  - Dependencies / order of work
+
+================================================================================
+  HUMAN READABLE PLAN — PLAIN ENGLISH OVERVIEW
+================================================================================
+
+  This section explains every feature in simple terms — no jargon, no code.
+  Read this first to understand WHAT we are building and WHY.
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  FEATURE 1 — Company invites employees (instead of employees asking)   │
+  └─────────────────────────────────────────────────────────────────────────┘
+  Right now, employees have to request to join a company themselves.
+  We want to flip that: the COMPANY sends an invitation email to the employee.
+  The employee gets a link, clicks it, and joins. If they don't have an account
+  yet, they register first and are automatically added to the company.
+  Company admins can also cancel or resend invitations.
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  FEATURE 2 — Company admin can officially end someone's employment      │
+  └─────────────────────────────────────────────────────────────────────────┘
+  If an employee leaves the company, the admin should be able to mark them
+  as "no longer working here" — with an end date and an optional reason.
+  The employee gets notified automatically. After this, they appear as a
+  former employee, not a current one.
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  FEATURE 3 — Filter companies by country and city                       │
+  └─────────────────────────────────────────────────────────────────────────┘
+  On the "Find Companies" page, users can currently search by name.
+  We want to add two dropdowns: Country and City. Selecting a country
+  narrows the city list. Both filters work together with the existing
+  search bar. The page URL updates so filters are shareable.
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  FEATURE 4 — Company email stays locked after leaving                   │
+  └─────────────────────────────────────────────────────────────────────────┘
+  Some employees use a work email (e.g. john@acme.com) given to them by the
+  company. Once they leave that company, that specific email can never be used
+  to join the same company again. This prevents people from exploiting the
+  system by cycling in and out of a company.
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  FEATURE 5 — Job postings + CV applications + hiring pipeline           │
+  └─────────────────────────────────────────────────────────────────────────┘
+  Company admins can post job openings with a title, description, and
+  requirements. Anyone with an account can browse these openings and apply
+  by uploading their CV (PDF or Word file) and writing a short cover letter.
+  The admin then moves each application through stages:
+    Pending → Interview → Approved or Rejected
+  If the admin approves someone, they are automatically added as an employee
+  of that company. Everyone gets email notifications when their status changes.
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  FEATURE 6 — Employee of the Month: only for the current month          │
+  └─────────────────────────────────────────────────────────────────────────┘
+  When a company admin creates an EOTM voting event, they currently can pick
+  any month in the past or future. We want to restrict this — they can only
+  create an event for THIS month. The date picker is removed; the system
+  automatically uses the current month and year.
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  FEATURE 7 — Employee of the Year award                                 │
+  └─────────────────────────────────────────────────────────────────────────┘
+  Similar to Employee of the Month, but once a year. The company admin
+  creates a yearly voting event. All verified employees vote for their
+  favourite colleague. The winner is revealed at the end of the year
+  (or when the admin closes the event). Past winners appear in a
+  "Hall of Fame" section on the company profile.
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  FEATURE 8 — Voters can't see the vote counts while voting is open      │
+  └─────────────────────────────────────────────────────────────────────────┘
+  When employees are voting for EOTM or EOTY, they should NOT see how many
+  votes each person has — this prevents bias ("I'll just vote for whoever is
+  winning"). Vote counts are only revealed AFTER the admin closes the event
+  and the winner is announced.
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  FEATURE 9 — Winners get a downloadable certificate                     │
+  └─────────────────────────────────────────────────────────────────────────┘
+  When someone wins EOTM or EOTY, they can view a beautiful certificate
+  in their dashboard. The certificate shows their name, the company name,
+  the award type, and the date. They can download it as a PNG image or
+  print it, then share it on LinkedIn or other platforms.
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  FEATURE 10 — Employee count is automatic (no manual entry)             │
+  └─────────────────────────────────────────────────────────────────────────┘
+  The "number of employees" shown on a company profile should be pulled
+  directly from the database — counting how many verified current employees
+  that company has. Company admins should NOT be able to manually type a
+  fake number. This is already partially done; we just need to make sure
+  no manual override exists in the settings form.
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  FEATURE 11 — Peer feedback can be sent anonymously                     │
+  └─────────────────────────────────────────────────────────────────────────┘
+  When an employee rates a colleague (peer feedback), they can choose whether
+  their name appears on the feedback or stays hidden. A simple toggle in the
+  feedback form: "Show my name to the recipient" (on by default). If turned
+  off, the recipient sees "Anonymous Colleague" instead of the person's name.
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  FEATURE 12 — Employees can no longer self-request to join a company    │
+  └─────────────────────────────────────────────────────────────────────────┘
+  We are removing the "request to join a company" button from the employee
+  side entirely. Going forward, employees can ONLY join a company in two ways:
+    1. The company admin sends them an invitation (Feature 1 above).
+    2. They apply to a job posting and get approved (Feature 5 above).
+  The "Add Employment" button and form are removed from the employee dashboard.
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  FEATURE 13 — AI checks reviews and feedback when they are edited too   │
+  └─────────────────────────────────────────────────────────────────────────┘
+  We already use AI to check if a newly written review is toxic or negative.
+  We need to extend this so that:
+    - Editing an existing review → AI checks the updated text again
+    - Writing or editing peer feedback → AI also checks that text
+  If something is flagged as highly toxic, it gets hidden automatically.
+  This all happens silently in the background — users just write normally.
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  FEATURE 14 — Notification bell links you directly to the content       │
+  └─────────────────────────────────────────────────────────────────────────┘
+  When a user clicks a notification in the bell dropdown, they should be
+  taken straight to the relevant content — not just a generic page. Examples:
+    - "John gave you feedback" → opens dashboard and scrolls to that feedback
+    - "Your review got a reply" → opens the company page at that review
+    - "Your application status changed" → opens your applications tab
+    - "You've been invited to join Acme Co." → opens the invitation accept page
+  Currently notifications don't navigate anywhere specific. This fixes that.
+
+  ──────────────────────────────────────────────────────────────────────────
+  IMPLEMENTATION ORDER (simplified):
+
+  Step 1 — Small, fast wins (1–2 days each):
+    • Fix EOTM to current month only
+    • Hide vote counts from voters
+    • Add anonymous option to peer feedback
+    • Run AI on review + feedback edits
+    • Remove manual employee count editing
+
+  Step 2 — Company/location improvements (2–3 days):
+    • Add country + city filters to companies page
+    • Remove self-request employment flow
+
+  Step 3 — Employment management (3–4 days):
+    • Company email lock system
+    • Admin invite employee
+    • Admin end employment
+
+  Step 4 — Job applications (5–7 days, largest feature):
+    • Job postings + CV upload + pipeline
+
+  Step 5 — Awards (3–4 days):
+    • Employee of the Year
+    • Winner certificate
+
+  Step 6 — Notifications (2–3 days):
+    • Deep-link all notifications
+
+================================================================================
+  EXISTING SYSTEM SNAPSHOT (so you know what already exists)
+================================================================================
+
+  Tables:    users, companies, employees, employments, company_reviews,
+             employee_feedback, reported_reviews, audit_logs, refresh_tokens,
+             verification_requests, category_ratings, review_replies,
+             review_votes, eotm_events, eotm_votes, employee_of_month,
+             notification_preferences
+
+  Key enums: user_role (employee | company_admin | system_admin)
+             verification_status (pending | approved | rejected)
+
+  Backend:   Node.js + Express + Supabase (PostgREST + RPC functions)
+  Frontend:  React 19 + Vite + Tailwind + Framer Motion
+  Auth:      JWT (access + refresh tokens)
+
+================================================================================
+  FEATURE 1 — Company Admin: Invite Employee (add manually)
+================================================================================
+
+  WHAT:
+    Company admin can enter an employee's email address to invite them.
+    A unique invitation link/token is emailed to that employee.
+    The employee clicks the link → is brought to a register/login page
+    pre-filled with the company context → their employment is pre-approved
+    as "pending_invite" until they accept.
+
+  BUSINESS RULES:
+    - If the email already belongs to a registered user with a current
+      approved employment at this company → reject (already there).
+    - If the email belongs to a registered user → send them the invite link
+      to accept directly from their dashboard.
+    - If the email is new → invite link brings them to /register with
+      the invitation token embedded, after registration they are
+      automatically attached to the company.
+    - Invitation token expires in 7 days.
+    - Company admin can cancel / resend the invite before acceptance.
+
+  DATABASE:
+    ALTER TABLE employments
+      ADD COLUMN invite_token       VARCHAR(255),
+      ADD COLUMN invite_expires_at  TIMESTAMP WITH TIME ZONE,
+      ADD COLUMN invite_email       VARCHAR(255),  -- the email that was invited
+      ADD COLUMN source             VARCHAR(20) DEFAULT 'request';
+      -- source = 'request' (employee applied) | 'invite' (admin invited)
+
+  BACKEND:
+    POST   /api/employments/invite
+           Body: { email, position, department, startDate }
+           - Requires role: company_admin
+           - Generate UUID token, set invite_expires_at = NOW() + 7 days
+           - Create employment row with verification_status = 'pending',
+             source = 'invite', invite_token = token, invite_email = email
+           - Email the employee: "You've been invited to join [Company]"
+             with link: /accept-invite?token=<token>
+
+    POST   /api/employments/accept-invite
+           Body: { token }
+           - No auth required (can be done before login, or while logged in)
+           - Validate token exists + not expired
+           - If user is logged in → attach their employee_id to the employment
+           - If not logged in → redirect to /register?inviteToken=<token>
+           - After linking → set verification_status = 'approved'
+
+    GET    /api/employments/pending-invites   (company admin only)
+           Returns list of sent invitations with status
+
+    DELETE /api/employments/invite/:id        (company admin only)
+           Cancel invitation before acceptance
+
+    PATCH  /api/employments/invite/:id/resend (company admin only)
+           Regenerate token + resend email
+
+  FRONTEND:
+    CompanyAdminDashboard → Requests tab:
+      - Add "Invite Employee" button → opens a modal
+      - Modal fields: Email, Position, Department, Start Date
+      - Pending invites section shows invited-but-not-accepted employees
+        with "Cancel" and "Resend" buttons
+
+    /accept-invite page (new route):
+      - If user logged in: shows "Accept invitation to join [Company]" button
+      - If not logged in: redirects to /register?inviteToken=...
+      - RegisterPage reads inviteToken from URL, submits it on register
+        so the invite gets accepted automatically after email verification
+
+================================================================================
+  FEATURE 2 — Company Admin: End an Employee's Employment
+================================================================================
+
+  WHAT:
+    Company admin can mark an employee's employment at their company as ended.
+    This is different from the employee themselves ending it.
+
+  BUSINESS RULES:
+    - Only the company admin of that company can do this.
+    - Must provide an end date (cannot be in the future).
+    - The employee is notified by email.
+    - After ended: employee can no longer be listed as current at that company,
+      but they can still see old reviews they wrote.
+
+  DATABASE:
+    ALTER TABLE employments
+      ADD COLUMN ended_by_admin    BOOLEAN DEFAULT FALSE,
+      ADD COLUMN ended_by_admin_id UUID REFERENCES users(id),
+      ADD COLUMN end_reason        TEXT;
+
+  BACKEND:
+    PATCH /api/employments/:id/end-by-admin
+          Body: { endDate, reason }
+          - Requires role: company_admin + company must match
+          - Set is_current = false, end_date = endDate,
+            ended_by_admin = true, ended_by_admin_id = req.user.id
+          - Notify the employee by email
+          - Create notification for employee
+
+  FRONTEND:
+    CompanyAdminDashboard → Requests tab:
+      In the approved employees list, add "End Employment" button per employee
+      → confirms with modal (end date + optional reason)
+      → calls PATCH endpoint
+      → removes employee from active list
+
+================================================================================
+  FEATURE 3 — Filter Companies by Country / City
+================================================================================
+
+  WHAT:
+    On the Companies page (/companies), add dropdown filters for Country and City.
+    Results update dynamically.
+
+  BUSINESS RULES:
+    - Countries and cities are derived from existing company data (no hardcoded
+      list needed — extract distinct values from the database).
+    - Filtering is cumulative (country + city + search text all apply at once).
+    - URL query params persist filters: /companies?country=Lebanon&city=Beirut
+
+  DATABASE:
+    The current "location" column is a single free-text field.
+    Best approach: split into structured fields.
+
+    ALTER TABLE companies
+      ADD COLUMN country VARCHAR(100),
+      ADD COLUMN city    VARCHAR(100);
+
+    -- Backfill: parse existing location into country/city where possible
+    -- (can be done manually or with a one-time migration script)
+
+    CREATE INDEX idx_companies_country ON companies(country) WHERE deleted_at IS NULL;
+    CREATE INDEX idx_companies_city    ON companies(city)    WHERE deleted_at IS NULL;
+
+  BACKEND:
+    GET /api/companies?country=X&city=Y&search=...&page=1&limit=20
+        - Extend existing getCompanies to accept country + city query params
+        - Apply .eq('country', country) and .eq('city', city) filters if provided
+
+    GET /api/companies/filters
+        - Returns { countries: [...], cities: [...] } — distinct values from DB
+        - Used by the frontend to populate the filter dropdowns
+
+  FRONTEND:
+    CompaniesPage.jsx:
+      - Add two Select/dropdown components: Country, City
+      - When country changes → city dropdown resets and re-fetches cities for
+        that country
+      - State lifted to URL params (useSearchParams) so filters persist on reload
+      - "Clear filters" button resets both dropdowns
+
+================================================================================
+  FEATURE 4 — Company Email Lock (one employment per email, per company)
+================================================================================
+
+  WHAT:
+    Each employee has a "company email" — the email they used at that company.
+    Once they have ended employment at a company, they cannot use the same email
+    to request or be invited to that company again.
+
+  BUSINESS RULES:
+    - This is DIFFERENT from their account email.
+    - It's the email the employee used while working at the company
+      (often their company-issued email like john@acme.com).
+    - Once employment ends at a company, that company email is locked for
+      that company forever (cannot be re-used to rejoin the same company).
+    - This prevents employees from cycling out and back into companies.
+
+  DATABASE:
+    ALTER TABLE employments
+      ADD COLUMN company_email  VARCHAR(255);
+      -- nullable — optional at request time, required before final approval
+
+    CREATE UNIQUE INDEX idx_unique_company_email_per_company
+    ON employments(company_id, company_email)
+    WHERE deleted_at IS NULL AND company_email IS NOT NULL;
+
+    -- Also track revoked emails to block future re-use:
+    CREATE TABLE revoked_company_emails (
+      id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      company_id  UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+      company_email VARCHAR(255) NOT NULL,
+      employee_id UUID NOT NULL REFERENCES employees(id),
+      ended_at    TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      UNIQUE(company_id, company_email)
+    );
+
+  BACKEND:
+    When an employment ends (either by employee or admin):
+      - Insert into revoked_company_emails (company_id, company_email, employee_id)
+
+    When a new employment request or invite is created:
+      - Check revoked_company_emails: if (company_id, company_email) exists → 403
+
+    PATCH /api/employments/:id → when employment ends, trigger revocation
+
+  FRONTEND:
+    WriteReviewPage / Employment request form:
+      - Add "Company Email (optional)" field
+    CompanyAdminDashboard → approval flow:
+      - Show the company email field, allow admin to verify it before approving
+
+================================================================================
+  FEATURE 5 — Job Positions / Applications with CV Upload
+================================================================================
+
+  WHAT:
+    Companies post job openings. Employees browse and apply with a CV (PDF/Word).
+    Company admin reviews applications. Application status progresses:
+      pending → interview → approved → rejected
+    If approved → employee is added to company (employment created).
+
+  BUSINESS RULES:
+    - Only company admins can create/close job postings.
+    - Employees must be registered (any user) to apply — NOT just verified employees.
+    - CV file: PDF or .docx, max 5 MB, stored in Supabase Storage.
+    - Only one application per employee per position.
+    - If admin sets status to 'approved' → automatically create an employment
+      row for that employee (verification_status = 'approved').
+    - Rejected applicants are notified by email.
+
+  DATABASE:
+    CREATE TABLE job_positions (
+      id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      company_id    UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+      title         VARCHAR(255) NOT NULL,
+      department    VARCHAR(100),
+      description   TEXT NOT NULL,
+      requirements  TEXT,
+      location      VARCHAR(255),        -- remote / on-site / hybrid + city
+      employment_type VARCHAR(30),       -- full-time, part-time, contract
+      is_active     BOOLEAN DEFAULT TRUE,
+      created_by    UUID NOT NULL REFERENCES users(id),
+      created_at    TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      updated_at    TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      closed_at     TIMESTAMP WITH TIME ZONE,
+      deleted_at    TIMESTAMP WITH TIME ZONE
+    );
+
+    CREATE TYPE application_status AS ENUM ('pending','interview','approved','rejected');
+
+    CREATE TABLE job_applications (
+      id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      position_id   UUID NOT NULL REFERENCES job_positions(id) ON DELETE CASCADE,
+      company_id    UUID NOT NULL REFERENCES companies(id),
+      applicant_id  UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      cv_url        TEXT NOT NULL,       -- Supabase Storage URL
+      cover_letter  TEXT,
+      status        application_status DEFAULT 'pending',
+      admin_note    TEXT,               -- interview notes / rejection reason
+      reviewed_by   UUID REFERENCES users(id),
+      reviewed_at   TIMESTAMP WITH TIME ZONE,
+      created_at    TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      updated_at    TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      UNIQUE(position_id, applicant_id)
+    );
+
+    CREATE INDEX idx_job_positions_company_id ON job_positions(company_id) WHERE deleted_at IS NULL AND is_active = TRUE;
+    CREATE INDEX idx_job_applications_position_id ON job_applications(position_id);
+    CREATE INDEX idx_job_applications_applicant_id ON job_applications(applicant_id);
+
+  BACKEND:
+    New route file: /api/jobs
+
+    POST   /api/jobs                          (company_admin only)
+           Body: { title, department, description, requirements, employmentType }
+           Creates a job posting
+
+    GET    /api/jobs?companyId=X              (public)
+           Lists active job postings for a company
+
+    GET    /api/jobs/:id                      (public)
+           Single job posting details
+
+    PATCH  /api/jobs/:id/close               (company_admin only)
+           Closes the posting (is_active = false)
+
+    DELETE /api/jobs/:id                     (company_admin only)
+           Soft delete
+
+    POST   /api/jobs/:id/apply               (authenticated employee)
+           Multipart form: { cvFile, coverLetter }
+           - Validate file type (pdf / docx), max 5 MB
+           - Upload to Supabase Storage bucket: "cvs/{company_id}/{applicant_id}/{uuid}.pdf"
+           - Create job_application row
+
+    GET    /api/jobs/:id/applications        (company_admin only)
+           Lists all applications for a position
+
+    PATCH  /api/jobs/applications/:id/status (company_admin only)
+           Body: { status, adminNote }
+           - Valid transitions: pending→interview, interview→approved|rejected
+           - If status = 'approved':
+               → Create employment row for this applicant
+               → Set verification_status = 'approved', source = 'job_application'
+               → Send "Congratulations" email
+           - If status = 'rejected':
+               → Send rejection email with optional note
+           - Notify applicant via notification + email on every status change
+
+  FRONTEND:
+    New page: /companies/:id/jobs
+      - Lists all open positions for a company
+      - Each position card: title, department, type, "Apply" button
+      - "Apply" button opens a modal: upload CV (drag-drop or file picker),
+        optional cover letter textarea → submit
+
+    New page: /companies/:id/jobs/:jobId
+      - Full job posting detail
+
+    CompanyAdminDashboard → new "Applications" tab:
+      - List all positions → click to expand → see applications
+      - Kanban-style or table with status pills: pending → interview → approved → rejected
+      - "Move to Interview", "Approve", "Reject" buttons per application
+      - View CV link (opens PDF in new tab)
+
+    EmployeeDashboard → new "Applications" tab:
+      - Lists all positions the employee applied to
+      - Shows current status with status timeline
+
+  FILE STORAGE:
+    Use Supabase Storage bucket named "cvs"
+    Policy: employees can upload to their own folder,
+            company_admins can read CVs for their company
+
+================================================================================
+  FEATURE 6 — EOTM: Date Validation (only current month, no future/past)
+================================================================================
+
+  WHAT:
+    When creating an EOTM event, the admin can only select the current month/year.
+    No future months, no past months.
+
+  IMPLEMENTATION:
+    BACKEND:
+      In eotmController.js → createEotmEvent:
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1;
+        const currentYear = now.getFullYear();
+        if (month !== currentMonth || year !== currentYear) {
+          return 400 error: "EOTM events can only be created for the current month"
+        }
+
+    FRONTEND:
+      EOTM creation form in CompanyAdminDashboard:
+        - Remove the month/year picker entirely
+        - Auto-fill with current month/year (read-only display)
+        - User only sees "Create EOTM for [Month Year]" — no date input needed
+
+================================================================================
+  FEATURE 7 — Employee of the Year
+================================================================================
+
+  WHAT:
+    A new annual award. Company admin can create an "Employee of the Year" event.
+    All verified employees of the company can vote for one person.
+    Only one event per company per year. Winner is announced at year end.
+
+  BUSINESS RULES:
+    - Can only be created for the CURRENT year (same logic as EOTM).
+    - Only one per company per year.
+    - Voting closes at year end (December 31) or when admin manually closes it.
+    - Voters cannot see vote counts (same as EOTM — already planned to fix).
+    - Winner gets a certificate (same certificate feature as EOTM, feature 9).
+
+  DATABASE:
+    CREATE TABLE eoty_events (
+      id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      company_id   UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+      year         INTEGER NOT NULL CHECK (year >= 2024),
+      is_active    BOOLEAN DEFAULT TRUE,
+      created_by   UUID NOT NULL REFERENCES users(id),
+      created_at   TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      closed_at    TIMESTAMP WITH TIME ZONE,
+      UNIQUE(company_id, year)
+    );
+
+    CREATE TABLE eoty_nominees (
+      id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      event_id     UUID NOT NULL REFERENCES eoty_events(id) ON DELETE CASCADE,
+      employee_id  UUID NOT NULL REFERENCES employees(id),
+      nominated_by UUID NOT NULL REFERENCES users(id),
+      created_at   TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      UNIQUE(event_id, employee_id)
+    );
+
+    CREATE TABLE eoty_votes (
+      id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      event_id     UUID NOT NULL REFERENCES eoty_events(id) ON DELETE CASCADE,
+      voter_id     UUID NOT NULL REFERENCES employees(id),
+      candidate_id UUID NOT NULL REFERENCES employees(id),
+      created_at   TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      UNIQUE(event_id, voter_id)
+    );
+
+    CREATE TABLE employee_of_year (
+      id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      event_id     UUID NOT NULL REFERENCES eoty_events(id),
+      company_id   UUID NOT NULL REFERENCES companies(id),
+      employee_id  UUID REFERENCES employees(id),  -- NULL = no winner
+      year         INTEGER NOT NULL,
+      votes_count  INTEGER DEFAULT 0,
+      created_at   TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      UNIQUE(company_id, year)
+    );
+
+  BACKEND:
+    New route file: /api/eoty (mirrors /api/eotm structure)
+
+    POST   /api/eoty                 (company_admin) — create event for current year
+    POST   /api/eoty/:id/nominate    (company_admin) — add nominees
+    POST   /api/eoty/:id/vote        (employee)      — cast vote
+    POST   /api/eoty/:id/close       (company_admin) — close + declare winner
+    GET    /api/eoty/:companyId       (authenticated) — get event + nominees
+    GET    /api/eoty/:companyId/hall-of-fame          — winners by year
+    GET    /api/eoty/certificate/:eventId             — certificate data (feature 9)
+
+  FRONTEND:
+    CompanyAdminDashboard → EOTM tab:
+      - Split into two sections: "Employee of the Month" and "Employee of the Year"
+      - Or add a "EOTY" sub-tab
+
+    EmployeeDashboard:
+      - Show EOTY voting section alongside EOTM voting
+
+    Hall of Fame page / section on company profile:
+      - Show yearly winners with photo, name, year
+
+================================================================================
+  FEATURE 8 — Hide Vote Counts from Voting Employees
+================================================================================
+
+  WHAT:
+    Employees who are actively voting in an EOTM or EOTY event should NOT
+    be able to see how many votes each candidate has.
+    Only after the event is closed can the winner (and counts) be revealed.
+
+  CURRENT STATE:
+    The backend likely returns vote counts. This needs to be suppressed.
+
+  IMPLEMENTATION:
+    BACKEND:
+      In eotmController.js → getEotmNominees (and equivalent EOTY endpoint):
+        - Check if the event is still active (is_active = true)
+        - If active: return nominees WITHOUT vote counts
+          i.e., strip the votes_count field from the response
+        - If closed: return nominees WITH vote counts
+
+    FRONTEND:
+      EOTM voting UI:
+        - Do not show any vote count numbers or vote bars during active event
+        - After event is closed: show results with counts and winner highlighted
+
+================================================================================
+  FEATURE 9 — EOTM / EOTY Winner Certificate & Screenshot
+================================================================================
+
+  WHAT:
+    When an employee wins EOTM or EOTY, they can view and download a certificate
+    or take a visual screenshot to share on other platforms (LinkedIn etc.).
+
+  IMPLEMENTATION:
+
+  OPTION A — HTML/CSS Certificate rendered in the browser (recommended):
+    - When event is closed and winner is declared:
+      → A "View Certificate" button appears for the winner in their dashboard
+    - Clicking it opens a full-screen certificate component with:
+        * Company logo
+        * RateHub logo/stamp
+        * "This certifies that [Name] was Employee of the Month/Year"
+        * Month + Year (or Year for EOTY)
+        * Company Name
+        * Decorative border/border design
+    - "Download as PNG" button uses html2canvas (npm library) to render
+      the DOM element as an image and trigger a file download
+    - "Copy to Clipboard" button copies the image to clipboard
+
+  OPTION B — Server-side PDF (more complex):
+    - Backend generates a PDF using puppeteer or pdfkit
+    - GET /api/eotm/certificate/:eventId → returns a PDF or PNG
+    - More reliable for consistent rendering but requires more infra
+
+  RECOMMENDATION: Use Option A (client-side html2canvas) for simplicity.
+
+  BACKEND:
+    GET /api/eotm/certificate/:eventId
+        - Validates the requester is the winner
+        - Returns certificate data:
+          { winnerName, companyName, companyLogo, month, year, issuedAt }
+
+    GET /api/eoty/certificate/:eventId
+        - Same but for year
+
+  FRONTEND:
+    New component: CertificateModal.jsx
+      - Renders the certificate in a styled full-screen overlay
+      - "Download PNG" button → html2canvas captures the certificate div
+      - "Print" button → window.print() with certificate-only print CSS
+
+    EmployeeDashboard → new "Awards" section:
+      - Lists all EOTM and EOTY wins
+      - "View Certificate" button for each
+
+================================================================================
+  FEATURE 10 — Auto Employee Count in Company (from Database)
+================================================================================
+
+  WHAT:
+    The company profile and admin dashboard should show the TRUE number of
+    verified/current employees pulled automatically from the database.
+    Company admins should NOT be able to manually enter/edit this number.
+
+  CURRENT STATE:
+    R9 already fixed getCompanyStats to calculate total_employees from the
+    employments table (COUNT WHERE verification_status='approved' AND is_current=true).
+    The frontend reads this value.
+
+  WHAT STILL NEEDS TO HAPPEN:
+    1. Make sure the companies table does NOT have a manually-editable employee
+       count field exposed in the Settings tab of CompanyAdminDashboard.
+    2. If there is a "number of employees" field in company settings → REMOVE IT
+       or make it read-only with a note "Auto-calculated from verified employees".
+
+  IMPLEMENTATION:
+    BACKEND:
+      - Verify that PATCH /api/companies/:id (update company) does not accept
+        an employee_count field in the request body.
+      - Add to the company stats response: "employeeCount is auto-calculated"
+
+    FRONTEND:
+      CompanyAdminDashboard → Settings tab:
+        - Remove any editable "number of employees" input if it exists
+        - Add a read-only stat card: "Verified Employees: X (auto-calculated)"
+
+    CompanyProfilePage:
+        - The "X employees" badge should read from stats API, not from company.employee_count
+
+================================================================================
+  FEATURE 11 — Feedback: Sender Name Optional (Anonymous Toggle)
+================================================================================
+
+  WHAT:
+    When an employee sends peer feedback to a coworker, they can choose whether
+    their name appears on the feedback or remains anonymous.
+
+  CURRENT STATE:
+    employee_feedback table does NOT have an is_anonymous column.
+    The feedback always shows the reviewer's identity.
+
+  DATABASE:
+    ALTER TABLE employee_feedback
+      ADD COLUMN is_anonymous BOOLEAN DEFAULT FALSE;
+
+  BACKEND:
+    POST /api/feedback
+         Body: { ..., isAnonymous: true/false }
+         - Store is_anonymous in the row
+         - When fetching feedback for the rated employee:
+           IF is_anonymous = true → return reviewer_name = "Anonymous Colleague"
+           IF is_anonymous = false → return reviewer_name = actual name
+
+    GET /api/feedback/received
+        - Modify response: if is_anonymous = true, hide reviewer_id and
+          return reviewer_name = "Anonymous Colleague"
+
+  FRONTEND:
+    InternalFeedbackPage / feedback submission form:
+      - Add a toggle: "Show my name to recipient"  (default: ON)
+      - When toggled off → is_anonymous = true is sent in the request
+
+    Feedback received view (EmployeeDashboard / feedback tab):
+      - If is_anonymous: show "Anonymous Colleague" with a gray avatar icon
+      - If not anonymous: show name + avatar as usual
+
+================================================================================
+  FEATURE 12 — Remove the "Request Verification" Feature
+================================================================================
+
+  WHAT:
+    The current system has two ways for an employee to join a company:
+      1. Employee submits a request (current main flow) ← REMOVE THIS
+      2. Company admin invites the employee ← KEEP THIS (Feature 1 above)
+    After this change, employees can ONLY join via company invitation or
+    via job application (Feature 5).
+
+  IMPACT:
+    BACKEND:
+      - Remove or disable: POST /api/employments/request
+      - Remove or disable: GET /api/employments/my-employment (if it shows
+        the request form)
+      - Remove the "Request Employment" endpoint from employmentRoutes.js
+      - Keep: invite flow (Feature 1) and job application flow (Feature 5)
+
+    FRONTEND:
+      - EmployeeDashboard: remove "Add Employment" or "Request Employment" button
+      - Remove the employment request form/modal entirely
+      - Replace with: "Your company can invite you, or you can apply to a job posting"
+        informational message if the employee has no employment
+
+    MIGRATION:
+      - Existing pending employment requests (source = 'request') should be
+        reviewed and either approved, rejected, or left as-is.
+      - After the cutoff date → no new requests can be manually submitted by employees.
+
+================================================================================
+  FEATURE 13 — AI Sentiment Analysis (on create AND edit)
+================================================================================
+
+  CURRENT STATE:
+    sentimentService.js exists. It is called when a review is created.
+    The ai_sentiment column exists on company_reviews.
+
+  WHAT NEEDS TO CHANGE:
+    1. Make sure sentiment runs when a review is EDITED (not just created).
+    2. Sentiment should also run on employee_feedback (written_feedback field).
+    3. Sentiment should re-run when feedback is edited.
+
+  IMPLEMENTATION:
+
+  BACKEND:
+    reviewService.js → updateReview:
+      - After saving the edited review content, call sentimentService.analyze()
+      - Update ai_sentiment and ai_toxicity_score columns
+
+    feedbackService.js → updateFeedback:
+      - After saving the edited written_feedback, call sentimentService.analyze()
+      - Store the result (add columns to employee_feedback):
+          ALTER TABLE employee_feedback
+            ADD COLUMN ai_sentiment    VARCHAR(20),
+            ADD COLUMN ai_toxicity_score DECIMAL(3,2);
+
+    feedbackService.js → createFeedback:
+      - Also run sentiment on initial creation (if not already doing so)
+
+  HOW SENTIMENT SERVICE WORKS (current):
+    - sentimentService.js likely calls an AI API (OpenAI / HuggingFace / local model)
+    - Returns: { sentiment: 'positive'|'neutral'|'negative', toxicityScore: 0.0-1.0 }
+    - If toxicityScore > threshold (e.g. 0.8): flag review as is_hidden_by_ai = true
+
+  FRONTEND:
+    No user-visible change needed (runs silently in background).
+    Optionally: admin panel can show the sentiment label next to each review.
+
+================================================================================
+  FEATURE 14 — Notifications: Deep Links (click goes to specific content)
+================================================================================
+
+  CURRENT STATE:
+    Notifications exist in the DB and the bell icon shows count.
+    Clicking a notification likely goes to a generic page (/feedback, /dashboard).
+
+  WHAT:
+    Each notification should carry a deep link so when clicked, the user
+    is taken directly to the specific content:
+      - "John gave you feedback" → /dashboard#feedback (scroll to that feedback)
+      - "Your review was replied to" → /companies/:id#review-:reviewId
+      - "Employment approved" → /dashboard#employment
+      - "You've been invited to join [Company]" → /accept-invite?token=...
+      - "Application status changed" → /dashboard#applications
+      - "EOTM voting open" → /company/:id/eotm
+
+  DATABASE:
+    Notifications table (if not already structured this way):
+    ALTER TABLE notifications (or wherever they are stored)
+      ADD COLUMN link TEXT;  -- the deep URL/path
+      ADD COLUMN entity_type VARCHAR(50);  -- 'feedback', 'review', 'employment', etc.
+      ADD COLUMN entity_id   UUID;         -- the ID of the specific entity
+
+  BACKEND:
+    notificationService.js → createNotification:
+      - Every call to createNotification must include a 'link' field
+      - Examples:
+          createNotification(userId, 'Feedback received', 'John rated you', {
+            link: '/dashboard#feedback',
+            entityType: 'feedback',
+            entityId: feedbackId
+          })
+
+    GET /api/notifications → returns each notification with its link field
+
+  FRONTEND:
+    Navbar bell dropdown / Notifications list:
+      - When user clicks a notification item:
+        → navigate(notification.link)  (react-router navigate)
+        → mark notification as read
+      - If the link has a hash (e.g. #feedback):
+        → the target page should scroll to that section and highlight it
+          (use useEffect + useLocation to detect the hash on mount)
+
+    Specific pages that need "scroll to item" behavior:
+      - EmployeeDashboard: if hash = #feedback → switch to Feedback tab
+      - EmployeeDashboard: if hash = #applications → switch to Applications tab
+      - CompanyProfilePage: if hash = #review-{id} → scroll to that review card
+
+================================================================================
+  IMPLEMENTATION ORDER (PRIORITY + DEPENDENCIES)
+================================================================================
+
+  Phase 1 — Quick wins (no new tables needed):
+    [1]  Feature 6   — EOTM date validation fix (backend only, 30 min)
+    [2]  Feature 8   — Hide vote counts from voters (backend only, 1 hour)
+    [3]  Feature 11  — Feedback anonymous toggle (1 column + small UI)
+    [4]  Feature 13  — Sentiment on edit + feedback (extend existing service)
+    [5]  Feature 10  — Remove editable employee count from settings (frontend)
+
+  Phase 2 — Company/location features:
+    [6]  Feature 3   — Country/city filter (schema + API + frontend)
+    [7]  Feature 12  — Remove request verification flow (backend + frontend)
+
+  Phase 3 — Employment workflow (core changes):
+    [8]  Feature 4   — Company email lock (new table + validation)
+    [9]  Feature 1   — Admin invite employee (new emails + accept flow)
+    [10] Feature 2   — Admin end employment (API + frontend button)
+
+  Phase 4 — Job applications (largest feature):
+    [11] Feature 5   — Job positions + CV upload + application pipeline
+
+  Phase 5 — Awards + certificates:
+    [12] Feature 7   — Employee of the Year (mirrors EOTM structure)
+    [13] Feature 9   — Certificate download (html2canvas component)
+
+  Phase 6 — Notifications deep links:
+    [14] Feature 14  — Notification deep links (audit + add link field everywhere)
+
+================================================================================
+  MIGRATIONS SUMMARY
+================================================================================
+
+  New migrations needed (run in order in Supabase SQL Editor):
+
+  migration-v3-part1.sql:
+    - ALTER companies: ADD country, city
+    - ALTER employments: ADD source, company_email, ended_by_admin, ended_by_admin_id, end_reason, invite_token, invite_expires_at, invite_email
+    - ALTER employee_feedback: ADD is_anonymous, ai_sentiment, ai_toxicity_score
+    - CREATE TABLE revoked_company_emails
+    - CREATE INDEX on companies.country, companies.city
+
+  migration-v3-part2.sql:
+    - CREATE TABLE job_positions
+    - CREATE TABLE job_applications
+    - CREATE TYPE application_status ENUM
+    - CREATE INDEX on job_positions, job_applications
+
+  migration-v3-part3.sql:
+    - CREATE TABLE eoty_events
+    - CREATE TABLE eoty_nominees
+    - CREATE TABLE eoty_votes
+    - CREATE TABLE employee_of_year
+
+  migration-v3-part4.sql:
+    - ALTER notifications: ADD link, entity_type, entity_id
+    - (or create notifications table if it doesn't exist with these columns)
+
+================================================================================
+  TECH NOTES & BEST PRACTICES
+================================================================================
+
+  CV File upload:
+    - Use Supabase Storage (not the DB)
+    - Client uploads directly to Supabase Storage using a signed URL
+      to avoid routing large files through your Node.js server
+    - Validate on the frontend (file type + size) AND on the backend
+    - Store only the URL in job_applications.cv_url
+
+  Certificate generation:
+    - npm install html2canvas
+    - The certificate component should be a fixed-size div (e.g. 800x600px)
+      with print-quality fonts and branding
+    - Use a print CSS @media print to hide everything except the certificate
+
+  AI Sentiment:
+    - Keep it async (don't block the API response)
+    - Use a try/catch so if the AI service is down, the review still saves
+    - Run as a background job after the main save completes
+
+  Country/City filter:
+    - Populate via a one-time data migration for existing companies
+    - Make the location field display as "City, Country" in the UI
+    - Use react-select or a custom styled Select for the filter dropdowns
+
+  Job applications security:
+    - CV files in Supabase Storage should have RLS policies:
+        * Uploader can always read their own CVs
+        * Company admin can read CVs of applications to their company
+        * No public access to CVs
+
+  Performance:
+    - Add database indexes on all new foreign keys
+    - The /companies?country=X&city=Y filter should use DB-level filtering,
+      not in-memory filtering
+
+================================================================================
+  END OF PLAN
+================================================================================

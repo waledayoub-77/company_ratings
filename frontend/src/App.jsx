@@ -16,6 +16,7 @@ import AdminPanel from './pages/AdminPanel.jsx'
 import WriteReviewPage from './pages/WriteReviewPage.jsx'
 import InternalFeedbackPage from './pages/InternalFeedbackPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
+import AcceptInvitePage from './pages/AcceptInvitePage.jsx'
 import NotFoundPage from './pages/NotFoundPage.jsx'
 
 const ROLE_HOME = { employee: '/dashboard', company_admin: '/company-admin', system_admin: '/admin' }
@@ -70,6 +71,9 @@ function AppRoutes() {
         </Route>
 
         <Route element={<Layout />}>
+          {/* Accept employment invite — any authenticated user */}
+          <Route path="/accept-invite" element={<ProtectedRoute><AcceptInvitePage /></ProtectedRoute>} />
+
           {/* Role-specific */}
           <Route path="/dashboard"           element={<RoleRoute role="employee"><EmployeeDashboard /></RoleRoute>} />
           <Route path="/dashboard/feedback"  element={<RoleRoute role="employee"><InternalFeedbackPage /></RoleRoute>} />

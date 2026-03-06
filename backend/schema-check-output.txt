@@ -1,0 +1,12 @@
+﻿emp.source: MISSING - column employments.source does not exist
+emp.invite_token: MISSING - column employments.invite_token does not exist
+emp.invite_email: MISSING - column employments.invite_email does not exist
+emp.ended_by_admin: MISSING - column employments.ended_by_admin does not exist
+emp.company_email: MISSING - column employments.company_email does not exist
+fb.is_anonymous: MISSING - column employee_feedback.is_anonymous does not exist
+fb.ai_sentiment: MISSING - column employee_feedback.ai_sentiment does not exist
+job_applications: OK
+eoty_votes: OK
+employee_of_year: OK
+companies.country: OK
+notifications.entity_type: OK

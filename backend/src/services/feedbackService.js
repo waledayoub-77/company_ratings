@@ -1,4 +1,5 @@
 const supabase = require("../config/database");
+const { analyzeText } = require('./sentimentService');
 
 // Get employee.id from logged-in userId
 async function getEmployeeIdByUserId(userId) {
@@ -64,7 +65,8 @@ async function createFeedback({
   reliability,
   writtenFeedback,
   quarter,
-  year
+  year,
+  isAnonymous
 }) {
   const { data, error } = await supabase
     .from("employee_feedback")
@@ -78,12 +80,28 @@ async function createFeedback({
       reliability,
       written_feedback: writtenFeedback || null,
       quarter,
-      year
+      year,
+      is_anonymous: isAnonymous === true,
     })
     .select("*")
     .single();
 
   if (error) return { error: error.message };
+
+  // Feature 13: Run sentiment analysis on feedback written text
+  if (writtenFeedback) {
+    try {
+      const sentiment = analyzeText(writtenFeedback);
+      await supabase
+        .from('employee_feedback')
+        .update({
+          ai_sentiment: sentiment.label,
+          ai_toxicity_score: Math.abs(sentiment.comparative),
+        })
+        .eq('id', data.id);
+    } catch (_) {}
+  }
+
   return { data };
 }
 
@@ -95,7 +113,7 @@ async function getFeedbackReceived({ employeeId, isSystemAdmin, page = 1, limit 
     .from("employee_feedback")
     .select(
       `id, professionalism, communication, teamwork, reliability,
-       written_feedback, quarter, year, created_at,
+       written_feedback, quarter, year, created_at, is_anonymous,
        company:company_id ( id, name ),
        reviewer:reviewer_id ( id, full_name )`,
       { count: "exact" }
@@ -113,8 +131,16 @@ async function getFeedbackReceived({ employeeId, isSystemAdmin, page = 1, limit 
   const { data, error, count } = await query;
   if (error) return { error: error.message };
 
+  // Feature 11: Mask reviewer identity when anonymous (unless system admin)
+  const maskedData = (data || []).map(fb => {
+    if (fb.is_anonymous && !isSystemAdmin) {
+      return { ...fb, reviewer: { id: null, full_name: 'Anonymous Colleague' } };
+    }
+    return fb;
+  });
+
   return {
-    data,
+    data: maskedData,
     pagination: { page, limit, total: count || 0, pages: Math.ceil((count || 0) / limit) }
   };
 }

@@ -10,6 +10,8 @@ const getCompanies = async (req, res, next) => {
     const filters = {
       industry: req.query.industry,
       location: req.query.location,
+      country: req.query.country,
+      city: req.query.city,
       minRating: req.query.minRating,
       search: req.query.search,
       page: req.query.page || 1,
@@ -206,6 +208,19 @@ const getCompanyEmployees = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /companies/filter-options
+ * Get distinct country/city values for filter dropdowns
+ */
+const getFilterOptions = async (req, res, next) => {
+  try {
+    const options = await companyService.getFilterOptions();
+    res.status(200).json({ success: true, data: options });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getCompanies,
   getCompanyById,
@@ -214,5 +229,6 @@ module.exports = {
   deleteCompany,
   getCompanyStats,
   getCompanyAnalytics,
-  getCompanyEmployees
+  getCompanyEmployees,
+  getFilterOptions
 };

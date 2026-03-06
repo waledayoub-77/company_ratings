@@ -67,3 +67,54 @@ export async function endEmployment(id, data = {}) {
 export async function cancelEmployment(id) {
   return authRequest(`/employments/${id}/cancel`, { method: 'DELETE' })
 }
+
+/**
+ * POST /employments/invite — company admin invites employee by email
+ */
+export async function inviteEmployee(data) {
+  return authRequest('/employments/invite', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+/**
+ * POST /employments/accept-invite — accept invitation
+ */
+export async function acceptInvite(token) {
+  return authRequest('/employments/accept-invite', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  })
+}
+
+/**
+ * GET /employments/pending-invites — company admin: list pending invites
+ */
+export async function getPendingInvites() {
+  return authRequest('/employments/pending-invites')
+}
+
+/**
+ * DELETE /employments/invite/:id — company admin: cancel invite
+ */
+export async function cancelInvite(id) {
+  return authRequest(`/employments/invite/${id}`, { method: 'DELETE' })
+}
+
+/**
+ * PATCH /employments/invite/:id/resend — company admin: resend invite
+ */
+export async function resendInvite(id) {
+  return authRequest(`/employments/invite/${id}/resend`, { method: 'PATCH' })
+}
+
+/**
+ * PATCH /employments/:id/end-by-admin — company admin ends employment
+ */
+export async function endEmploymentByAdmin(id, data) {
+  return authRequest(`/employments/${id}/end-by-admin`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}

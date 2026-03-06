@@ -11,6 +11,8 @@ const getCompanies = async (filters = {}) => {
   const {
     industry,
     location,
+    country,
+    city,
     minRating,
     search,
     sortBy = 'created_at',
@@ -31,6 +33,14 @@ const getCompanies = async (filters = {}) => {
     if (location) {
       const safeLocation = sanitizeSearch(location);
       if (safeLocation) q = q.ilike('location', `%${safeLocation}%`);
+    }
+    if (country) {
+      const safeCountry = sanitizeSearch(country);
+      if (safeCountry) q = q.ilike('country', `%${safeCountry}%`);
+    }
+    if (city) {
+      const safeCity = sanitizeSearch(city);
+      if (safeCity) q = q.ilike('city', `%${safeCity}%`);
     }
     if (minRating) q = q.gte('overall_rating', parseFloat(minRating));
     if (search) {
@@ -342,6 +352,39 @@ const getCompanyAnalytics = async (companyId) => {
   };
 };
 
+/**
+ * Get distinct country/city values for filter dropdowns
+ */
+const getFilterOptions = async () => {
+  const { data, error } = await supabase
+    .from('companies')
+    .select('country, city')
+    .is('deleted_at', null);
+
+  if (error) {
+    console.error('❌ Supabase error in getFilterOptions:', error);
+    throw new AppError('Failed to fetch filter options', 500);
+  }
+
+  const countries = [...new Set((data || []).map(c => c.country).filter(Boolean))].sort();
+  const cities = [...new Set((data || []).map(c => c.city).filter(Boolean))].sort();
+
+  // Build country→cities map
+  const citiesByCountry = {};
+  (data || []).forEach(c => {
+    if (c.country && c.city) {
+      if (!citiesByCountry[c.country]) citiesByCountry[c.country] = new Set();
+      citiesByCountry[c.country].add(c.city);
+    }
+  });
+  const citiesByCountryObj = {};
+  for (const [k, v] of Object.entries(citiesByCountry)) {
+    citiesByCountryObj[k] = [...v].sort();
+  }
+
+  return { countries, cities, citiesByCountry: citiesByCountryObj };
+};
+
 module.exports = {
   getCompanies,
   getCompanyById,
@@ -349,5 +392,6 @@ module.exports = {
   updateCompany,
   deleteCompany,
   getCompanyStats,
-  getCompanyAnalytics
+  getCompanyAnalytics,
+  getFilterOptions
 };

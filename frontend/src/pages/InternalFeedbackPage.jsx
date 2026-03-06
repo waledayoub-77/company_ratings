@@ -32,6 +32,7 @@ export default function InternalFeedbackPage() {
   const [search, setSearch] = useState('')
   const [ratings, setRatings] = useState({})
   const [comment, setComment] = useState('')
+  const [isAnonymous, setIsAnonymous] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -74,6 +75,7 @@ export default function InternalFeedbackPage() {
     setSelectedPerson(person)
     setRatings({})
     setComment('')
+    setIsAnonymous(false)
     setStep('rate')
   }
 
@@ -91,6 +93,7 @@ export default function InternalFeedbackPage() {
         writtenFeedback: comment.trim() || undefined,
         quarter:         parseInt(selectedPerson.quarter, 10),
         year:            parseInt(selectedPerson.year,    10),
+        isAnonymous,
       })
       /* mark as rated locally so UI reflects it immediately */
       setCoworkers(prev => prev.map(c =>
@@ -116,6 +119,7 @@ export default function InternalFeedbackPage() {
     setSelectedPerson(null)
     setRatings({})
     setComment('')
+    setIsAnonymous(false)
     setPage(1)
   }
 
@@ -377,11 +381,37 @@ export default function InternalFeedbackPage() {
               </Reveal>
 
               {/* Visibility notice */}
+              <Reveal delay={0.35}>
+                <div className="bg-white rounded-2xl border border-navy-100/50 p-6 mb-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold text-navy-900 mb-1">Anonymous Feedback</h3>
+                      <p className="text-xs text-navy-400">
+                        {isAnonymous
+                          ? 'Your name will be hidden from the recipient. Only the company admin can see who submitted it.'
+                          : 'Your name will be shown to the recipient and the company admin.'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsAnonymous(!isAnonymous)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        isAnonymous ? 'bg-navy-900' : 'bg-navy-200'
+                      }`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        isAnonymous ? 'translate-x-6' : 'translate-x-1'
+                      }`} />
+                    </button>
+                  </div>
+                </div>
+              </Reveal>
+
               <div className="bg-ice-500/20 rounded-xl p-4 mb-6 flex items-start gap-3">
                 <MessageSquare size={16} className="text-navy-500 mt-0.5 shrink-0" />
                 <p className="text-xs text-navy-600 leading-relaxed">
                   <strong>Visibility:</strong> This feedback will be visible to <strong>{selectedPerson?.fullName}</strong> and 
-                  your <strong>company admin</strong>. Your name will be shown as the reviewer.
+                  your <strong>company admin</strong>. {isAnonymous ? 'Your name will be hidden from the recipient.' : 'Your name will be shown as the reviewer.'}
                   Feedback is immutable — it cannot be deleted after submission.
                 </p>
               </div>

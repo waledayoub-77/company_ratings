@@ -30,6 +30,12 @@
     { "key": "eotmEventId", "value": "", "enabled": true },
     { "key": "employeeEmployeeId", "value": "", "enabled": true },
     { "key": "employee2EmployeeId", "value": "", "enabled": true },
-    { "key": "feedbackId", "value": "", "enabled": true }
+    { "key": "feedbackId", "value": "", "enabled": true },
+    { "key": "inviteId", "value": "", "enabled": true },
+    { "key": "inviteToken", "value": "", "enabled": true },
+    { "key": "eotyEventId", "value": "", "enabled": true },
+    { "key": "jobPositionId", "value": "", "enabled": true },
+    { "key": "applicationId", "value": "", "enabled": true },
+    { "key": "anonFeedbackId", "value": "", "enabled": true }
   ]
 }

@@ -22,6 +22,7 @@ import {
   Briefcase,
   Sparkles,
   Send,
+  Trophy,
 } from 'lucide-react'
 import StarRating from '../components/ui/StarRating.jsx'
 import Badge from '../components/ui/Badge.jsx'
@@ -30,6 +31,8 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { getCompanyById, getCompanyReviews, getCompanyAnalytics, getCompanyEmployees } from '../api/companies'
 import { submitReport } from '../api/admin'
 import { toggleReviewVote, createReviewReply } from '../api/reviews'
+import { getCompanyEotyWinners } from '../api/eoty'
+import { getJobPositions } from '../api/jobs'
 
 const CATEGORY_META = {
   work_life_balance: { label: 'Work-Life Balance', icon: Heart, color: 'bg-pink-500' },
@@ -96,6 +99,12 @@ export default function CompanyProfilePage() {
   const [employees, setEmployees] = useState([])
   const [employeesLoading, setEmployeesLoading] = useState(false)
 
+  // EOTY winners state
+  const [eotyWinners, setEotyWinners] = useState([])
+
+  // Open positions state
+  const [openPositions, setOpenPositions] = useState([])
+
   // Fetch company + analytics
   useEffect(() => {
     let cancelled = false
@@ -153,6 +162,20 @@ export default function CompanyProfilePage() {
       .catch(() => setEmployees([]))
       .finally(() => setEmployeesLoading(false))
   }, [id, user])
+
+  // Fetch EOTY winners
+  useEffect(() => {
+    getCompanyEotyWinners(id)
+      .then(res => setEotyWinners(res?.data ?? []))
+      .catch(() => setEotyWinners([]))
+  }, [id])
+
+  // Fetch open positions
+  useEffect(() => {
+    getJobPositions(id)
+      .then(res => setOpenPositions(res?.data ?? []))
+      .catch(() => setOpenPositions([]))
+  }, [id])
 
   // Handle report submit
   const handleReport = async (reviewId) => {
@@ -735,6 +758,82 @@ export default function CompanyProfilePage() {
                   })}
                 </div>
               )}
+            </div>
+          </Reveal>
+        )}
+
+        {/* ─── EOTY Hall of Fame ─── */}
+        {eotyWinners.length > 0 && (
+          <Reveal delay={0.15}>
+            <div className="mt-10 bg-white rounded-2xl border border-navy-100/50 p-6">
+              <div className="flex items-center gap-3 mb-5 pb-4 border-b border-navy-100/50">
+                <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
+                  <Trophy size={16} className="text-amber-500" />
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold text-navy-900">Employee of the Year — Hall of Fame</h2>
+                  <p className="text-xs text-navy-400 mt-0.5">Award winners recognized at {company.name}</p>
+                </div>
+              </div>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {eotyWinners.map((w, i) => {
+                  const initials = (w.winner_name || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+                  return (
+                    <Reveal key={w.id || i} delay={i * 0.04}>
+                      <div className="flex items-center gap-3 p-4 rounded-xl border border-amber-100 bg-amber-50/30 hover:bg-amber-50/60 transition-all">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shrink-0 shadow-sm">
+                          <span className="text-white text-xs font-bold">{initials}</span>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-navy-900 truncate">{w.winner_name}</p>
+                          <p className="text-xs text-navy-400">{w.year} · {w.total_votes} vote{w.total_votes !== 1 ? 's' : ''}</p>
+                        </div>
+                        <Trophy size={16} className="text-amber-400 shrink-0 ml-auto" />
+                      </div>
+                    </Reveal>
+                  )
+                })}
+              </div>
+            </div>
+          </Reveal>
+        )}
+
+        {/* ─── Open Positions ─── */}
+        {openPositions.length > 0 && (
+          <Reveal delay={0.2}>
+            <div className="mt-10 bg-white rounded-2xl border border-navy-100/50 p-6">
+              <div className="flex items-center gap-3 mb-5 pb-4 border-b border-navy-100/50">
+                <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
+                  <Briefcase size={16} className="text-indigo-500" />
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold text-navy-900">Open Positions</h2>
+                  <p className="text-xs text-navy-400 mt-0.5">Current job openings at {company.name}</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {openPositions.map((job, i) => (
+                  <Reveal key={job.id} delay={i * 0.04}>
+                    <div className="p-4 rounded-xl border border-navy-100/50 hover:border-navy-200 transition-all">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h3 className="text-sm font-semibold text-navy-900">{job.title}</h3>
+                          {job.description && (
+                            <p className="text-xs text-navy-500 mt-1 line-clamp-2">{job.description}</p>
+                          )}
+                          {job.requirements && (
+                            <p className="text-xs text-navy-400 mt-1">Requirements: {job.requirements}</p>
+                          )}
+                        </div>
+                        <Badge variant="success" size="sm">Open</Badge>
+                      </div>
+                      <p className="text-[11px] text-navy-300 mt-2">
+                        Posted {new Date(job.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </p>
+                    </div>
+                  </Reveal>
+                ))}
+              </div>
             </div>
           </Reveal>
         )}

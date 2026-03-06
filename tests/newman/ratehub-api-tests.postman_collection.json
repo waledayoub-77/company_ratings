@@ -1537,6 +1537,547 @@
           }]
         }
       ]
+    },
+    {
+      "name": "16 — Company Filters (Country/City)",
+      "item": [
+        {
+          "name": "GET /companies/filter-options",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/companies/filter-options"
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('Has countries array', () => pm.expect(body.data.countries).to.be.an('array'));",
+              "pm.test('Has cities array', () => pm.expect(body.data.cities).to.be.an('array'));",
+              "pm.test('Has citiesByCountry object', () => pm.expect(body.data.citiesByCountry).to.be.an('object'));"
+            ]}
+          }]
+        },
+        {
+          "name": "GET /companies?country=... filters by country",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/companies?country=Germany"
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('Returns data array', () => pm.expect(body.data).to.be.an('array'));"
+            ]}
+          }]
+        },
+        {
+          "name": "GET /companies?city=... filters by city",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/companies?city=Berlin"
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('Returns data array', () => pm.expect(body.data).to.be.an('array'));"
+            ]}
+          }]
+        }
+      ]
+    },
+    {
+      "name": "17 — Employment Invites",
+      "item": [
+        {
+          "name": "POST /employments/invite — send invite",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/employments/invite",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{companyAdminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"email\":\"invite-test@ratehub.com\",\"position\":\"QA Engineer\",\"department\":\"Engineering\"}" }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('Status 201 or 400', () => pm.expect(pm.response.code).to.be.oneOf([201, 400]));",
+              "const body = pm.response.json();",
+              "if (pm.response.code === 201 && body.data) {",
+              "  pm.environment.set('inviteId', body.data.id || '');",
+              "  pm.environment.set('inviteToken', body.data.invite_token || '');",
+              "}"
+            ]}
+          }]
+        },
+        {
+          "name": "GET /employments/pending-invites — list pending",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/employments/pending-invites",
+            "header": [{ "key": "Authorization", "value": "Bearer {{companyAdminToken}}" }]
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('Returns data array', () => pm.expect(body.data).to.be.an('array'));"
+            ]}
+          }]
+        },
+        {
+          "name": "PATCH /employments/invite/:id/resend — resend invite",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/employments/invite/{{inviteId}}/resend",
+            "header": [{ "key": "Authorization", "value": "Bearer {{companyAdminToken}}" }]
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const id = pm.environment.get('inviteId');",
+              "if (!id) { pm.test.skip('No inviteId'); return; }",
+              "pm.test('Status 200 or 400', () => pm.expect(pm.response.code).to.be.oneOf([200, 400]));"
+            ]}
+          }]
+        },
+        {
+          "name": "DELETE /employments/invite/:id — cancel invite",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/employments/invite/{{inviteId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{companyAdminToken}}" }]
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const id = pm.environment.get('inviteId');",
+              "if (!id) { pm.test.skip('No inviteId'); return; }",
+              "pm.test('Status 200 or 404', () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));"
+            ]}
+          }]
+        },
+        {
+          "name": "POST /employments/accept-invite — accept (no token) → 400",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/employments/accept-invite",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{employeeToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"token\":\"invalid-token-12345\"}" }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('Status 400 or 404', () => pm.expect(pm.response.code).to.be.oneOf([400, 404]));"
+            ]}
+          }]
+        },
+        {
+          "name": "PATCH /employments/:id/end-by-admin — unauthenticated → 401",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/employments/{{employmentId}}/end-by-admin",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"reason\":\"test\"}" }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('Status 401', () => pm.response.to.have.status(401));"
+            ]}
+          }]
+        }
+      ]
+    },
+    {
+      "name": "18 — EOTY (Employee of the Year)",
+      "item": [
+        {
+          "name": "POST /eoty/events — create EOTY event",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/eoty/events",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{companyAdminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{}" }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('Status 201 or 400', () => pm.expect(pm.response.code).to.be.oneOf([201, 400]));",
+              "const body = pm.response.json();",
+              "if (pm.response.code === 201 && body.data) {",
+              "  pm.environment.set('eotyEventId', body.data.id);",
+              "}"
+            ]}
+          }]
+        },
+        {
+          "name": "GET /eoty/company/:companyId — list events",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/eoty/company/{{companyId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{companyAdminToken}}" }]
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('Returns data array', () => pm.expect(body.data).to.be.an('array'));"
+            ]}
+          }]
+        },
+        {
+          "name": "GET /eoty/events/:id/nominees — list nominees",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/eoty/events/{{eotyEventId}}/nominees",
+            "header": [{ "key": "Authorization", "value": "Bearer {{companyAdminToken}}" }]
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const id = pm.environment.get('eotyEventId');",
+              "if (!id) { pm.test.skip('No eotyEventId'); return; }",
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('Returns data array', () => pm.expect(body.data).to.be.an('array'));"
+            ]}
+          }]
+        },
+        {
+          "name": "POST /eoty/events/:id/vote — cast vote",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/eoty/events/{{eotyEventId}}/vote",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{employeeToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"candidateId\":\"{{employee2EmployeeId}}\"}" }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const id = pm.environment.get('eotyEventId');",
+              "if (!id) { pm.test.skip('No eotyEventId'); return; }",
+              "pm.test('Status 201 or 400', () => pm.expect(pm.response.code).to.be.oneOf([201, 400]));"
+            ]}
+          }]
+        },
+        {
+          "name": "PATCH /eoty/events/:id/close — close event",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/eoty/events/{{eotyEventId}}/close",
+            "header": [{ "key": "Authorization", "value": "Bearer {{companyAdminToken}}" }]
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const id = pm.environment.get('eotyEventId');",
+              "if (!id) { pm.test.skip('No eotyEventId'); return; }",
+              "pm.test('Status 200 or 400', () => pm.expect(pm.response.code).to.be.oneOf([200, 400]));"
+            ]}
+          }]
+        },
+        {
+          "name": "GET /eoty/company/:companyId/winners — hall of fame",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/eoty/company/{{companyId}}/winners"
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('Returns data array', () => pm.expect(body.data).to.be.an('array'));"
+            ]}
+          }]
+        },
+        {
+          "name": "POST /eoty/events — unauthenticated → 401",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/eoty/events",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('Status 401', () => pm.response.to.have.status(401));"
+            ]}
+          }]
+        }
+      ]
+    },
+    {
+      "name": "19 — Jobs & Applications",
+      "item": [
+        {
+          "name": "POST /jobs — create job position",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/jobs",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{companyAdminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"title\":\"Test Engineer\",\"description\":\"Automated testing role\",\"requirements\":\"3+ years experience\"}" }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "const body = pm.response.json();",
+              "pm.test('Has job data', () => pm.expect(body.data).to.have.property('id'));",
+              "pm.environment.set('jobPositionId', body.data.id);"
+            ]}
+          }]
+        },
+        {
+          "name": "GET /jobs — list company positions",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/jobs",
+            "header": [{ "key": "Authorization", "value": "Bearer {{companyAdminToken}}" }]
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('Returns data array', () => pm.expect(body.data).to.be.an('array'));",
+              "pm.test('Has at least 1 position', () => pm.expect(body.data.length).to.be.greaterThan(0));"
+            ]}
+          }]
+        },
+        {
+          "name": "GET /jobs/all — all open positions (public)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/jobs/all"
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('Returns data array', () => pm.expect(body.data).to.be.an('array'));"
+            ]}
+          }]
+        },
+        {
+          "name": "GET /jobs/:id — position details",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/jobs/{{jobPositionId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{companyAdminToken}}" }]
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const id = pm.environment.get('jobPositionId');",
+              "if (!id) { pm.test.skip('No jobPositionId'); return; }",
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('Has title', () => pm.expect(body.data.title).to.eql('Test Engineer'));"
+            ]}
+          }]
+        },
+        {
+          "name": "POST /jobs/:id/apply — employee applies",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/jobs/{{jobPositionId}}/apply",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{employeeToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"cvUrl\":\"https://example.com/cv.pdf\",\"coverLetter\":\"I am interested in this position.\"}" }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const id = pm.environment.get('jobPositionId');",
+              "if (!id) { pm.test.skip('No jobPositionId'); return; }",
+              "pm.test('Status 201 or 400', () => pm.expect(pm.response.code).to.be.oneOf([201, 400]));",
+              "const body = pm.response.json();",
+              "if (pm.response.code === 201 && body.data) {",
+              "  pm.environment.set('applicationId', body.data.id);",
+              "}"
+            ]}
+          }]
+        },
+        {
+          "name": "GET /jobs/my-applications — employee's apps",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/jobs/my-applications",
+            "header": [{ "key": "Authorization", "value": "Bearer {{employeeToken}}" }]
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('Returns data array', () => pm.expect(body.data).to.be.an('array'));"
+            ]}
+          }]
+        },
+        {
+          "name": "GET /jobs/:id/applications — admin views applications",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/jobs/{{jobPositionId}}/applications",
+            "header": [{ "key": "Authorization", "value": "Bearer {{companyAdminToken}}" }]
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const id = pm.environment.get('jobPositionId');",
+              "if (!id) { pm.test.skip('No jobPositionId'); return; }",
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('Returns data array', () => pm.expect(body.data).to.be.an('array'));"
+            ]}
+          }]
+        },
+        {
+          "name": "PATCH /jobs/applications/:appId/status — move to interview",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/jobs/applications/{{applicationId}}/status",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{companyAdminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"status\":\"interview\"}" }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const id = pm.environment.get('applicationId');",
+              "if (!id) { pm.test.skip('No applicationId'); return; }",
+              "pm.test('Status 200 or 400', () => pm.expect(pm.response.code).to.be.oneOf([200, 400]));"
+            ]}
+          }]
+        },
+        {
+          "name": "PATCH /jobs/:id/close — close position",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/jobs/{{jobPositionId}}/close",
+            "header": [{ "key": "Authorization", "value": "Bearer {{companyAdminToken}}" }]
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "const id = pm.environment.get('jobPositionId');",
+              "if (!id) { pm.test.skip('No jobPositionId'); return; }",
+              "pm.test('Status 200 or 400', () => pm.expect(pm.response.code).to.be.oneOf([200, 400]));"
+            ]}
+          }]
+        },
+        {
+          "name": "POST /jobs — unauthenticated → 401",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/jobs",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"title\":\"Blocked\",\"description\":\"Should fail\"}" }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('Status 401', () => pm.response.to.have.status(401));"
+            ]}
+          }]
+        },
+        {
+          "name": "POST /jobs — employee role → 403",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/jobs",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{employeeToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"title\":\"Blocked\",\"description\":\"Employees cannot create jobs\"}" }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('Status 403', () => pm.response.to.have.status(403));"
+            ]}
+          }]
+        }
+      ]
+    },
+    {
+      "name": "20 — Anonymous Feedback & Sentiment",
+      "item": [
+        {
+          "name": "POST /feedback — anonymous feedback",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/feedback",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{employeeToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"recipientId\":\"{{employee2EmployeeId}}\",\"companyId\":\"{{companyId}}\",\"type\":\"praise\",\"comment\":\"Great work on the project! Really excellent effort.\",\"isAnonymous\":true}" }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('Status 201 or 200', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+              "const body = pm.response.json();",
+              "if (body.data) {",
+              "  pm.environment.set('anonFeedbackId', body.data.id || '');",
+              "  pm.test('Feedback is anonymous', () => pm.expect(body.data.is_anonymous).to.be.true);",
+              "}"
+            ]}
+          }]
+        },
+        {
+          "name": "POST /feedback — non-anonymous with sentiment",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/feedback",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{employeeToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"recipientId\":\"{{employee2EmployeeId}}\",\"companyId\":\"{{companyId}}\",\"type\":\"constructive\",\"comment\":\"Please improve your communication. Very poor attendance.\",\"isAnonymous\":false}" }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('Status 201 or 200', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+              "const body = pm.response.json();",
+              "if (body.data) {",
+              "  pm.test('Has sentiment field', () => pm.expect(body.data.ai_sentiment).to.be.a('string'));",
+              "}"
+            ]}
+          }]
+        }
+      ]
     }
   ]
 }

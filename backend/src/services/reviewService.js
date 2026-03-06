@@ -266,6 +266,26 @@ const updateReview = async (reviewId, updates, userId) => {
     await recalculateCompanyRating(review.company_id);
   }
 
+  // Feature 13: Re-run sentiment analysis on edited content
+  try {
+    const sentiment = analyzeText(content || '');
+    const isAutoFlagged = shouldAutoReport(sentiment.label);
+    await supabase
+      .from('company_reviews')
+      .update({
+        sentiment:       sentiment.label,
+        sentiment_score: sentiment.comparative,
+        auto_flagged:    isAutoFlagged,
+      })
+      .eq('id', reviewId);
+
+    if (isAutoFlagged) {
+      await autoReportReview(reviewId, sentiment);
+    }
+  } catch (sentimentErr) {
+    console.error('Sentiment re-analysis on edit failed (non-fatal):', sentimentErr.message);
+  }
+
   return data;
 };
 

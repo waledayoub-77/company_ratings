@@ -11,6 +11,8 @@ const adminRoutes = require('./adminRoutes');
 const notificationRoutes = require('./notificationRoutes');
 const verificationRoutes = require('./verificationRoutes');
 const eotmRoutes = require('./eotmRoutes');
+const eotyRoutes = require('./eotyRoutes');
+const jobRoutes = require('./jobRoutes');
 
 router.use('/auth', authRoutes);
 router.use('/companies', companyRoutes);
@@ -21,6 +23,8 @@ router.use('/employees', employeeRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/verification', verificationRoutes);
 router.use('/eotm', eotmRoutes);
+router.use('/eoty', eotyRoutes);
+router.use('/jobs', jobRoutes);
 router.use('/', adminRoutes);
 
 module.exports = router;

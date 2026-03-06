@@ -145,6 +145,53 @@ function feedbackReceivedTemplate(recipientName, senderName, companyName) {
   `;
 }
 
+function employmentInviteTemplate(companyName, acceptUrl) {
+  return `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px;">
+      <h2 style="color:#4f46e5;">You've Been Invited to Join ${companyName} 🎉</h2>
+      <p>A company admin at <strong>${companyName}</strong> has invited you to join their team on RateHub.</p>
+      <div style="text-align:center;margin:32px 0;">
+        <a href="${acceptUrl}"
+           style="background:#4f46e5;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">
+          Accept Invitation
+        </a>
+      </div>
+      <p style="color:#888;font-size:13px;">This invitation expires in 7 days. If you don't have an account yet, you'll be asked to register first.</p>
+      <p style="color:#888;font-size:13px;">— The RateHub Team</p>
+    </div>
+  `;
+}
+
+function employmentEndedByAdminTemplate(name, companyName, reason) {
+  return `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px;">
+      <h2 style="color:#dc2626;">Employment Ended</h2>
+      <p>Hi <strong>${name}</strong>,</p>
+      <p>Your employment at <strong>${companyName}</strong> has been ended by the company administrator.</p>
+      ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
+      <p>You can still view your past reviews on RateHub.</p>
+      <p style="color:#888;font-size:13px;">— The RateHub Team</p>
+    </div>
+  `;
+}
+
+function jobApplicationStatusTemplate(name, positionTitle, companyName, status) {
+  const statusMessages = {
+    interview: 'has moved to the <strong>Interview</strong> stage',
+    approved: 'has been <strong>Approved</strong> — congratulations!',
+    rejected: 'has been <strong>Rejected</strong>'
+  };
+  return `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px;">
+      <h2 style="color:#4f46e5;">Application Update</h2>
+      <p>Hi <strong>${name}</strong>,</p>
+      <p>Your application for <strong>${positionTitle}</strong> at <strong>${companyName}</strong> ${statusMessages[status] || 'has been updated'}.</p>
+      <p>Log in to your RateHub dashboard for details.</p>
+      <p style="color:#888;font-size:13px;">— The RateHub Team</p>
+    </div>
+  `;
+}
+
 // ─── SEND FUNCTIONS ───────────────────────────────────────────────────────────
 
 async function sendWelcomeEmail({ to, name }) {
@@ -239,6 +286,32 @@ async function sendFeedbackReceivedEmail({ to, recipientName, senderName, compan
   });
 }
 
+async function sendEmploymentInviteEmail({ to, companyName, token }) {
+  const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').split(',')[0].trim();
+  const acceptUrl = `${frontendUrl}/accept-invite?token=${token}`;
+  return sendEmail({
+    to,
+    subject: `You've been invited to join ${companyName} — RateHub`,
+    html: employmentInviteTemplate(companyName, acceptUrl),
+  });
+}
+
+async function sendEmploymentEndedByAdminEmail({ to, name, companyName, reason }) {
+  return sendEmail({
+    to,
+    subject: `Your employment at ${companyName} has ended — RateHub`,
+    html: employmentEndedByAdminTemplate(name, companyName, reason),
+  });
+}
+
+async function sendJobApplicationStatusEmail({ to, name, positionTitle, companyName, status }) {
+  return sendEmail({
+    to,
+    subject: `Application update: ${positionTitle} at ${companyName} — RateHub`,
+    html: jobApplicationStatusTemplate(name, positionTitle, companyName, status),
+  });
+}
+
 module.exports = {
   sendWelcomeEmail,
   sendVerifyEmail,
@@ -251,4 +324,7 @@ module.exports = {
   sendAccountDeletedEmail,
   sendReportResolutionEmail,
   sendFeedbackReceivedEmail,
+  sendEmploymentInviteEmail,
+  sendEmploymentEndedByAdminEmail,
+  sendJobApplicationStatusEmail,
 };

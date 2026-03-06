@@ -24,7 +24,11 @@ const NOTIF_ICONS = {
   employment_approved: { Icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50' },
   employment_rejected: { Icon: XCircle,      color: 'text-red-500',     bg: 'bg-red-50'     },
   employment_request:  { Icon: Briefcase,    color: 'text-blue-500',    bg: 'bg-blue-50'    },
+  employment_ended:    { Icon: XCircle,      color: 'text-orange-500',  bg: 'bg-orange-50'  },
   feedback_received:   { Icon: MessageSquare,color: 'text-purple-500',  bg: 'bg-purple-50'  },
+  feedback_report:     { Icon: MessageSquare,color: 'text-red-500',     bg: 'bg-red-50'     },
+  job_application:     { Icon: Briefcase,    color: 'text-indigo-500',  bg: 'bg-indigo-50'  },
+  application_status:  { Icon: Check,        color: 'text-teal-500',    bg: 'bg-teal-50'    },
 }
 
 function timeAgo(dateStr) {

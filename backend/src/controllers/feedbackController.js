@@ -20,7 +20,8 @@ exports.createFeedback = async (req, res) => {
       reliability,
       writtenFeedback,
       quarter,
-      year
+      year,
+      isAnonymous
     } = req.body;
 
     // ── Required fields ────────────────────────────────────────────────────────
@@ -169,6 +170,7 @@ exports.createFeedback = async (req, res) => {
       writtenFeedback: writtenFeedback || null,
       quarter,
       year,
+      isAnonymous: isAnonymous === true,
     });
 
     if (createRes.error) {

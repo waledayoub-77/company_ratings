@@ -15,6 +15,12 @@ router.get(
   companyController.getCompanies
 );
 
+// GET /companies/filter-options - Get distinct country/city for dropdowns
+router.get(
+  '/filter-options',
+  companyController.getFilterOptions
+);
+
 // GET /companies/:id - Get single company
 router.get(
   '/:id',

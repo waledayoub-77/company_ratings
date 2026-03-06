@@ -3,7 +3,9 @@ const employmentService = require('../services/employmentService');
 const {
   sendEmploymentRequestEmail,
   sendEmploymentApprovedEmail,
-  sendEmploymentRejectedEmail
+  sendEmploymentRejectedEmail,
+  sendEmploymentInviteEmail,
+  sendEmploymentEndedByAdminEmail,
 } = require('../services/emailService');
 const { createNotification } = require('../services/notificationService');
 
@@ -461,6 +463,237 @@ exports.cancelEmployment = async (req, res) => {
     return res.json({ message: 'Employment request cancelled' });
   } catch (e) {
     console.error('cancelEmployment error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// POST /api/employments/invite — company admin invites an employee
+exports.inviteEmployee = async (req, res) => {
+  try {
+    const adminUserId = req.user?.userId;
+    const role = req.user?.role;
+    if (role !== 'company_admin') return res.status(403).json({ message: 'Company admin only' });
+
+    const { email, position, department, startDate, companyId } = req.body;
+    if (!email || !companyId) return res.status(400).json({ message: 'email and companyId are required' });
+
+    // Verify admin owns this company
+    const { data: company } = await supabase
+      .from('companies')
+      .select('id, name, user_id')
+      .eq('id', companyId)
+      .eq('user_id', adminUserId)
+      .is('deleted_at', null)
+      .maybeSingle();
+
+    if (!company) return res.status(403).json({ message: 'You do not own this company' });
+
+    const result = await employmentService.inviteEmployee({
+      companyId,
+      email,
+      position,
+      department,
+      startDate,
+    });
+
+    if (result.error) return res.status(400).json({ message: result.error });
+
+    // Send invitation email (non-blocking)
+    try {
+      await sendEmploymentInviteEmail({
+        to: email,
+        companyName: result.companyName,
+        token: result.token,
+      });
+    } catch (_) {}
+
+    return res.status(201).json({ data: result.data });
+  } catch (e) {
+    console.error('inviteEmployee error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// POST /api/employments/accept-invite — accept an employment invitation
+exports.acceptInvite = async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ message: 'Token is required' });
+
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ message: 'You must be logged in to accept an invitation' });
+
+    const result = await employmentService.acceptInvite(token, userId);
+    if (result.error) return res.status(400).json({ message: result.error });
+
+    return res.json({ data: result.data });
+  } catch (e) {
+    console.error('acceptInvite error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// GET /api/employments/pending-invites — company admin: list pending invitations
+exports.getPendingInvites = async (req, res) => {
+  try {
+    const role = req.user?.role;
+    if (role !== 'company_admin') return res.status(403).json({ message: 'Company admin only' });
+
+    const { data: companies } = await supabase
+      .from('companies')
+      .select('id')
+      .eq('user_id', req.user.userId)
+      .is('deleted_at', null);
+
+    if (!companies || companies.length === 0) return res.json({ data: [] });
+
+    const allInvites = [];
+    for (const c of companies) {
+      const result = await employmentService.getPendingInvites(c.id);
+      if (result.data) allInvites.push(...result.data.map(inv => ({ ...inv, company_id: c.id })));
+    }
+    return res.json({ data: allInvites });
+  } catch (e) {
+    console.error('getPendingInvites error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// DELETE /api/employments/invite/:id — company admin: cancel invitation
+exports.cancelInvite = async (req, res) => {
+  try {
+    const role = req.user?.role;
+    if (role !== 'company_admin') return res.status(403).json({ message: 'Company admin only' });
+
+    const { data: companies } = await supabase
+      .from('companies')
+      .select('id')
+      .eq('user_id', req.user.userId)
+      .is('deleted_at', null);
+
+    if (!companies || companies.length === 0) return res.status(404).json({ message: 'No companies found' });
+
+    let result;
+    for (const c of companies) {
+      result = await employmentService.cancelInvite(req.params.id, c.id);
+      if (result.data) break;
+    }
+
+    if (!result || result.error) return res.status(400).json({ message: result?.error || 'Cannot cancel invite' });
+    return res.json({ message: 'Invitation cancelled' });
+  } catch (e) {
+    console.error('cancelInvite error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// PATCH /api/employments/invite/:id/resend — company admin: resend invitation
+exports.resendInvite = async (req, res) => {
+  try {
+    const role = req.user?.role;
+    if (role !== 'company_admin') return res.status(403).json({ message: 'Company admin only' });
+
+    const { data: companies } = await supabase
+      .from('companies')
+      .select('id')
+      .eq('user_id', req.user.userId)
+      .is('deleted_at', null);
+
+    if (!companies || companies.length === 0) return res.status(404).json({ message: 'No companies found' });
+
+    let result;
+    for (const c of companies) {
+      result = await employmentService.resendInvite(req.params.id, c.id);
+      if (result.data) break;
+    }
+
+    if (!result || result.error) return res.status(400).json({ message: result?.error || 'Cannot resend invite' });
+
+    // Send email (non-blocking)
+    try {
+      await sendEmploymentInviteEmail({
+        to: result.email,
+        companyName: result.companyName,
+        token: result.token,
+      });
+    } catch (_) {}
+
+    return res.json({ message: 'Invitation resent' });
+  } catch (e) {
+    console.error('resendInvite error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// PATCH /api/employments/:id/end-by-admin — company admin ends employment
+exports.endEmploymentByAdmin = async (req, res) => {
+  try {
+    const adminUserId = req.user?.userId;
+    const role = req.user?.role;
+    if (role !== 'company_admin') return res.status(403).json({ message: 'Company admin only' });
+
+    const { endDate, reason } = req.body;
+    const employmentId = req.params.id;
+
+    // Get admin's companies
+    const { data: companies } = await supabase
+      .from('companies')
+      .select('id, name')
+      .eq('user_id', adminUserId)
+      .is('deleted_at', null);
+
+    if (!companies || companies.length === 0) return res.status(404).json({ message: 'No companies found' });
+
+    // Check which company owns the employment
+    const { data: employment } = await supabase
+      .from('employments')
+      .select('company_id, employee_id')
+      .eq('id', employmentId)
+      .maybeSingle();
+
+    const company = companies.find(c => c.id === employment?.company_id);
+    if (!company) return res.status(403).json({ message: 'Employment does not belong to your company' });
+
+    const result = await employmentService.endEmploymentByAdmin({
+      employmentId,
+      companyId: company.id,
+      adminUserId,
+      endDate,
+      reason,
+    });
+
+    if (result.error) return res.status(400).json({ message: result.error });
+
+    // Send email and notification to employee (non-blocking)
+    try {
+      const { data: empData } = await supabase
+        .from('employees')
+        .select('full_name, user_id')
+        .eq('id', employment.employee_id)
+        .single();
+      if (empData?.user_id) {
+        const { data: empUser } = await supabase.from('users').select('email').eq('id', empData.user_id).single();
+        if (empUser) {
+          await sendEmploymentEndedByAdminEmail({
+            to: empUser.email,
+            name: empData.full_name,
+            companyName: company.name,
+            reason,
+          });
+        }
+        await createNotification({
+          userId: empData.user_id,
+          type: 'employment_ended',
+          title: 'Employment Ended',
+          message: `Your employment at ${company.name} has been ended by the administrator.${reason ? ` Reason: ${reason}` : ''}`,
+          link: '/dashboard',
+        });
+      }
+    } catch (_) {}
+
+    return res.json({ data: result.data });
+  } catch (e) {
+    console.error('endEmploymentByAdmin error:', e);
     return res.status(500).json({ message: 'Server error' });
   }
 };

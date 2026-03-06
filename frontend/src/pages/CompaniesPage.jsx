@@ -80,7 +80,7 @@ export default function CompaniesPage() {
   const [pagination, setPagination] = useState({ total: 0, totalPages: 1 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [filterOptions, setFilterOptions] = useState({ countries: [], citiesByCountry: {} })
+  const [filterOptions, setFilterOptions] = useState({ countries: [], citiesByCountry: {}, industries: [] })
 
   // Debounce search input
   useEffect(() => {
@@ -183,7 +183,7 @@ export default function CompaniesPage() {
         <AnimatedPanel show={showFilters}>
           <div className="mb-8 p-6 rounded-2xl bg-white border border-navy-100/50 shadow-sm">
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <SelectFilter label="Industry" value={industry} options={industries} onChange={setIndustry} />
+              <SelectFilter label="Industry" value={industry} options={['All Industries', ...(filterOptions.industries?.length ? filterOptions.industries : industries.slice(1))]} onChange={setIndustry} />
               <SelectFilter label="Location" value={locationFilter} options={locations} onChange={setLocationFilter} />
               <SelectFilter label="Country" value={countryFilter} options={['All Countries', ...(filterOptions.countries || [])]} onChange={setCountryFilter} />
               <SelectFilter label="City" value={cityFilter} options={['All Cities', ...(countryFilter !== 'All Countries' ? (filterOptions.citiesByCountry?.[countryFilter] || []) : Object.values(filterOptions.citiesByCountry || {}).flat())]} onChange={setCityFilter} />

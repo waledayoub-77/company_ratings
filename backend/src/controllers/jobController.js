@@ -28,12 +28,26 @@ const getJobPositions = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/jobs/all?companyId=X — list all job postings (admin)
+// GET /api/jobs/all?companyId=X — list all job postings (admin or employee browsing)
 const getAllJobPositions = async (req, res, next) => {
   try {
-    const { companyId } = req.query;
-    if (!companyId) return res.status(400).json({ success: false, message: 'companyId query param required' });
-    const data = await jobService.getAllJobPositions(companyId);
+    let { companyId } = req.query;
+    // Auto-detect companyId for company_admin users
+    if (!companyId && req.user?.role === 'company_admin') {
+      const { data: company } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('user_id', req.user.userId)
+        .is('deleted_at', null)
+        .maybeSingle();
+      if (company) companyId = company.id;
+    }
+    if (companyId) {
+      const data = await jobService.getAllJobPositions(companyId);
+      return res.json({ success: true, data });
+    }
+    // No companyId — return all active jobs across all companies (for employee job board)
+    const data = await jobService.getAllActiveJobs();
     res.json({ success: true, data });
   } catch (err) { next(err); }
 };

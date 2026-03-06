@@ -14,7 +14,7 @@ async function getToken(page) {
 async function tryLoginAsEmployee(page) {
   try {
     await page.goto('/login');
-    await page.locator('input[type="email"]').fill(process.env.EMPLOYEE_EMAIL || 'bob@ratehub.com');
+    await page.locator('input[type="email"]').fill(process.env.EMPLOYEE_EMAIL || 'frank@ratehub.com');
     await page.locator('input[type="password"]').fill(process.env.EMPLOYEE_PASSWORD || 'Test1234!');
     await page.getByRole('button', { name: /sign in/i }).click();
     await page.waitForURL(url => !url.href.includes('/login'), { timeout: 8_000 });
@@ -50,11 +50,12 @@ test.describe('F3 — Country & City Filters on Companies Page', () => {
     const result = await page.evaluate(async (apiUrl) => {
       const res = await fetch(`${apiUrl}/companies/filter-options`);
       const body = await res.json();
-      return { status: res.status, hasCountries: Array.isArray(body.data?.countries), hasCities: Array.isArray(body.data?.cities) };
+      return { status: res.status, hasCountries: Array.isArray(body.data?.countries), hasCities: Array.isArray(body.data?.cities), hasIndustries: Array.isArray(body.data?.industries) };
     }, API_URL);
     expect(result.status).toBe(200);
     expect(result.hasCountries).toBe(true);
     expect(result.hasCities).toBe(true);
+    expect(result.hasIndustries).toBe(true);
   });
 });
 
@@ -71,6 +72,38 @@ test.describe('F11 — Anonymous Feedback Toggle', () => {
     // Look for the anonymous toggle
     const toggle = page.getByText(/anonymous/i).first();
     await expect(toggle).toBeVisible({ timeout: 8_000 });
+  });
+
+  test('Feedback API — received endpoint works', async ({ page }) => {
+    const ok = await tryLoginAsEmployee(page);
+    if (!ok) { test.skip(); return; }
+    const token = await getToken(page);
+
+    const result = await page.evaluate(async ({ apiUrl, token }) => {
+      const res = await fetch(`${apiUrl}/feedback/received`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return { status: res.status, body: await res.json() };
+    }, { apiUrl: API_URL, token });
+
+    expect(result.status).toBe(200);
+    expect(Array.isArray(result.body.data)).toBe(true);
+  });
+
+  test('Feedback API — given endpoint works', async ({ page }) => {
+    const ok = await tryLoginAsEmployee(page);
+    if (!ok) { test.skip(); return; }
+    const token = await getToken(page);
+
+    const result = await page.evaluate(async ({ apiUrl, token }) => {
+      const res = await fetch(`${apiUrl}/feedback/given`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return { status: res.status, body: await res.json() };
+    }, { apiUrl: API_URL, token });
+
+    expect(result.status).toBe(200);
+    expect(Array.isArray(result.body.data)).toBe(true);
   });
 });
 
@@ -264,9 +297,15 @@ test.describe('F12 — Invite-Only Employment (no self-request)', () => {
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
-    // Should show invite-only message
-    const banner = page.getByText(/invite-only|invitation link|admin will send/i);
-    await expect(banner.first()).toBeVisible({ timeout: 5_000 });
+    // Navigate to Employment tab first (banner is there)
+    const empTab = page.getByText('Employment', { exact: true });
+    await empTab.first().click();
+    await page.waitForTimeout(2000);
+    await page.screenshot({ path: 'e2e/screenshots/f12-employment-tab.png', fullPage: true });
+
+    // Should show invite-only message in the info banner
+    const banner = page.locator('text=invite-only');
+    await expect(banner.first()).toBeVisible({ timeout: 8_000 });
   });
 
   test('Company admin dashboard shows invite employee section', async ({ page }) => {
@@ -296,7 +335,7 @@ test.describe('F12 — Invite-Only Employment (no self-request)', () => {
       const res = await fetch(`${apiUrl}/employments/invite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ email: 'e2e-invite-test@ratehub.com', position: 'E2E Tester', department: 'QA' }),
+        body: JSON.stringify({ email: 'carol@ratehub.com', position: 'E2E Tester', department: 'QA' }),
       });
       return { status: res.status, body: await res.json() };
     }, { apiUrl: API_URL, token });

@@ -72,6 +72,22 @@ const getAllJobPositions = async (companyId) => {
 };
 
 /**
+ * Get all active job positions across all companies (for employee job board)
+ */
+const getAllActiveJobs = async () => {
+  const { data, error } = await supabase
+    .from('job_positions')
+    .select('*, companies(name, logo_url, industry, location)')
+    .eq('is_active', true)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(100);
+
+  if (error) throw new AppError('Failed to fetch job positions', 500);
+  return data || [];
+};
+
+/**
  * Get single job position
  */
 const getJobPositionById = async (positionId) => {
@@ -322,6 +338,7 @@ module.exports = {
   createJobPosition,
   getJobPositions,
   getAllJobPositions,
+  getAllActiveJobs,
   getJobPositionById,
   closeJobPosition,
   deleteJobPosition,

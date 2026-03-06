@@ -99,10 +99,10 @@ export default function CompanyAdminDashboard() {
         setActiveEotyCount(active)
       })
       .catch(() => {})
-    getJobPositions()
+    getJobPositions(companyId)
       .then(res => {
         const list = res?.data ?? []
-        setJobCount(Array.isArray(list) ? list.filter(j => j.status === 'open').length : 0)
+        setJobCount(Array.isArray(list) ? list.filter(j => j.status === 'open' || j.is_active).length : 0)
       })
       .catch(() => {})
     getFeedbackReceived()
@@ -222,8 +222,9 @@ function AnalyticsTab({ companyId }) {
   const monthlyData = Array.isArray(monthlyRaw)
     ? monthlyRaw
     : Object.entries(monthlyRaw).map(([month, count]) => ({ month, count }))
-  const ratingDist   = analytics?.ratingDistribution ?? analytics?.rating_distribution
-    ? Object.entries(analytics.ratingDistribution)
+  const rawDist = analytics?.ratingDistribution ?? analytics?.rating_distribution
+  const ratingDist = rawDist
+    ? Object.entries(rawDist)
         .map(([k, v]) => ({ stars: `${k}★`, count: v }))
         .sort((a, b) => b.stars.localeCompare(a.stars))
     : []
@@ -559,13 +560,13 @@ function RequestsTab({ companyId, onCountChange }) {
       ))}
 
       {/* Invite Employee Section */}
-      <InviteSection onInvited={load} />
+      <InviteSection companyId={companyId} onInvited={load} />
     </div>
   )
 }
 
 /* ─── Invite Employee Section ─── */
-function InviteSection({ onInvited }) {
+function InviteSection({ companyId, onInvited }) {
   const [email, setEmail] = useState('')
   const [position, setPosition] = useState('')
   const [department, setDepartment] = useState('')
@@ -589,7 +590,7 @@ function InviteSection({ onInvited }) {
     if (!email.trim()) return
     setSending(true)
     try {
-      await inviteEmployee({ email: email.trim(), position: position.trim() || undefined, department: department.trim() || undefined })
+      await inviteEmployee({ email: email.trim(), companyId, position: position.trim() || undefined, department: department.trim() || undefined })
       setEmail(''); setPosition(''); setDepartment('')
       await loadInvites()
       onInvited?.()
@@ -714,9 +715,10 @@ function TeamFeedbackTab() {
   const aggregate = feedback.reduce((acc, fb) => {
     const cats = ['professionalism', 'communication', 'teamwork', 'reliability']
     cats.forEach(cat => {
-      if (fb.scores?.[cat] != null) {
+      const val = fb[cat] ?? fb.scores?.[cat]
+      if (val != null) {
         if (!acc[cat]) acc[cat] = { sum: 0, count: 0 }
-        acc[cat].sum += fb.scores[cat]
+        acc[cat].sum += val
         acc[cat].count += 1
       }
     })
@@ -1062,7 +1064,7 @@ function EotyTab({ companyId }) {
 
   const handleCreate = async () => {
     setCreating(true)
-    try { await createEotyEvent(); await load() }
+    try { await createEotyEvent({ companyId, year: new Date().getFullYear() }); await load() }
     catch { /* silent */ }
     finally { setCreating(false) }
   }
@@ -1194,7 +1196,7 @@ function JobsTab({ companyId }) {
   const loadPositions = async () => {
     setLoading(true)
     try {
-      const res = await getJobPositions()
+      const res = await getJobPositions(companyId)
       setPositions(res?.data ?? [])
     } catch { setPositions([]) }
     finally { setLoading(false) }
@@ -1207,7 +1209,7 @@ function JobsTab({ companyId }) {
     if (!createForm.title.trim()) return
     setCreating(true)
     try {
-      await createJobPosition(createForm)
+      await createJobPosition({ ...createForm, companyId })
       setCreateForm({ title: '', description: '', requirements: '' })
       setShowCreate(false)
       await loadPositions()

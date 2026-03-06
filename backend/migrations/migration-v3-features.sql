@@ -4,7 +4,10 @@
 -- https://supabase.com/dashboard/project/nfpeazirwxuwpjryvcny/sql/new
 -- ============================================================================
 
--- ── 1. Employments: Add invite/admin-end/source/company_email columns ───────
+-- ── 1. Employments: Allow null employee_id for invite records ────────────────
+ALTER TABLE employments ALTER COLUMN employee_id DROP NOT NULL;
+
+-- ── 1b. Employments: Add invite/admin-end/source/company_email columns ──────
 ALTER TABLE employments ADD COLUMN IF NOT EXISTS source VARCHAR(20) DEFAULT 'request';
 ALTER TABLE employments ADD COLUMN IF NOT EXISTS invite_email VARCHAR(255);
 ALTER TABLE employments ADD COLUMN IF NOT EXISTS invite_token VARCHAR(255);

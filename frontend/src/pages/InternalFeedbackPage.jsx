@@ -60,8 +60,8 @@ export default function InternalFeedbackPage() {
   }, [])
 
   const filtered = coworkers.filter(c =>
-    c.fullName.toLowerCase().includes(search.toLowerCase()) ||
-    c.position.toLowerCase().includes(search.toLowerCase()) ||
+    (c.fullName ?? '').toLowerCase().includes(search.toLowerCase()) ||
+    (c.position ?? '').toLowerCase().includes(search.toLowerCase()) ||
     (c.companyName ?? '').toLowerCase().includes(search.toLowerCase())
   )
 
@@ -91,8 +91,8 @@ export default function InternalFeedbackPage() {
         teamwork:        parseInt(ratings['Teamwork'],        10),
         reliability:     parseInt(ratings['Reliability'],     10),
         writtenFeedback: comment.trim() || undefined,
-        quarter:         parseInt(selectedPerson.quarter, 10),
-        year:            parseInt(selectedPerson.year,    10),
+        quarter:         parseInt(selectedPerson.quarter, 10) || Math.ceil((new Date().getMonth() + 1) / 3),
+        year:            parseInt(selectedPerson.year,    10) || new Date().getFullYear(),
         isAnonymous,
       })
       /* mark as rated locally so UI reflects it immediately */

@@ -36,11 +36,11 @@ const getCompanies = async (filters = {}) => {
     }
     if (country) {
       const safeCountry = sanitizeSearch(country);
-      if (safeCountry) q = q.ilike('country', `%${safeCountry}%`);
+      if (safeCountry) q = q.or(`country.ilike.%${safeCountry}%,location.ilike.%${safeCountry}%`);
     }
     if (city) {
       const safeCity = sanitizeSearch(city);
-      if (safeCity) q = q.ilike('city', `%${safeCity}%`);
+      if (safeCity) q = q.or(`city.ilike.%${safeCity}%,location.ilike.%${safeCity}%`);
     }
     if (minRating) q = q.gte('overall_rating', parseFloat(minRating));
     if (search) {
@@ -353,12 +353,14 @@ const getCompanyAnalytics = async (companyId) => {
 };
 
 /**
- * Get distinct country/city values for filter dropdowns
+ * Get distinct country/city values for filter dropdowns.
+ * Falls back to parsing the `location` field (format "City, Country" or just "City")
+ * when the dedicated country/city columns are empty.
  */
 const getFilterOptions = async () => {
   const { data, error } = await supabase
     .from('companies')
-    .select('country, city')
+    .select('location, country, city, industry')
     .is('deleted_at', null);
 
   if (error) {
@@ -366,23 +368,54 @@ const getFilterOptions = async () => {
     throw new AppError('Failed to fetch filter options', 500);
   }
 
-  const countries = [...new Set((data || []).map(c => c.country).filter(Boolean))].sort();
-  const cities = [...new Set((data || []).map(c => c.city).filter(Boolean))].sort();
-
-  // Build country→cities map
+  const countriesSet = new Set();
+  const citiesSet = new Set();
+  const industriesSet = new Set();
   const citiesByCountry = {};
-  (data || []).forEach(c => {
-    if (c.country && c.city) {
-      if (!citiesByCountry[c.country]) citiesByCountry[c.country] = new Set();
-      citiesByCountry[c.country].add(c.city);
+
+  for (const c of (data || [])) {
+    let country = c.country;
+    let city = c.city;
+
+    // Fallback: parse from location field if country/city columns are empty
+    if (!country && !city && c.location) {
+      const parts = c.location.split(',').map(p => p.trim()).filter(Boolean);
+      if (parts.length >= 2) {
+        city = parts[0];
+        country = parts[parts.length - 1];
+      } else if (parts.length === 1) {
+        // Single value — treat as city/location name
+        city = parts[0];
+      }
     }
-  });
+
+    if (country && country !== 'Not specified') {
+      countriesSet.add(country);
+      if (city && city !== 'Not specified') {
+        citiesSet.add(city);
+        if (!citiesByCountry[country]) citiesByCountry[country] = new Set();
+        citiesByCountry[country].add(city);
+      }
+    } else if (city && city !== 'Not specified') {
+      citiesSet.add(city);
+    }
+
+    if (c.industry && c.industry !== 'Not specified') {
+      industriesSet.add(c.industry);
+    }
+  }
+
   const citiesByCountryObj = {};
   for (const [k, v] of Object.entries(citiesByCountry)) {
     citiesByCountryObj[k] = [...v].sort();
   }
 
-  return { countries, cities, citiesByCountry: citiesByCountryObj };
+  return {
+    countries: [...countriesSet].sort(),
+    cities: [...citiesSet].sort(),
+    industries: [...industriesSet].sort(),
+    citiesByCountry: citiesByCountryObj
+  };
 };
 
 module.exports = {

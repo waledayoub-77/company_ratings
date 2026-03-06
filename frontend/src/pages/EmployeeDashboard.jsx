@@ -1518,7 +1518,7 @@ function EotyVoteTab({ employments }) {
   const handleVote = async (eventId, nomineeId) => {
     setVoting(v => ({ ...v, [nomineeId]: true }))
     try {
-      await castEotyVote(eventId, { nomineeId })
+      await castEotyVote(eventId, nomineeId)
       await loadNominees(eventId)
     } catch { /* silent */ }
     finally { setVoting(v => ({ ...v, [nomineeId]: false })) }

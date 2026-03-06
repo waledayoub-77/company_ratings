@@ -179,38 +179,49 @@ async function inviteEmployee({ companyId, email, position, department, startDat
   // Check if the user already exists
   const { data: existingUser } = await supabase
     .from('users')
-    .select('id, email, role')
+    .select('id, email, role, full_name')
     .eq('email', email.toLowerCase())
     .maybeSingle();
 
-  let employeeId = null;
-  if (existingUser) {
-    // Get employee record
-    const { data: emp } = await supabase
+  if (!existingUser) {
+    return { error: 'No account found for this email. The user must register first before they can be invited.' };
+  }
+
+  // Get or create employee record
+  let { data: emp } = await supabase
+    .from('employees')
+    .select('id')
+    .eq('user_id', existingUser.id)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (!emp) {
+    // Create employee record for existing user
+    const { data: newEmp, error: empErr } = await supabase
       .from('employees')
-      .select('id')
-      .eq('user_id', existingUser.id)
-      .is('deleted_at', null)
-      .maybeSingle();
+      .insert({ user_id: existingUser.id, full_name: existingUser.full_name || 'Employee' })
+      .select()
+      .single();
+    if (empErr) return { error: 'Failed to create employee profile for this user' };
+    emp = newEmp;
+  }
 
-    if (emp) {
-      employeeId = emp.id;
-      // Check existing employment
-      const { data: existing } = await supabase
-        .from('employments')
-        .select('id, verification_status, is_current')
-        .eq('employee_id', emp.id)
-        .eq('company_id', companyId)
-        .is('deleted_at', null)
-        .limit(10);
+  const employeeId = emp.id;
 
-      if (existing && existing.length > 0) {
-        const hasPending = existing.some(e => e.verification_status === 'pending');
-        const hasCurrentApproved = existing.some(e => e.verification_status === 'approved' && e.is_current === true);
-        if (hasPending) return { error: 'There is already a pending request for this employee' };
-        if (hasCurrentApproved) return { error: 'This employee already works at this company' };
-      }
-    }
+  // Check existing employment
+  const { data: existing } = await supabase
+    .from('employments')
+    .select('id, verification_status, is_current')
+    .eq('employee_id', employeeId)
+    .eq('company_id', companyId)
+    .is('deleted_at', null)
+    .limit(10);
+
+  if (existing && existing.length > 0) {
+    const hasPending = existing.some(e => e.verification_status === 'pending');
+    const hasCurrentApproved = existing.some(e => e.verification_status === 'approved' && e.is_current === true);
+    if (hasPending) return { error: 'There is already a pending invitation for this employee' };
+    if (hasCurrentApproved) return { error: 'This employee already works at this company' };
   }
 
   // Generate invite token

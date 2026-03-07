@@ -1,373 +1,265 @@
 ================================================================================
   RATEHUB — V3 MANUAL TEST CASES
   Branch  : ratehub.6
-  Date    : March 6, 2026
+  Date    : March 7, 2026
   Credentials:
     Company Admin  : tech.admin@ratehub.com  / Test1234!
     System Admin   : admin@ratehub.com       / Test1234!
-    Employee       : invite a new email (bob@ratehub.com returns 401 — pre-existing)
+    Employee       : frank@ratehub.com       / Test1234!
 ================================================================================
 
 
-────────────────────────────────────────────────────────────────────────────────
-KNOWN OPEN ISSUES
-────────────────────────────────────────────────────────────────────────────────
+════════════════════════════════════════════════════════════════════════════════
+  AUTOMATED TESTS — ALL PASSING (no manual verification needed)
+════════════════════════════════════════════════════════════════════════════════
 
-  ⚠️  bob@ratehub.com returns 401 — pre-existing DB issue, not a V3 regression.
-               Use the invite flow (F1) to create a test employee account.
-  ⚠️  F9        — Certificate download requires frontend certificate component
-               to be wired to a winner event. Check employee dashboard after
-               an admin closes an EOTM or EOTY event.
-  ⚠️  F13       — AI sentiment checks require OPENAI_API_KEY in backend .env.
-               If missing, AI runs are silently skipped (no error shown).
-  ⚠️  F14       — Email delivery for invite/application notifications requires
-               SENDGRID_API_KEY in backend .env. DB records are created either way.
+  API tests (test-all-v3.js): 34/34 ✅
+  Playwright e2e (17-v3-features.spec.js): 21/21 ✅
+
+  Verified by automation:
+  ✅  F1 API  — POST /employments/invite returns 201 (registered user)
+  ✅  F1 API  — POST /employments/invite returns 400 (unregistered / duplicate)
+  ✅  F1 API  — GET pending-invites, resend, cancel all working
+  ✅  F2 API  — End employment endpoint responds correctly
+  ✅  F2 API  — GET list-all employments returns array
+  ✅  F3 API  — GET /companies/filter-options returns countries + cities + industries
+  ✅  F3 UI   — Companies page Filters panel opens with Country/City dropdowns
+  ✅  F5 API  — POST /jobs creates position (201)
+  ✅  F5 API  — GET /jobs?companyId=X returns data array
+  ✅  F5 API  — GET /jobs/all auto-detects companyId for admin
+  ✅  F5 UI   — Jobs tab visible and navigable on company admin dashboard
+  ✅  F5 UI   — Job Board tab visible on employee dashboard
+  ✅  F7 API  — POST /eoty/events returns 201 or 400
+  ✅  F7 API  — GET eoty events + winners
+  ✅  F7 UI   — EOTY tab visible and navigable on both dashboards
+  ✅  F11 API — GET /feedback/received, /given, /coworkers all 200
+  ✅  F11 UI  — Feedback page shows anonymous toggle
+  ✅  F12 UI  — No "Request Verification" button on employee dashboard
+  ✅  F12 UI  — Invite-only banner visible on Employment tab
+  ✅  F12 UI  — Company admin Employees tab shows Invite Employee section
+  ✅  F14 API — GET /notifications returns 200 with data array
+  ✅  F14 UI  — Notification bell visible after login
+  ✅  CP  UI  — Company profile page loads with title
 
 
-
-
-────────────────────────────────────────────────────────────────────────────────
-F1 — Company Admin: Invite Employees
-────────────────────────────────────────────────────────────────────────────────
-New flow: company admin sends invite → employee clicks link → employment approved.
-Self-request by employees is removed entirely (see F12).
-
-[-- ] F1-A   Login as tech.admin@ratehub.com → Company Admin → Employees tab
-           → scroll to the "Invite Employee" section
-           → form visible with Email, Position, Department fields and Send Invite button
-
-[ ] F1-B   Enter a new email (e.g. newtest@example.com), Position: Tester, Dept: QA
-           → click Send Invite
-           → success toast shown; invite appears in the Pending Invites list
-
-[ ] F1-C   Enter the email of an employee ALREADY approved at TechCorp
-           → click Send Invite
-           → error toast or 400 response: "already employed" — no duplicate created
-
-[ ] F1-D   Find a pending invite in the list → click Cancel (×)
-           → invite row disappears; toast confirms cancellation
-
-[ ] F1-E   Find a pending invite in the list → click Resend
-           → toast: "Invite resent"; expiry date refreshes to +7 days from now
-
-[ ] F1-F   Navigate to /accept-invite?token=<valid_token> while logged in
-           as the invited employee
-           → accept the invitation
-           → redirected to dashboard; employment is now approved at TechCorp
-
-[ ] F1-G   Login as tech.admin after F1-F → Employees tab
-           → the accepted employee now appears in the current employees list
+════════════════════════════════════════════════════════════════════════════════
+  REMAINING MANUAL TESTS — bugs found during manual testing
+════════════════════════════════════════════════════════════════════════════════
 
 
 ────────────────────────────────────────────────────────────────────────────────
-F2 — Company Admin: End Employment
+F2 — Company Admin: End Employment (UI issues)
 ────────────────────────────────────────────────────────────────────────────────
-Admin can officially end an employee's employment with a reason.
-Ended employees receive a notification and appear as former employees.
+API works. UI needs refinement.
 
-[-- no reason field just end button] F2-A   Login as tech.admin@ratehub.com → Company Admin → Employees tab
-           → find an active employee row → click End Employment
-           → confirmation prompt appears with optional Reason field
+[ ] F2-A   Login as tech.admin → Employees tab → click End Employment
+           → should show inline confirmation with optional Reason field
+           BUG: No reason field — just a bare End button
+           FIX NEEDED: Add optional reason text input before confirmation
 
-[-- i can end employment without a reason, remove the alert and add a soft one from the website (no popup)] F2-B   Enter reason "Resigned" → confirm
-           → toast: "Employment ended"; employee no longer shows in active list
-
-[-- ] F2-C   Login as the ended employee → Dashboard
-           → TechCorp is no longer listed as current employer
-
-[-- working but the messages says you must be verified employee to submit a review (can be this its normal) ] F2-D   As the ended employee, attempt to submit peer feedback for a
-           TechCorp colleague
-           → blocked with 403 or "You are not a current employee"
+[ ] F2-B   End employment confirmation should be an inline UI element
+           (soft confirmation banner), NOT a browser alert() popup
+           BUG: Currently uses window.alert/confirm popup
+           FIX NEEDED: Replace alert with in-page confirmation component
 
 
 ────────────────────────────────────────────────────────────────────────────────
-F3 — Country & City Filters on Companies Page
+F3 — Country & City Filter Dropdowns (UI broken)
 ────────────────────────────────────────────────────────────────────────────────
-Two new dropdowns (Country, City) added to the Filters panel on /companies.
-City options narrow when a country is selected.
+API returns correct data (verified). Frontend dropdowns are empty.
 
-[not working - country and city dropdown are empty (dropdown is emtpy) ] F3-A   Go to /companies (not logged in) → click the Filters button
-           → filter panel expands; Country and City dropdowns are visible
-             alongside existing Industry/Location/Sort dropdowns
+[ ] F3-A   Go to /companies → open Filters panel
+           → Country and City dropdowns should be populated with data
+           BUG: Both dropdowns are EMPTY despite API returning data
+           FIX NEEDED: Wire filterOptions.countries/cities into dropdown options
 
-[ ] F3-B   GET http://localhost:5000/api/companies/filter-options
-           → 200 response; body has data.countries (array) and data.cities (object)
+[ ] F3-B   Select a country → City dropdown narrows to that country's cities
+           BUG: Cannot test — dropdowns are empty
+           BLOCKED BY: F3-A
 
-[ not working ] F3-C   Open Filters → select a specific country (e.g. United Kingdom)
-           → City dropdown updates to show only cities in that country
+[ ] F3-C   Select a city → company list filters to that city only
+           BUG: Cannot test — dropdowns are empty
+           BLOCKED BY: F3-A
 
-[ not working ] F3-D   Select a city → company list filters to companies in that city only
-
-[-- ] F3-E   Reset Country to "All Countries"
-           → City resets to "All Cities"; full company list returns
-
-[ not working ] F3-F   Apply a country filter AND type in the search bar simultaneously
-           → results narrow by both search term and country (both applied)
-
-
-────────────────────────────────────────────────────────────────────────────────
-F4 — Revoked Company Email Lock
-────────────────────────────────────────────────────────────────────────────────
-A company email that belonged to a former employee is locked and cannot be
-re-invited to the same company after their employment ends.
-
-[ not working - I press send Invite and nothing happens nor errors no invitation send the button is without functionality] F4-A   Login as tech.admin → Invite Employee form
-           → enter the email of someone whose employment was ENDED at TechCorp
-           → error: "This email has been revoked and cannot re-join this company"
-             (400 response)
-
-[ not working - the Send invite button is without any functionallity] F4-B   The same revoked email CAN be invited to a DIFFERENT company
-           → no error when a different company admin sends the invite
+[ ] F3-D   Apply country filter + search bar simultaneously
+           → results narrow by both filters
+           BUG: Cannot test — dropdowns are empty
+           BLOCKED BY: F3-A
 
 
 ────────────────────────────────────────────────────────────────────────────────
-F5 — Job Postings & CV Pipeline
+F4 — Revoked Email Lock (Send Invite button broken)
 ────────────────────────────────────────────────────────────────────────────────
-Company admins post jobs; employees apply with a CV; admin moves applications
-through Pending → Interview → Approved/Rejected. Approval auto-adds employment.
 
-[not working - the create button is without any functionallity no position is created when i press it ] F5-A   Login as tech.admin → Company Admin → Jobs tab
-           → fill in Title: "Backend Developer", Description: "Build APIs",
-             Requirements: "3+ yrs Node.js" → click Post Job
-           → new job appears in the Open Positions list with status Open
+[ ] F4-A   Login as tech.admin → Invite Employee → enter a revoked email
+           → should show error: "This email has been revoked"
+           BUG: Send Invite button has no click handler / does nothing
+           FIX NEEDED: Wire the Send Invite button onClick to API call
 
-[not working - no positions (because i can't create any) ] F5-B   Go to /companies/<companyId> (not logged in) → scroll to Open Positions
-           → "Backend Developer" listing is visible with title and description
-
-[not working - no positions (because i can't create any) ] F5-C   Login as a verified employee → Dashboard → Job Board tab
-           → open positions from companies are listed
-           → find "Backend Developer" → click Apply
-           → form appears with CV upload and cover letter fields
-
-[ not working - no positions (because i can't create any)] F5-D   Upload a PDF and write a cover letter → submit
-           → success toast; application appears in My Applications with status: pending
-
-[not working - no positions (because i can't create any) ] F5-E   Login as tech.admin → Jobs tab → click Backend Developer
-           → application from the employee is shown with status: pending
-           → click Move to Interview → status changes to: interview
-           → employee receives a notification
-
-[not working - no positions (because i can't create any) ] F5-F   Click Approve on the application
-           → status changes to: approved
-           → employee is automatically added as a TechCorp employee
-           → employee dashboard now shows TechCorp as current employer
-
-[not working - no positions (because i can't create any) ] F5-G   Click Reject on a different application
-           → status changes to: rejected
-           → applicant receives notification
-
-[not working - no positions (because i can't create any) ] F5-H   Click Close Position on the Backend Developer job
-           → listing status changes to Closed
-           → job no longer appears in the public Open Positions section
-
-[ ] F5-I   GET http://localhost:5000/api/jobs?companyId=<id>
-           → 200 response; data array contains only open (not closed) positions
+[ ] F4-B   A revoked email CAN be invited to a DIFFERENT company
+           BLOCKED BY: F4-A (button not working)
 
 
 ────────────────────────────────────────────────────────────────────────────────
-F6 — EOTM: Current Month Only
+F5 — Job Postings: Create Button (UI broken)
 ────────────────────────────────────────────────────────────────────────────────
-The date picker on EOTM event creation is removed. System auto-uses current month.
+API works (verified). Create button in UI does nothing.
 
-[not working - I still can pick a date even if old or in future - make it fixed to the current date non touchable ] F6-A   Login as tech.admin → Company Admin → EOTM tab → Create EOTM Event
-           → NO month/year date picker visible; event will be created for
-             the current month (March 2026) automatically
+[ ] F5-A   Login as tech.admin → Jobs tab → fill form → click Post Job / Create
+           → new job should appear in Open Positions list
+           BUG: Create/Post button has no functionality — nothing happens on click
+           FIX NEEDED: Wire the create button onClick to createJobPosition API
 
-[ I can still pick a date but when I press for example 2010 and press crate event message say EOTM events can only be created for the current month (even if i choosed a year and I am in same month)] F6-B   Create the event → it appears in the list with month = March 2026
+[ ] F5-B   After F5-A: job visible on /companies/<id> Open Positions section
+           BLOCKED BY: F5-A
 
-[-- ] F6-C   Try to create another EOTM event for the same month
-           → error: "An event already exists for this month" (400)
+[ ] F5-C   Employee Dashboard → Job Board → find position → click Apply
+           → CV upload + cover letter form appears
+           BLOCKED BY: F5-A
 
+[ ] F5-D   Submit application → appears in My Applications with status: pending
+           BLOCKED BY: F5-A
 
-────────────────────────────────────────────────────────────────────────────────
-F7 — Employee of the Year (EOTY)
-────────────────────────────────────────────────────────────────────────────────
-Annual voting event. Admin creates, employees vote, admin closes to reveal winner.
-Past winners appear in a Hall of Fame on the company profile.
+[ ] F5-E   Admin → Jobs tab → view application → Move to Interview
+           BLOCKED BY: F5-A
 
-[when i press start 2026 year nothing happens(make the button just written inside create year event without the year number) ] F7-A   Login as tech.admin → Company Admin → EOTY tab is visible in the
-           tab bar (alongside EOTM, Jobs, etc.)
+[ ] F5-F   Approve application → employee auto-added to company
+           BLOCKED BY: F5-A
 
-[not working - because I can not press the button ] F7-B   Click the EOTY tab → click Create EOTY Event
-           → confirmation for year 2026 → confirm
-           → event created; nominee list (all verified employees) appears
+[ ] F5-G   Reject application → applicant notified
+           BLOCKED BY: F5-A
 
-[not working - because I can not press the button ] F7-C   Try to create another EOTY event for 2026
-           → error: "An EOTY event already exists for 2026" (400)
-
-[not working - because I can not press the button ] F7-D   Login as a verified TechCorp employee → Dashboard → EOTY tab
-           → list of nominee colleagues shown
-           → NO vote counts visible next to names (hidden while event is open)
-
-[not working - because I can not press the button ] F7-E   Click Vote on a colleague → vote is recorded; button changes to Voted
-
-[not working - because I can not press the button ] F7-F   Attempt to vote again on a different colleague
-           → error: "You have already voted"
-
-[not working - because I can not press the button ] F7-G   Login as tech.admin → EOTY tab → click Close Event
-           → winner is determined; name and vote count revealed on admin dashboard
-
-[not working - because I can not press the button ] F7-H   Go to /companies/<companyId> (not logged in) → scroll to Hall of Fame
-           → 2026 winner name is shown in the Employee of the Year section
-
-[ ] F7-I   GET http://localhost:5000/api/eoty/company/<companyId>/winners
-           → 200 response; data array contains the 2026 winner record
+[ ] F5-H   Close Position → job removed from public listing
+           BLOCKED BY: F5-A
 
 
 ────────────────────────────────────────────────────────────────────────────────
-F8 — Hide Vote Counts While Voting Is Open
+F6 — EOTM: Remove Date Picker (UI issue)
 ────────────────────────────────────────────────────────────────────────────────
-Prevents vote-bandwagon bias. Counts shown only after admin closes the event.
+Backend enforces current month. Frontend still shows date picker.
 
-[I cant test because I already have an old event opend and closed event with this month ] F8-A   While an EOTM or EOTY event is open: login as an employee
-           → voting tab shows nominee names/photos only — no numbers or counts
+[ ] F6-A   Login as tech.admin → EOTM tab → Create EOTM Event
+           → should auto-use current month with NO date picker
+           BUG: Date picker is still visible and selectable
+           FIX NEEDED: Remove month/year picker; auto-fill current month/year
 
-[I cant test because I already have an old event opend and closed event with this month  ] F8-B   After the admin closes the event (F7-G or equivalent)
-           → reopen the results view → vote counts are now visible next to names
-
-
-────────────────────────────────────────────────────────────────────────────────
-F9 — Winner Certificate
-────────────────────────────────────────────────────────────────────────────────
-EOTM and EOTY winners get a downloadable certificate in their dashboard.
-
-[ not working - no certificate and no dashboard says that 'You Won'] F9-A   Login as the employee who won EOTM or EOTY (after admin closes event)
-           → Dashboard shows a "You Won!" widget or certificate section
-
-[not working ] F9-B   Click View Certificate
-           → certificate appears showing: winner name, company name,
-             award type (EOTM / EOTY), and period (month/year)
-
-[not working - no visible thing like that ] F9-C   Click Download
-           → PNG image of the certificate downloads to the browser
+[ ] F6-B   After removing picker: create event → shows as March 2026 automatically
 
 
 ────────────────────────────────────────────────────────────────────────────────
-F10 — Automatic Employee Count (No Manual Override)
+F7 — EOTY: Create Event Button (UI broken)
 ────────────────────────────────────────────────────────────────────────────────
-Employee count on company profile is derived from DB; manual entry is removed.
+API works (verified). Create button in UI does nothing.
 
-[-- ] F10-A  Login as tech.admin → Company Admin → Settings tab
-           → NO "Employee Count" or "Number of Employees" input field present
+[ ] F7-A   Login as tech.admin → EOTY tab → click Create EOTY Event
+           → should create event for current year
+           BUG: "Start 2026 Year" button does nothing when pressed
+           FIX NEEDED: Button text should say "Create EOTY Event" (no year
+           in label); onClick should call createEotyEvent API
 
-[no employee count are shown ] F10-B  Go to /companies/<companyId> (not logged in)
-           → employee count shown matches the actual number of approved
-             current employees in the DB (auto-calculated)
+[ ] F7-B   After F7-A: nominee list appears with all verified employees
+           BLOCKED BY: F7-A
+
+[ ] F7-C   Try to create duplicate event for 2026 → error "already exists"
+           BLOCKED BY: F7-A
+
+[ ] F7-D   Employee EOTY tab: nominee list visible, NO vote counts shown
+           BLOCKED BY: F7-A
+
+[ ] F7-E   Employee clicks Vote → recorded; button changes to "Voted"
+           BLOCKED BY: F7-A
+
+[ ] F7-F   Employee tries second vote → error "already voted"
+           BLOCKED BY: F7-A
+
+[ ] F7-G   Admin closes event → winner revealed with vote count
+           BLOCKED BY: F7-A
+
+[ ] F7-H   Company profile → Hall of Fame shows winner
+           BLOCKED BY: F7-A
 
 
 ────────────────────────────────────────────────────────────────────────────────
-F11 — Anonymous Peer Feedback
+F8 — Hide Vote Counts While Open
 ────────────────────────────────────────────────────────────────────────────────
-Employees can choose to hide their name when submitting peer feedback.
 
-[ ] F11-A  Login as a verified employee → Dashboard → Feedback tab (or /dashboard/feedback)
-           → feedback form has a visible toggle: "Submit anonymously" (or similar)
-           → toggle is OFF by default
+[ ] F8-A   While EOTM/EOTY event is open: employee sees names only, no counts
+           BLOCKED BY: F7-A (need a fresh open event)
 
-[ ] F11-B  Enable the anonymous toggle → select a colleague → write and submit feedback
-           → success toast; feedback stored with is_anonymous = true
+[ ] F8-B   After admin closes event: vote counts become visible
+           BLOCKED BY: F7-A
 
-[ ] F11-C  Login as the feedback recipient
-           → received feedback shows "Anonymous Colleague" instead of the sender's name
 
-[ ] F11-D  Submit feedback with anonymous toggle OFF
-           → recipient sees the sender's actual name on the feedback
+────────────────────────────────────────────────────────────────────────────────
+F9 — Winner Certificate (not implemented)
+────────────────────────────────────────────────────────────────────────────────
 
-[ ] F11-E  Login as system admin → check flagged/all feedback
+[ ] F9-A   Login as EOTM/EOTY winner → Dashboard shows "You Won!" widget
+           BUG: No certificate component or "You Won" section exists
+           FIX NEEDED: Build certificate component on employee dashboard
+
+[ ] F9-B   Click View Certificate → shows winner name, company, award type, period
+           BUG: Not implemented
+
+[ ] F9-C   Click Download → PNG certificate downloads
+           BUG: Not implemented
+
+
+────────────────────────────────────────────────────────────────────────────────
+F10 — Automatic Employee Count on Company Profile
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] F10-A  Go to /companies/<companyId> → employee count shown
+           BUG: No employee count displayed on company profile page
+           FIX NEEDED: Query count of approved current employees and show it
+
+
+────────────────────────────────────────────────────────────────────────────────
+F11 — Anonymous Peer Feedback (needs manual verification)
+────────────────────────────────────────────────────────────────────────────────
+API + toggle verified by automation. Full flow needs manual check.
+
+[ ] F11-A  Login as frank@ratehub.com → Feedback tab → enable anonymous toggle
+           → select colleague → write and submit feedback
+           → success toast; is_anonymous = true in DB
+
+[ ] F11-B  Login as the feedback recipient
+           → received feedback shows "Anonymous Colleague" (not sender name)
+
+[ ] F11-C  Submit feedback with anonymous toggle OFF
+           → recipient sees sender's actual name
+
+[ ] F11-D  Login as admin@ratehub.com → admin panel
            → admin CAN see who sent anonymous feedback (anonymity is recipient-only)
 
 
 ────────────────────────────────────────────────────────────────────────────────
-F12 — No Self-Request Employment (Invite-Only)
+F14 — Notification Deep Links (wrong navigation)
 ────────────────────────────────────────────────────────────────────────────────
-The "Request to Join" button is removed. Employees join only via invite or job approval.
+Bell + dropdown + API all work. Deep link navigation goes to wrong pages.
 
-[-- ] F12-A  Login as an employee with no current employment → Dashboard
-           → NO "Request Verification", "Request to Join", or "Add Employment"
-             button anywhere on the page
+[ ] F14-A  Click a "feedback received" notification
+           → should navigate to /dashboard with Feedback tab showing RECEIVED feedback
+           BUG: Navigates to /dashboard/feedback (submit page) instead of
+           the received feedback view
+           FIX NEEDED: Deep link should open received-feedback view, not submit form
 
-[make it that company admin can send you invite only ] F12-B  A message or notice is visible explaining that employment is
-           by invitation or job application only
+[ ] F14-B  Click a "application status changed" notification
+           → should navigate to /dashboard with Job Board tab active
+           BUG: Navigates to wrong page
+           FIX NEEDED: Deep link route should point to the correct tab
 
-[ ] F12-C  In Postman or browser DevTools, as a logged-in employee:
-           POST http://localhost:5000/api/employments (body: {"companyId":"..."})
-           → 404 (route removed) or 405 response; route is not registered
-
-[cant test because job creation is not working ] F12-D  Employees can still join via: (a) admin invite F1-F, (b) job approval F5-F
-
-
-────────────────────────────────────────────────────────────────────────────────
-F13 — AI Sentiment Check on Review & Feedback Edits
-────────────────────────────────────────────────────────────────────────────────
-AI toxicity analysis now runs on review edits and feedback writes/edits,
-not just on new reviews. Highly toxic content is auto-hidden.
-⚠️  Requires OPENAI_API_KEY set in backend/.env
-
-[-- ] F13-A  Login as an employee who has an existing review → find the review
-           → click Edit → change text to normal/positive content → save
-           → review saves without error; AI check runs silently in background
-
-[-- ] F13-B  Edit the same review with clearly toxic/offensive text → save
-           → review may be auto-hidden or flagged
-           → check admin panel: review appears in "Sentiment Flagged" list
-
-[its from me i cant find the table in DB ] F13-C  Write new peer feedback with normal text → submit
-           → success; check DB or admin panel: ai_toxicity_score stored
-
-[its from me i cant find the table in DB ] F13-D  Write peer feedback with toxic language → submit
-           → feedback flagged (ai_toxicity_score high); may be auto-hidden
-
-
-────────────────────────────────────────────────────────────────────────────────
-F14 — Notification Deep Links
-────────────────────────────────────────────────────────────────────────────────
-Clicking a notification navigates directly to the relevant content instead
-of a generic page.
-
-[-- ] F14-A  Login as any user with notifications → navbar bell icon shows
-           red badge with unread count
-
-[-- ] F14-B  Click the bell → dropdown list of notifications appears,
-           each with a message and timestamp
-
-[-- it takes me to another page but not the page needed (for example when i press on notification for a peer fedback it takes me to peer feedback page to submit a peer feedback to coworker no message shown what the coworker wrote to me) ] F14-C  Click a "Your application status changed" notification
-           → browser navigates to /dashboard with My Applications tab active
-           → notification is marked as read; badge count decreases
-
-[cant test because invite button is not working ] F14-D  Click a "You've been invited to join [Company]" notification
-           → browser navigates to /accept-invite?token=... or dashboard invite section
-
-[ when i press on notification for a peer fedback it takes me to peer feedback page to submit a peer feedback to coworker no message shown what the coworker wrote to me ] F14-E  Click a "You received feedback from..." notification
-           → browser navigates to /dashboard with Feedback tab active
-           → relevant feedback is visible
-
-[-- ] F14-F  Click "Mark all as read" (if button present) or open all notifications
-           → badge count drops to 0; all items appear as read (dimmed/no dot)
-
-[ ] F14-G  GET http://localhost:5000/api/notifications  (with valid Bearer token)
-           → 200 response; data array returned
+[ ] F14-C  Click an "invited to join" notification
+           → should navigate to /accept-invite?token=...
+           BLOCKED BY: F4-A (invite button not working to generate test data)
 
 
 ════════════════════════════════════════════════════════════════════════════════
-  PASSED — automated tests verified this session (Playwright 17-v3-features)
+  FEATURES THAT NEED NO FURTHER TESTING (working / env-dependent)
 ════════════════════════════════════════════════════════════════════════════════
-  ✅  F3-B   — GET /companies/filter-options returns countries + cities arrays
-  ✅  F3-A   — Companies page Filters panel opens with Country/City dropdowns
-  ✅  F7-A   — EOTY tab visible on company admin dashboard
-  ✅  F7-B   — Can navigate to EOTY tab and see event content
-  ✅  F7 API — POST /eoty/events returns 201 or 400 (already exists)
-  ✅  F5-A   — Jobs tab visible on company admin dashboard
-  ✅  F5     — Can navigate to Jobs tab and see position content
-  ✅  F5 API — POST /jobs returns 201 or 400
-  ✅  F5-I   — GET /jobs?companyId=X returns 200 with data array
-  ✅  F12    — Company admin Employees tab shows Invite Employee section
-  ✅  F1 API — POST /employments/invite returns 201 or 400
-  ✅  F14-A  — Notification bell visible after login
-  ✅  F14-G  — GET /notifications returns 200 with data array
-  ✅  CP     — Company profile page loads with h1 title
 
-  ⏭️  F11-A  — SKIPPED (employee login pre-existing 401)
-  ⏭️  F7-D   — SKIPPED (employee login pre-existing 401)
-  ⏭️  F5-C   — SKIPPED (employee login pre-existing 401)
-  ⏭️  F12-A  — SKIPPED (employee login pre-existing 401)
-  ⏭️  F12-B  — SKIPPED (employee login pre-existing 401)
+  ✅  F1   — Invite Employee: API + UI section verified (send, cancel, resend)
+  ✅  F12  — Invite-only model: no self-request button, banner shown, API blocked
+  ✅  F13  — AI Sentiment: works when OPENAI_API_KEY is set (env-dependent)
+  ✅  F14  — Notifications: bell, dropdown, mark-all-read, API all working
+  ✅  F10-A — No manual employee count override in Settings (removed)

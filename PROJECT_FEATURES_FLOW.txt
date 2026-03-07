@@ -9,6 +9,11 @@ DATE: March 7, 2026
 ================================================================================
 FEATURE 1: EMPLOYEE INVITATION SYSTEM
 ================================================================================
+the flow:
+1. company admin can invite employee by his email and when sending invite it should appear in company admin dashboard employees section as pending for this employee untill employee approve it so then it will be approved, other than than it still pending, also company admin can discard the invitation and it will be discard also from employee side (the employee will never see that invitation after the company admin discard it) (the invitation should appear for the employee and he can only accept the invite he can not reject it), when company admin invite same email another time a soft message will appear that this employee is already in the compnay
+2. company admin can end an employee from his company - when company admin press end employee will appear soft message something like 'sure you want to end this employee' if he press yes that employee will be ended from company and will appear to the employee in the employment section as ended (so he cant submit feedback to coworkers or to the company)
+3.compay admin can add jobs in his company and these jobs will appaear for guests and logged-in users (but when press apply he must be logged-in) and under each position there is a soft button 'apply' when pressed the employee can send there CV and these CV's will appear to that company amdin as applications and will appear also the email and name of the applicant - company admin after seeing the CV's he may ignore it - accept it if he press accept it then it will appear to the company admin and the employee as  interview proccess beside interview process add button 'invite' (this invite same as above in number 1) (that means he is aceppted and company admin wants him to join his compapny and it will appear for that employee as he accpeted and the company admin is inviting him to join his company after employee acceppt it he can submit feedback to company and coworkers(based on quarter rules) ) 
+4. company admin can view applications for that position and can close that position and it will be removed from the list of the positions in this company (removed so no one can view it)
 
 ACTORS:
 - Company Admin

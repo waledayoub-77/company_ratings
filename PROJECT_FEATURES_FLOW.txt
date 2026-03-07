@@ -1,0 +1,301 @@
+================================================================================
+                        PROJECT FEATURES FLOW SPECIFICATION
+================================================================================
+
+PROJECT NAME: Company Ratings Platform
+PURPOSE: Comprehensive workflow documentation for AI/development team
+DATE: March 7, 2026
+
+================================================================================
+FEATURE 1: EMPLOYEE INVITATION SYSTEM
+================================================================================
+
+ACTORS:
+- Company Admin
+- Employee (invited)
+
+FLOW:
+1. COMPANY ADMIN INVITES EMPLOYEE:
+   - Company Admin navigates to "Employees" section in dashboard
+   - Company Admin enters employee email address
+   - System SENDS INVITATION
+   
+2. INVITATION STATE: PENDING (From Company Admin Perspective)
+   - Invitation appears in Company Admin Dashboard → Employees section
+   - Status: "PENDING" (waiting for employee to accept)
+   - Company Admin CAN: Discard invitation
+   - Company Admin CANNOT: Edit invitation details
+
+3. INVITATION STATE: PENDING (From Employee Perspective)
+   - Invitation appears in Employee Dashboard → Invitations section
+   - Status: "PENDING" (awaiting decision)
+   - Employee CAN: Accept invitation
+   - Employee CANNOT: Reject invitation (accept or ignore only)
+
+4. WHEN COMPANY ADMIN ACCEPTS INVITATION:
+   - Status changes to "ACCEPTED"
+   - Employee gains access to company dashboard
+   - Employee can now submit feedback to company and coworkers
+
+5. WHEN COMPANY ADMIN DISCARDS INVITATION:
+   - Invitation is SOFT DELETED (deleted_at timestamp)
+   - Invitation DISAPPEARS from Employee's view immediately
+   - Invitation DISAPPEARS from Company Admin's view immediately
+   - Employee will NEVER see this invitation again
+
+6. DUPLICATE INVITATION PREVENTION:
+   - If Company Admin tries to invite same email again
+   - System shows SOFT MESSAGE: "This employee is already in the company"
+   - No new invitation is created
+
+7. DATABASE CONSIDERATIONS:
+   - Table: invitations
+   - Columns: id, company_id, email, status (pending/accepted/discarded), created_at, deleted_at
+   - Soft delete: Set deleted_at = NOW()
+
+================================================================================
+FEATURE 2: END EMPLOYEE
+================================================================================
+
+ACTORS:
+- Company Admin
+- Employee
+
+FLOW:
+1. COMPANY ADMIN INITIATES END EMPLOYEE:
+   - Company Admin navigates to "Employees" section in dashboard
+   - Company Admin finds employee in list
+   - Company Admin clicks "End Employee" button
+
+2. CONFIRMATION DIALOG:
+   - SOFT MESSAGE appears: "Are you sure you want to end this employee?"
+   - Options: [YES] [NO]
+
+3. IF COMPANY ADMIN CLICKS YES:
+   - Employee status changes to "ENDED"
+   - Employee REMOVED from active employees list
+   - Connection between company and employee is TERMINATED
+
+4. EMPLOYEE PERSPECTIVE AFTER BEING ENDED:
+   - Employee views their "Employment History" section
+   - Shows: "Employment ENDED at [Company Name] - [Date]"
+   - Employee CANNOT: Submit feedback to company
+   - Employee CANNOT: Submit feedback to coworkers at this company
+   - Employee CAN: View past history with this company
+
+5. IF COMPANY ADMIN CLICKS NO:
+   - Dialog closes
+   - No changes are made
+   - Employee remains active
+
+6. DATABASE CONSIDERATIONS:
+   - Table: employments (or employees)
+   - Columns: status (active/ended), ended_at (timestamp), end_reason (optional)
+   - When ending: Update status = 'ended', ended_at = NOW()
+
+================================================================================
+FEATURE 3: JOB POSTING & APPLICATION SYSTEM
+================================================================================
+
+PART A: JOB POSTING
+
+ACTORS:
+- Company Admin (creates jobs)
+- Guests/Logged-in Users (view jobs)
+
+FLOW:
+1. COMPANY ADMIN CREATES JOB:
+   - Company Admin navigates to "Jobs" section
+   - Clicks "Create New Job"
+   - Enters: Position title, description, department, requirements, salary (optional)
+   - Clicks "Post Job"
+
+2. JOB VISIBILITY:
+   - Job posted by Company Admin appears in:
+     * Company Admin Dashboard → Open Positions
+     * Public Jobs Board (visible to guests)
+     * Logged-in users can see jobs
+
+3. JOB APPLICATION BUTTON:
+   - Each job posting has "Apply" button (soft button)
+   - When GUEST clicks "Apply": 
+     * Message appears: "Please log in to apply"
+     * Redirects to login
+   - When LOGGED-IN USER clicks "Apply":
+     * Application modal opens
+     * User uploads CV/Resume (PDF/DOC format)
+     * User clicks "Submit Application"
+
+PART B: APPLICATION SUBMISSION
+
+1. EMPLOYEE SUBMITS APPLICATION:
+   - Employee uploads CV
+   - System shows: "Application submitted successfully"
+   - Application status: PENDING
+
+2. APPLICATION DATA CAPTURED:
+   - Applicant Email
+   - Applicant Name
+   - Position Applied For
+   - Resume/CV File
+   - Application Date
+   - Application Status: PENDING
+
+PART C: INTERVIEW PROCESS INITIATED
+
+1. COMPANY ADMIN REVIEWS APPLICATION:
+   - Company Admin navigates to "Applications" → "Position Name"
+   - Sees list of all applications for that position:
+     * Applicant Name
+     * Applicant Email
+     * Resume/CV (downloadable)
+     * Application Date
+     * Action buttons: [IGNORE] [ACCEPT]
+
+2. IF COMPANY ADMIN CLICKS IGNORE:
+   - Application status: IGNORED
+   - Application REMOVED from pending list
+   - Application may appear in "Archived/Ignored" section (optional)
+
+3. IF COMPANY ADMIN CLICKS ACCEPT:
+   - Application status: ACCEPTED
+   - NEW SECTION appears: "INTERVIEW PROCESS"
+   - Interview Process contains:
+     * Applicant Info (Name, Email, CV)
+     * Interview Status: "In Progress"
+     * NEW BUTTON: "Invite" (to join company)
+
+PART D: INVITATION FROM INTERVIEW
+
+1. COMPANY ADMIN CLICKS "INVITE" BUTTON (IN INTERVIEW PROCESS):
+   - System creates invitation (same as FEATURE 1)
+   - Invitation sent to applicant's email
+   - Status: "PENDING"
+   - Message to Company Admin: "Invitation sent"
+
+2. FROM APPLICANT'S PERSPECTIVE:
+   - Invitation appears in "Employment Invitations" section
+   - Message: "[Company Name] has invited you to join their team"
+   - Status: "PENDING"
+   - Options: Accept or ignore
+
+3. IF APPLICANT ACCEPTS INVITATION:
+   - Status changes: ACCEPTED
+   - Applicant becomes EMPLOYEE of company
+   - Applicant GAINS:
+     * Access to company dashboard
+     * Ability to submit feedback to company (based on quarter rules)
+     * Ability to submit feedback to coworkers (based on quarter rules)
+   - Interview Process: CLOSED
+   - Application: ARCHIVED
+
+4. DATABASE CONSIDERATIONS:
+   - Table: applications
+     * Columns: id, company_id, position_id, applicant_name, applicant_email, 
+                resume_url, status (pending/accepted/ignored), created_at
+   - Table: interview_process
+     * Columns: id, application_id, status (in_progress/completed), created_at
+   - Uses FEATURE 1 (invitations) for employee invitation from interview
+
+================================================================================
+FEATURE 4: JOB POSITION MANAGEMENT
+================================================================================
+
+ACTORS:
+- Company Admin
+
+FLOW:
+1. COMPANY ADMIN VIEWS JOB POSITIONS:
+   - Company Admin navigates to "Jobs" section
+   - Sees list of all open positions:
+     * Position Title
+     * Applications Count
+     * Date Posted
+     * Status: OPEN
+     * Action buttons: [VIEW APPLICATIONS] [CLOSE POSITION]
+
+2. COMPANY ADMIN VIEWS APPLICATIONS FOR POSITION:
+   - Clicks "View Applications" for a position
+   - Sees all applications for that position:
+     * Total: X applications
+     * Pending: X applications
+     * Accepted: X applications
+     * Ignored: X applications
+   - Can filter by status (pending/accepted/ignored)
+
+3. COMPANY ADMIN CLOSES POSITION:
+   - Clicks "Close Position" button
+   - Soft message: "Are you sure you want to close this position? It will no longer be visible to applicants."
+   - Options: [YES] [NO]
+
+4. IF COMPANY ADMIN CLICKS YES:
+   - Position is CLOSED (soft deleted or status = 'closed')
+   - Position is REMOVED from public job board
+   - Position is REMOVED from active positions list
+   - Position CANNOT receive new applications
+   - Existing applications: No change in status
+
+5. IF COMPANY ADMIN CLICKS NO:
+   - Dialog closes
+   - Position remains open
+   - No changes made
+
+6. DATABASE CONSIDERATIONS:
+   - Table: jobs (or positions)
+     * Columns: id, company_id, title, description, status (open/closed), 
+                closed_at (timestamp), created_at, deleted_at
+   - Closed positions: Either set status = 'closed' OR set deleted_at = NOW()
+   - Filter logic: WHERE status = 'open' AND deleted_at IS NULL for public board
+
+================================================================================
+SUMMARY OF KEY RULES
+================================================================================
+
+INVITATION SYSTEM:
+- Soft messages for duplicate invitations
+- Soft deletes when discarding invitations
+- Employees cannot reject, only accept or ignore
+- Confirmation dialogs for destructive actions
+
+END EMPLOYEE:
+- Confirmation dialog before ending
+- Employee cannot provide feedback after being ended
+- Employment history shows "ENDED" status
+
+JOB APPLICATIONS:
+- Guests must log in to apply
+- Company Admin can ignore or accept applications
+- Accepted applications move to interview process
+- Interview process has invite button to join company
+
+POSITION MANAGEMENT:
+- Positions can be closed (removed from public view)
+- Closed positions cannot receive applications
+- Confirmation dialog before closing
+
+================================================================================
+UI/UX CONSIDERATIONS
+================================================================================
+
+SOFT MESSAGES (Toast/Alert notifications):
+- "This employee is already in the company"
+- "Are you sure you want to end this employee?"
+- "Are you sure you want to close this position?"
+- "Invitation sent successfully"
+- "Please log in to apply"
+- "Application submitted successfully"
+
+PENDING STATUSES:
+- Show clear visual indicators (badges, colors)
+- Pending invitations: Yellow/Orange status
+- Active employees: Green status
+- Ended employees: Gray/Red status
+
+ACTION BUTTONS:
+- All destructive actions should have confirmation dialogs
+- Soft buttons for secondary actions (Apply button)
+- Primary buttons for important actions (Accept, Post Job)
+
+================================================================================
+END OF SPECIFICATION
+================================================================================

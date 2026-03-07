@@ -68,20 +68,20 @@ F3 — Country & City Filter Dropdowns (UI broken)
 ────────────────────────────────────────────────────────────────────────────────
 API returns correct data (verified). Frontend dropdowns are empty.
 
-[ ] F3-A   Go to /companies → open Filters panel
+[-- working but not all countries and cities are available ] F3-A   Go to /companies → open Filters panel
            → Country and City dropdowns should be populated with data
            BUG: Both dropdowns are EMPTY despite API returning data
            FIX NEEDED: Wire filterOptions.countries/cities into dropdown options
 
-[ ] F3-B   Select a country → City dropdown narrows to that country's cities
+[-- ] F3-B   Select a country → City dropdown narrows to that country's cities
            BUG: Cannot test — dropdowns are empty
            BLOCKED BY: F3-A
 
-[ ] F3-C   Select a city → company list filters to that city only
+[-- ] F3-C   Select a city → company list filters to that city only
            BUG: Cannot test — dropdowns are empty
            BLOCKED BY: F3-A
 
-[ ] F3-D   Apply country filter + search bar simultaneously
+[-- ] F3-D   Apply country filter + search bar simultaneously
            → results narrow by both filters
            BUG: Cannot test — dropdowns are empty
            BLOCKED BY: F3-A
@@ -91,7 +91,7 @@ API returns correct data (verified). Frontend dropdowns are empty.
 F4 — Revoked Email Lock (Send Invite button broken)
 ────────────────────────────────────────────────────────────────────────────────
 
-[ ] F4-A   Login as tech.admin → Invite Employee → enter a revoked email
+[-- I can invite but when sending it, it will appear in Employment Requests and admin can approve or reject it (when admin send invite to employee it should appear in the company admin side as invite pending and discard options when employee approves it then it will appear to the company admin as approved (take into considiration that employee can only accept the invitation it will appear to the employeee as accept button only he can not reject it) )  ] F4-A   Login as tech.admin → Invite Employee → enter a revoked email
            → should show error: "This email has been revoked"
            BUG: Send Invite button has no click handler / does nothing
            FIX NEEDED: Wire the Send Invite button onClick to API call
@@ -105,31 +105,31 @@ F5 — Job Postings: Create Button (UI broken)
 ────────────────────────────────────────────────────────────────────────────────
 API works (verified). Create button in UI does nothing.
 
-[ ] F5-A   Login as tech.admin → Jobs tab → fill form → click Post Job / Create
+[-- ] F5-A   Login as tech.admin → Jobs tab → fill form → click Post Job / Create
            → new job should appear in Open Positions list
            BUG: Create/Post button has no functionality — nothing happens on click
            FIX NEEDED: Wire the create button onClick to createJobPosition API
 
-[ ] F5-B   After F5-A: job visible on /companies/<id> Open Positions section
+[-- ] F5-B   After F5-A: job visible on /companies/<id> Open Positions section
            BLOCKED BY: F5-A
 
-[ ] F5-C   Employee Dashboard → Job Board → find position → click Apply
+[no jobs are shown in Job board section ] F5-C   Employee Dashboard → Job Board → find position → click Apply
            → CV upload + cover letter form appears
            BLOCKED BY: F5-A
 
-[ ] F5-D   Submit application → appears in My Applications with status: pending
+[no jobs are shown in Job board section ] F5-D   Submit application → appears in My Applications with status: pending
            BLOCKED BY: F5-A
 
-[ ] F5-E   Admin → Jobs tab → view application → Move to Interview
+[no jobs are shown in Job board section ] F5-E   Admin → Jobs tab → view application → Move to Interview
            BLOCKED BY: F5-A
 
-[ ] F5-F   Approve application → employee auto-added to company
+[no jobs are shown in Job board section ] F5-F   Approve application → employee auto-added to company
            BLOCKED BY: F5-A
 
-[ ] F5-G   Reject application → applicant notified
+[no jobs are shown in Job board section ] F5-G   Reject application → applicant notified
            BLOCKED BY: F5-A
 
-[ ] F5-H   Close Position → job removed from public listing
+[-- ] F5-H   Close Position → job removed from public listing
            BLOCKED BY: F5-A
 
 
@@ -138,7 +138,7 @@ F6 — EOTM: Remove Date Picker (UI issue)
 ────────────────────────────────────────────────────────────────────────────────
 Backend enforces current month. Frontend still shows date picker.
 
-[ ] F6-A   Login as tech.admin → EOTM tab → Create EOTM Event
+[-- working but put the error when the admin put old year or future year tell heim current year only not write for him month to let him understand(if chosed month old or i future write for him month if year write year) ] F6-A   Login as tech.admin → EOTM tab → Create EOTM Event
            → should auto-use current month with NO date picker
            BUG: Date picker is still visible and selectable
            FIX NEEDED: Remove month/year picker; auto-fill current month/year
@@ -147,46 +147,46 @@ Backend enforces current month. Frontend still shows date picker.
 
 
 ────────────────────────────────────────────────────────────────────────────────
-F7 — EOTY: Create Event Button (UI broken)
+F7 — EOTY: Create Event Button (UI broken) 
 ────────────────────────────────────────────────────────────────────────────────
 API works (verified). Create button in UI does nothing.
 
-[ ] F7-A   Login as tech.admin → EOTY tab → click Create EOTY Event
+[-- ] F7-A   Login as tech.admin → EOTY tab → click Create EOTY Event
            → should create event for current year
            BUG: "Start 2026 Year" button does nothing when pressed
            FIX NEEDED: Button text should say "Create EOTY Event" (no year
            in label); onClick should call createEotyEvent API
 
-[ ] F7-B   After F7-A: nominee list appears with all verified employees
+[-- ] F7-B   After F7-A: nominee list appears with all verified employees
            BLOCKED BY: F7-A
 
-[ ] F7-C   Try to create duplicate event for 2026 → error "already exists"
+[i pressed it and no soft error appears and tell the admin that event already exist ] F7-C   Try to create duplicate event for 2026 → error "already exists"
            BLOCKED BY: F7-A
 
-[ ] F7-D   Employee EOTY tab: nominee list visible, NO vote counts shown
+[-- ] F7-D   Employee EOTY tab: nominee list visible, NO vote counts shown
            BLOCKED BY: F7-A
 
-[ ] F7-E   Employee clicks Vote → recorded; button changes to "Voted"
+[no i press vote and nothing happens ] F7-E   Employee clicks Vote → recorded; button changes to "Voted"
            BLOCKED BY: F7-A
 
-[ ] F7-F   Employee tries second vote → error "already voted"
+[ no i tried to vote agian nosoft error appears] F7-F   Employee tries second vote → error "already voted"
            BLOCKED BY: F7-A
 
-[ ] F7-G   Admin closes event → winner revealed with vote count
+[in admin dashboard after closing the event the real names are not shown only employee with his votes appear i need real name with his real votes not 'employee' instead of name ] F7-G   Admin closes event → winner revealed with vote count
            BLOCKED BY: F7-A
 
-[ ] F7-H   Company profile → Hall of Fame shows winner
+[-- ] F7-H   Company profile → Hall of Fame shows winner
            BLOCKED BY: F7-A
 
 
 ────────────────────────────────────────────────────────────────────────────────
-F8 — Hide Vote Counts While Open
+F8 — Hide Vote Counts While Open 
 ────────────────────────────────────────────────────────────────────────────────
 
-[ ] F8-A   While EOTM/EOTY event is open: employee sees names only, no counts
+[ remove 0 votes that is fixed (yes whe I vote no number appears for the count but there is 0 votes fixed remove it)] F8-A   While EOTM/EOTY event is open: employee sees names only, no counts
            BLOCKED BY: F7-A (need a fresh open event)
 
-[ ] F8-B   After admin closes event: vote counts become visible
+[no votes appeares maybe we can let it appear in the winner hall after the admin closes the voting and declare the winner under the winner name in the winnier hall appears number of votes ] F8-B   After admin closes event: vote counts become visible
            BLOCKED BY: F7-A
 
 
@@ -194,7 +194,7 @@ F8 — Hide Vote Counts While Open
 F9 — Winner Certificate (not implemented)
 ────────────────────────────────────────────────────────────────────────────────
 
-[ ] F9-A   Login as EOTM/EOTY winner → Dashboard shows "You Won!" widget
+[ no certificate is appearing - for the winner when he enters EOTM or EOTY and he is the winner he must see something that let him take a certificate or like a screenshot to the winner section ] F9-A   Login as EOTM/EOTY winner → Dashboard shows "You Won!" widget
            BUG: No certificate component or "You Won" section exists
            FIX NEEDED: Build certificate component on employee dashboard
 
@@ -206,10 +206,10 @@ F9 — Winner Certificate (not implemented)
 
 
 ────────────────────────────────────────────────────────────────────────────────
-F10 — Automatic Employee Count on Company Profile
+F10 — Automatic Employee Count on Company Profile 
 ────────────────────────────────────────────────────────────────────────────────
 
-[ ] F10-A  Go to /companies/<companyId> → employee count shown
+[nothing appears ] F10-A  Go to /companies/<companyId> → employee count shown
            BUG: No employee count displayed on company profile page
            FIX NEEDED: Query count of approved current employees and show it
 

@@ -374,6 +374,87 @@ const sendInvite = async (applicationId, userId) => {
 };
 
 /**
+ * Send hire invitation (admin — for approved applications)
+ */
+const sendHireInvite = async (applicationId, userId) => {
+  const { data: application, error: appErr } = await supabase
+    .from('job_applications')
+    .select('*, job_positions!inner(title, company_id)')
+    .eq('id', applicationId)
+    .single();
+
+  if (appErr || !application) throw new AppError('Application not found', 404);
+  if (application.status !== 'approved') throw new AppError('Application must be approved before sending a hire invitation', 400);
+
+  const { data: company } = await supabase
+    .from('companies')
+    .select('user_id, name')
+    .eq('id', application.company_id)
+    .single();
+
+  if (!company || company.user_id !== userId) throw new AppError('Only the company admin can send hire invitations', 403);
+
+  const { data, error } = await supabase
+    .from('job_applications')
+    .update({ hire_invite_sent_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .eq('id', applicationId)
+    .select()
+    .single();
+
+  if (error) throw new AppError('Failed to send hire invitation', 500);
+
+  const { data: employee } = await supabase
+    .from('employees')
+    .select('full_name, users:user_id(email, id)')
+    .eq('id', application.applicant_id)
+    .single();
+
+  return { data, companyName: company.name, positionTitle: application.job_positions.title, employee };
+};
+
+/**
+ * Accept hire invitation (employee)
+ */
+const acceptHireInvite = async (applicationId, userId) => {
+  const { data: employee } = await supabase
+    .from('employees')
+    .select('id')
+    .eq('user_id', userId)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (!employee) throw new AppError('Employee profile not found', 404);
+
+  const { data: application, error: appErr } = await supabase
+    .from('job_applications')
+    .select('*, job_positions!inner(title, company_id)')
+    .eq('id', applicationId)
+    .eq('applicant_id', employee.id)
+    .single();
+
+  if (appErr || !application) throw new AppError('Application not found', 404);
+  if (!application.hire_invite_sent_at) throw new AppError('No hire invitation has been sent for this application', 400);
+  if (application.hire_invite_accepted_at) throw new AppError('Hire invitation already accepted', 400);
+
+  const { data, error } = await supabase
+    .from('job_applications')
+    .update({ hire_invite_accepted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .eq('id', applicationId)
+    .select()
+    .single();
+
+  if (error) throw new AppError('Failed to accept hire invitation', 500);
+
+  const { data: company } = await supabase
+    .from('companies')
+    .select('name, user_id')
+    .eq('id', application.company_id)
+    .single();
+
+  return { data, companyName: company?.name, positionTitle: application.job_positions.title, adminUserId: company?.user_id };
+};
+
+/**
  * Accept interview invitation (employee)
  */
 const acceptInvite = async (applicationId, userId) => {
@@ -429,4 +510,6 @@ module.exports = {
   getMyApplications,
   sendInvite,
   acceptInvite,
+  sendHireInvite,
+  acceptHireInvite,
 };

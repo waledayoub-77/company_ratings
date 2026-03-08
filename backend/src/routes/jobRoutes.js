@@ -26,6 +26,8 @@ router.get('/:id/applications', requireAuth, jobController.getApplications);
 router.patch('/applications/:appId/status', requireAuth, jobController.updateApplicationStatus);
 router.post('/applications/:appId/invite', requireAuth, jobController.sendInvite);
 router.post('/applications/:appId/accept-invite', requireAuth, jobController.acceptInvite);
+router.post('/applications/:appId/hire-invite', requireAuth, jobController.sendHireInvite);
+router.post('/applications/:appId/accept-hire', requireAuth, jobController.acceptHireInvite);
 
 // Serve CV files (authenticated)
 router.get('/cv/:filename', requireAuth, jobController.serveCv);

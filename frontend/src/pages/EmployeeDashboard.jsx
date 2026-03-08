@@ -38,7 +38,7 @@ import { getCompanyEotmEvents, getEotmNominees, castEotmVote, getCompanyEotmWinn
 import { getCompanyEotyEvents, getEotyNominees, castEotyVote, getCompanyEotyWinners } from '../api/eoty.js'
 import { useNotification } from '../context/NotificationContext.jsx'
 import CertificateModal from '../components/CertificateModal'
-import { getMyApplications, getAllJobPositions, applyToJob, acceptInvite } from '../api/jobs.js'
+import { getMyApplications, getAllJobPositions, applyToJob, acceptInvite, acceptHireInvite } from '../api/jobs.js'
 
 const statusConfig = {
   approved: { icon: CheckCircle2, color: 'text-emerald-500', badge: 'success', label: 'Verified' },
@@ -1715,6 +1715,16 @@ function JobBoardTab({ employments }) {
     finally { setAcceptingInvite(a => ({ ...a, [appId]: false })) }
   }
 
+  const handleAcceptHireInvite = async (appId) => {
+    setAcceptingInvite(a => ({ ...a, [`hire_${appId}`]: true }))
+    try {
+      await acceptHireInvite(appId)
+      const updatedApps = await getMyApplications()
+      setMyApps(updatedApps?.data ?? [])
+    } catch (e) { alert(e?.message || 'Failed to accept employment offer.') }
+    finally { setAcceptingInvite(a => ({ ...a, [`hire_${appId}`]: false })) }
+  }
+
   if (loading) return <div className="py-20 text-center text-navy-400 text-sm"><Loader2 size={20} className="animate-spin mx-auto" /></div>
 
   const APP_STATUS_COLORS = {
@@ -1739,6 +1749,8 @@ function JobBoardTab({ employments }) {
               {myApps.map(app => {
                 const hasInvite = !!app.invite_sent_at
                 const inviteAccepted = !!app.invite_accepted_at
+                const hireInviteSent = !!app.hire_invite_sent_at
+                const hireInviteAccepted = !!app.hire_invite_accepted_at
                 return (
                   <div key={app.id} className="bg-ice-50 rounded-xl px-4 py-3">
                     <div className="flex items-center justify-between">
@@ -1749,22 +1761,37 @@ function JobBoardTab({ employments }) {
                           Applied {new Date(app.created_at).toLocaleDateString()}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap justify-end">
+                        {/* Interview invite */}
                         {hasInvite && !inviteAccepted && app.status === 'interview' && (
                           <button
                             onClick={() => handleAcceptInvite(app.id)}
                             disabled={!!acceptingInvite[app.id]}
-                            className="h-7 px-3 bg-navy-900 text-white text-xs font-semibold rounded-lg hover:bg-navy-800 disabled:opacity-50 flex items-center gap-1"
+                            className="h-7 px-3 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-1"
                           >
                             {acceptingInvite[app.id] ? <Loader2 size={11} className="animate-spin" /> : null}
-                            Accept Invite
+                            Accept Interview
                           </button>
                         )}
-                        {inviteAccepted && (
-                          <span className="px-2 py-1 bg-emerald-50 text-emerald-700 text-[11px] font-medium rounded-lg border border-emerald-200">Invite Accepted ✓</span>
+                        {inviteAccepted && app.status === 'interview' && (
+                          <span className="px-2 py-1 bg-indigo-50 text-indigo-700 text-[11px] font-medium rounded-lg border border-indigo-200">Interview Accepted ✓</span>
                         )}
-                        {hasInvite && !inviteAccepted && app.status === 'interview' && (
-                          <span className="px-2 py-1 bg-indigo-50 text-indigo-700 text-[11px] font-medium rounded-lg border border-indigo-200">Invitation Pending</span>
+                        {/* Employment offer */}
+                        {hireInviteSent && !hireInviteAccepted && app.status === 'approved' && (
+                          <button
+                            onClick={() => handleAcceptHireInvite(app.id)}
+                            disabled={!!acceptingInvite[`hire_${app.id}`]}
+                            className="h-7 px-3 bg-emerald-700 text-white text-xs font-semibold rounded-lg hover:bg-emerald-800 disabled:opacity-50 flex items-center gap-1"
+                          >
+                            {acceptingInvite[`hire_${app.id}`] ? <Loader2 size={11} className="animate-spin" /> : null}
+                            Accept Employment
+                          </button>
+                        )}
+                        {hireInviteSent && !hireInviteAccepted && app.status === 'approved' && (
+                          <span className="px-2 py-1 bg-amber-50 text-amber-700 text-[11px] font-medium rounded-lg border border-amber-200">Offer Pending</span>
+                        )}
+                        {hireInviteAccepted && (
+                          <span className="px-2 py-1 bg-emerald-50 text-emerald-700 text-[11px] font-semibold rounded-lg border border-emerald-200">Employed ✓</span>
                         )}
                         <span className={`px-2.5 py-1 rounded-full border text-xs font-semibold ${APP_STATUS_COLORS[app.status] ?? APP_STATUS_COLORS.pending}`}>
                           {app.status}

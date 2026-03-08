@@ -339,6 +339,33 @@ async function sendInterviewInviteEmail({ to, name, positionTitle, companyName }
   });
 }
 
+function hireInviteTemplate(name, positionTitle, companyName) {
+  const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').split(',')[0].trim();
+  return `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px;">
+      <h2 style="color:#1a1a2e;">You're Hired! 🎉</h2>
+      <p>Hi <strong>${name}</strong>,</p>
+      <p>Congratulations! <strong>${companyName}</strong> would like to officially welcome you as a new team member for the position of <strong>${positionTitle}</strong>.</p>
+      <p>Please log in to your RateHub dashboard to accept this employment offer. Once accepted, you'll gain full access to the company portal including peer feedback and reviews.</p>
+      <div style="text-align:center;margin:32px 0;">
+        <a href="${frontendUrl}/dashboard?tab=jobs"
+           style="background:#1a1a2e;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">
+          Accept Employment Offer
+        </a>
+      </div>
+      <p style="color:#888;font-size:13px;">— The RateHub Team</p>
+    </div>
+  `;
+}
+
+async function sendHireInviteEmail({ to, name, positionTitle, companyName }) {
+  return sendEmail({
+    to,
+    subject: `Employment Offer: ${positionTitle} at ${companyName} — RateHub`,
+    html: hireInviteTemplate(name, positionTitle, companyName),
+  });
+}
+
 module.exports = {
   sendWelcomeEmail,
   sendVerifyEmail,
@@ -355,4 +382,5 @@ module.exports = {
   sendEmploymentEndedByAdminEmail,
   sendJobApplicationStatusEmail,
   sendInterviewInviteEmail,
+  sendHireInviteEmail,
 };

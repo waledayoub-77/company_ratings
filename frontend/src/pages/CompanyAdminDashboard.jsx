@@ -49,7 +49,7 @@ import { getFeedbackReceived } from '../api/feedback'
 import { createEotmEvent, closeEotmEvent, getCompanyEotmEvents, getEotmNominees, getCompanyEotmWinners } from '../api/eotm'
 import { createEotyEvent, closeEotyEvent, getCompanyEotyEvents, getEotyNominees, getCompanyEotyWinners } from '../api/eoty'
 import { useNotification } from '../context/NotificationContext'
-import { getJobPositions, createJobPosition, closeJobPosition, deleteJobPosition, getApplications, updateApplicationStatus, sendInvite, fetchCvBlob } from '../api/jobs'
+import { getJobPositions, createJobPosition, closeJobPosition, deleteJobPosition, getApplications, updateApplicationStatus, sendInvite, sendHireInvite, fetchCvBlob } from '../api/jobs'
 
 const VALID_CA_TABS = ['overview', 'requests', 'reviews', 'eotm', 'eoty', 'jobs', 'feedback', 'settings']
 
@@ -1246,6 +1246,7 @@ function JobsTab({ companyId }) {
   const [loadingApps, setLoadingApps] = useState({})
   const [updatingApp, setUpdatingApp] = useState({})
   const [sendingInvite, setSendingInvite] = useState({})
+  const [sendingHireInvite, setSendingHireInvite] = useState({})
   const [jobError, setJobError] = useState('')
   const [cvViewer, setCvViewer] = useState({ open: false, blobUrl: null, isPdf: false, name: '', loading: false, error: null })
 
@@ -1313,6 +1314,16 @@ function JobsTab({ companyId }) {
       setApplications(a => ({ ...a, [positionId]: res?.data ?? [] }))
     } catch (e) { setJobError(e?.message || 'Failed to send invite') }
     finally { setSendingInvite(s => ({ ...s, [appId]: false })) }
+  }
+
+  const handleSendHireInvite = async (appId, positionId) => {
+    setSendingHireInvite(s => ({ ...s, [appId]: true }))
+    try {
+      await sendHireInvite(appId)
+      const res = await getApplications(positionId)
+      setApplications(a => ({ ...a, [positionId]: res?.data ?? [] }))
+    } catch (e) { setJobError(e?.message || 'Failed to send employment offer') }
+    finally { setSendingHireInvite(s => ({ ...s, [appId]: false })) }
   }
 
   const handleViewCv = async (resumeUrl, applicantName) => {
@@ -1429,6 +1440,8 @@ function JobsTab({ companyId }) {
                       const applicantEmail = app.employees?.users?.email
                       const hasInvited = !!app.invite_sent_at
                       const inviteAccepted = !!app.invite_accepted_at
+                      const hireInviteSent = !!app.hire_invite_sent_at
+                      const hireInviteAccepted = !!app.hire_invite_accepted_at
                       return (
                         <div key={app.id} className="bg-ice-50 rounded-xl px-4 py-3">
                           <div className="flex items-start justify-between gap-2 flex-wrap">
@@ -1441,8 +1454,10 @@ function JobsTab({ companyId }) {
                               )}
                               <p className="text-xs text-navy-400 mt-0.5">
                                 Applied {new Date(app.created_at).toLocaleDateString()}
-                                {hasInvited && !inviteAccepted && <span className="ml-2 text-indigo-600">· Invite sent</span>}
-                                {inviteAccepted && <span className="ml-2 text-emerald-600">· Invite accepted ✓</span>}
+                                {hasInvited && !inviteAccepted && <span className="ml-2 text-indigo-600">· Interview invite sent</span>}
+                                {inviteAccepted && <span className="ml-2 text-indigo-600">· Interview accepted ✓</span>}
+                                {hireInviteSent && !hireInviteAccepted && <span className="ml-2 text-amber-600">· Offer sent</span>}
+                                {hireInviteAccepted && <span className="ml-2 text-emerald-600">· Employed ✓</span>}
                               </p>
                             </div>
                             <div className="flex items-center gap-2 flex-wrap">
@@ -1485,6 +1500,22 @@ function JobsTab({ companyId }) {
                                     className="h-7 px-3 bg-red-100 text-red-700 text-xs font-medium rounded-lg hover:bg-red-200 disabled:opacity-50">
                                     Reject
                                   </button>
+                                </>
+                              )}
+                              {app.status === 'approved' && (
+                                <>
+                                  {!hireInviteSent && (
+                                    <button onClick={() => handleSendHireInvite(app.id, pos.id)} disabled={!!sendingHireInvite[app.id]}
+                                      className="h-7 px-3 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-lg hover:bg-emerald-200 disabled:opacity-50 flex items-center gap-1">
+                                      {sendingHireInvite[app.id] ? <Loader2 size={11} className="animate-spin" /> : <Mail size={11} />} Invite
+                                    </button>
+                                  )}
+                                  {hireInviteSent && !hireInviteAccepted && (
+                                    <span className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-semibold rounded-full">Invitation Sent</span>
+                                  )}
+                                  {hireInviteAccepted && (
+                                    <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold rounded-full">Employed ✓</span>
+                                  )}
                                 </>
                               )}
                             </div>

@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const jobService = require('../services/jobService');
 const { createNotification } = require('../services/notificationService');
-const { sendJobApplicationStatusEmail, sendInterviewInviteEmail } = require('../services/emailService');
+const { sendJobApplicationStatusEmail, sendInterviewInviteEmail, sendHireInviteEmail } = require('../services/emailService');
 const supabase = require('../config/database');
 
 // POST /api/jobs — create job posting (company admin)
@@ -237,6 +237,54 @@ const acceptInvite = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// POST /api/jobs/applications/:appId/hire-invite — admin sends employment offer email
+const sendHireInvite = async (req, res, next) => {
+  try {
+    const result = await jobService.sendHireInvite(req.params.appId, req.user.userId);
+    // Send hire invite email (non-blocking)
+    try {
+      if (result.employee?.users?.email) {
+        await sendHireInviteEmail({
+          to: result.employee.users.email,
+          name: result.employee.full_name || 'Applicant',
+          positionTitle: result.positionTitle,
+          companyName: result.companyName,
+        });
+      }
+      if (result.employee?.users?.id) {
+        await createNotification({
+          userId: result.employee.users.id,
+          type: 'hire_invite',
+          title: 'Employment Offer 🎉',
+          message: `You have received an employment offer from ${result.companyName} for ${result.positionTitle}. Log in to accept.`,
+          link: '/dashboard?tab=jobs',
+        });
+      }
+    } catch (_) {}
+    res.json({ success: true, data: result.data });
+  } catch (err) { next(err); }
+};
+
+// POST /api/jobs/applications/:appId/accept-hire — employee accepts employment offer
+const acceptHireInvite = async (req, res, next) => {
+  try {
+    const result = await jobService.acceptHireInvite(req.params.appId, req.user.userId);
+    // Notify admin (non-blocking)
+    try {
+      if (result.adminUserId) {
+        await createNotification({
+          userId: result.adminUserId,
+          type: 'hire_accepted',
+          title: 'Employment Offer Accepted',
+          message: `A candidate has accepted the employment offer for ${result.positionTitle}.`,
+          link: '/company-admin?tab=jobs',
+        });
+      }
+    } catch (_) {}
+    res.json({ success: true, data: result.data });
+  } catch (err) { next(err); }
+};
+
 // GET /api/jobs/cv/:filename — serve uploaded CV file (authenticated)
 const serveCv = (req, res, next) => {
   try {
@@ -264,5 +312,7 @@ module.exports = {
   getMyApplications,
   sendInvite,
   acceptInvite,
+  sendHireInvite,
+  acceptHireInvite,
   serveCv,
 };

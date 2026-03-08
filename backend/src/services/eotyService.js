@@ -259,14 +259,17 @@ const getEventNominees = async (eventId, userRole) => {
 const getCompanyWinners = async (companyId) => {
   const { data } = await supabase
     .from('employee_of_year')
-    .select('*, employees(full_name)')
+    .select('*, employees(full_name, user_id), companies(name)')
     .eq('company_id', companyId)
     .order('year', { ascending: false });
 
   return (data || []).map(w => ({
     id: w.id,
+    employee_id: w.employee_id,
     year: w.year,
     employee_name: w.employees?.full_name || null,
+    user_id: w.employees?.user_id || null,
+    company_name: w.companies?.name || null,
     voteCount: w.votes_count,
   }));
 };

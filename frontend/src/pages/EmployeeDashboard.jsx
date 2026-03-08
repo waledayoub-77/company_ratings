@@ -23,6 +23,7 @@ import {
   ShieldCheck,
   Trophy,
   Briefcase,
+  Download,
 } from 'lucide-react'
 import PageHeader from '../components/ui/PageHeader.jsx'
 import StarRating from '../components/ui/StarRating.jsx'
@@ -35,6 +36,8 @@ import { getFeedbackReceived, reportFeedback } from '../api/feedback.js'
 import { getCompanies } from '../api/companies.js'
 import { getCompanyEotmEvents, getEotmNominees, castEotmVote, getCompanyEotmWinners } from '../api/eotm.js'
 import { getCompanyEotyEvents, getEotyNominees, castEotyVote, getCompanyEotyWinners } from '../api/eoty.js'
+import { useNotification } from '../context/NotificationContext.jsx'
+import CertificateModal from '../components/CertificateModal'
 import { getMyApplications, getAllJobPositions, applyToJob } from '../api/jobs.js'
 
 const statusConfig = {
@@ -137,8 +140,8 @@ export default function EmployeeDashboard() {
             {activeTab === 'employment' && <EmploymentTab employments={employments} refetch={refetchEmployments} />}
             {activeTab === 'reviews'    && <ReviewsTab    reviews={reviews} employments={employments} refetch={refetchReviews} />}
             {activeTab === 'feedback'   && <FeedbackTab   feedback={feedback} />}
-            {activeTab === 'eotm'       && <EotmVoteTab   employments={employments} />}
-            {activeTab === 'eoty'       && <EotyVoteTab   employments={employments} />}
+            {activeTab === 'eotm'       && <EotmVoteTab   employments={employments} user={user} />}
+            {activeTab === 'eoty'       && <EotyVoteTab   employments={employments} user={user} />}
             {activeTab === 'jobs'       && <JobBoardTab   employments={employments} />}
           </>
         )}
@@ -1292,7 +1295,8 @@ function FeedbackTab({ feedback }) {
 /* ─── EOTM Vote Tab ─── */
 const EOTM_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
-function EotmVoteTab({ employments }) {
+function EotmVoteTab({ employments, user }) {
+  const { addNotification } = useNotification()
   const approvedEmployments = employments.filter(e => (e.verification_status ?? e.status) === 'approved')
   const [selectedCompany, setSelectedCompany] = useState(approvedEmployments[0]?.company_id ?? null)
   const [events, setEvents]     = useState([])
@@ -1301,7 +1305,7 @@ function EotmVoteTab({ employments }) {
   const [loading, setLoading]   = useState(true)
   const [voting, setVoting]     = useState(null)
   const [expanded, setExpanded] = useState(null)
-  const [voteError, setVoteError] = useState('')
+  const [certWinner, setCertWinner] = useState(null)
 
   useEffect(() => {
     if (!selectedCompany) { setLoading(false); return }
@@ -1325,19 +1329,20 @@ function EotmVoteTab({ employments }) {
       try {
         const res = await getEotmNominees(eventId)
         setNominees(prev => ({ ...prev, [eventId]: res?.data?.nominees ?? res?.data ?? [] }))
+        if (!res?.data?.nominees?.length) addNotification('No nominees in this event yet', 'info')
       } catch { setNominees(prev => ({ ...prev, [eventId]: [] })) }
     }
   }
 
   const handleVote = async (eventId, nomineeId) => {
     setVoting(nomineeId)
-    setVoteError('')
     try {
       await castEotmVote(eventId, nomineeId)
+      addNotification('Vote cast successfully!', 'success')
       // Refresh nominees
       const res = await getEotmNominees(eventId)
       setNominees(prev => ({ ...prev, [eventId]: res?.data?.nominees ?? res?.data ?? [] }))
-    } catch (e) { setVoteError(e?.message || 'Vote failed') }
+    } catch (e) { addNotification(e?.message || 'Vote failed', 'error') }
     finally { setVoting(null) }
   }
 
@@ -1419,7 +1424,11 @@ function EotmVoteTab({ employments }) {
                               </div>
                               <div>
                                 <p className="text-sm font-medium text-navy-900">{nom.full_name ?? 'Unknown'}</p>
-                                <p className="text-xs text-navy-400">{nom.vote_count ?? 0} votes</p>
+                                {nom.vote_count !== null && nom.vote_count !== undefined ? (
+                                  <p className="text-xs text-navy-400">{nom.vote_count} votes</p>
+                                ) : (
+                                  <p className="text-xs text-navy-400">Vote counts hidden</p>
+                                )}
                               </div>
                             </div>
                             <button
@@ -1431,9 +1440,6 @@ function EotmVoteTab({ employments }) {
                             </button>
                           </div>
                         ))}
-                        {voteError && (
-                          <p className="text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mt-2">{voteError}</p>
-                        )}
                       </div>
                     </motion.div>
                   )}
@@ -1462,6 +1468,15 @@ function EotmVoteTab({ employments }) {
                   <p className="text-xs text-navy-400 mt-0.5">
                     {EOTM_MONTHS[(w.month ?? 1) - 1]} {w.year}
                   </p>
+                  <p className="text-xs text-navy-400">{w.voteCount} votes</p>
+                  {w.user_id && user?.id === w.user_id && (
+                    <button
+                      onClick={() => setCertWinner(w)}
+                      className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-amber-600 hover:text-amber-800 transition-colors"
+                    >
+                      <Download size={12} /> Get Certificate
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div key={i} className="bg-gray-50 rounded-xl p-4 text-center border border-gray-200 opacity-60">
@@ -1478,12 +1493,22 @@ function EotmVoteTab({ employments }) {
           </div>
         </Reveal>
       )}
+
+      <CertificateModal
+        isOpen={!!certWinner}
+        onClose={() => setCertWinner(null)}
+        winner={certWinner?.employee_name}
+        awardType="eotm"
+        monthYear={certWinner ? `${EOTM_MONTHS[(certWinner.month ?? 1) - 1]} ${certWinner.year}` : ''}
+        companyName={certWinner?.company_name}
+      />
     </div>
   )
 }
 
 /* ─── EOTY Vote Tab ─── */
-function EotyVoteTab({ employments }) {
+function EotyVoteTab({ employments, user }) {
+  const { addNotification } = useNotification()
   const approvedEmps = employments.filter(e => (e.verification_status ?? e.status) === 'approved')
   const [events, setEvents] = useState([])
   const [winners, setWinners] = useState([])
@@ -1491,10 +1516,10 @@ function EotyVoteTab({ employments }) {
   const [expanded, setExpanded] = useState(null)
   const [nominees, setNominees] = useState({})
   const [voting, setVoting] = useState({})
-  const [voteError, setVoteError] = useState('')
   const [voteSearch, setVoteSearch] = useState('')
   const [votingForEvent, setVotingForEvent] = useState(null)
   const [coworkerResults, setCoworkerResults] = useState([])
+  const [certWinner, setCertWinner] = useState(null)
 
   useEffect(() => {
     const companyIds = [...new Set(approvedEmps.map(e => e.company_id ?? e.companyId))]
@@ -1521,11 +1546,11 @@ function EotyVoteTab({ employments }) {
 
   const handleVote = async (eventId, nomineeId) => {
     setVoting(v => ({ ...v, [nomineeId]: true }))
-    setVoteError('')
     try {
       await castEotyVote(eventId, nomineeId)
+      addNotification('Vote cast successfully!', 'success')
       await loadNominees(eventId)
-    } catch (e) { setVoteError(e?.message || 'Vote failed') }
+    } catch (e) { addNotification(e?.message || 'Vote failed', 'error') }
     finally { setVoting(v => ({ ...v, [nomineeId]: false })) }
   }
 
@@ -1576,7 +1601,14 @@ function EotyVoteTab({ employments }) {
                           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
                             <span className="text-white text-xs font-bold">{(nom.full_name || nom.employee_name || '?')[0].toUpperCase()}</span>
                           </div>
-                          <p className="text-sm font-medium text-navy-900">{nom.full_name ?? nom.employee_name ?? 'Unknown'}</p>
+                          <div>
+                            <p className="text-sm font-medium text-navy-900">{nom.full_name ?? nom.employee_name ?? 'Unknown'}</p>
+                            {nom.vote_count !== null && nom.vote_count !== undefined ? (
+                              <p className="text-xs text-navy-400">{nom.vote_count} votes</p>
+                            ) : (
+                              <p className="text-xs text-navy-400">Vote counts hidden</p>
+                            )}
+                          </div>
                         </div>
                         <button onClick={() => handleVote(ev.id, nom.employee_id ?? nom.nominee_id)} disabled={!!voting[nom.employee_id ?? nom.nominee_id]}
                           className="h-8 px-4 bg-amber-500 text-white text-xs font-semibold rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50">
@@ -1584,9 +1616,6 @@ function EotyVoteTab({ employments }) {
                         </button>
                       </div>
                     ))}
-                    {voteError && (
-                      <p className="text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mt-2">{voteError}</p>
-                    )}
                   </div>
                 </motion.div>
               )}
@@ -1609,12 +1638,30 @@ function EotyVoteTab({ employments }) {
                   </div>
                   <p className="text-sm font-semibold text-navy-900">{w.employee_name ?? 'N/A'}</p>
                   <p className="text-xs text-navy-400 mt-0.5">{w.year}</p>
+                  <p className="text-xs text-navy-400">{w.voteCount} votes</p>
+                  {w.user_id && user?.id === w.user_id && (
+                    <button
+                      onClick={() => setCertWinner(w)}
+                      className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-amber-600 hover:text-amber-800 transition-colors"
+                    >
+                      <Download size={12} /> Get Certificate
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
           </div>
         </Reveal>
       )}
+
+      <CertificateModal
+        isOpen={!!certWinner}
+        onClose={() => setCertWinner(null)}
+        winner={certWinner?.employee_name}
+        awardType="eoty"
+        monthYear={certWinner ? `Year ${certWinner.year}` : ''}
+        companyName={certWinner?.company_name}
+      />
     </div>
   )
 }

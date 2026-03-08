@@ -46,6 +46,7 @@ import { getPendingEmployments, approveEmployment, rejectEmployment, getAllEmplo
 import { getFeedbackReceived } from '../api/feedback'
 import { createEotmEvent, closeEotmEvent, getCompanyEotmEvents, getEotmNominees, getCompanyEotmWinners } from '../api/eotm'
 import { createEotyEvent, closeEotyEvent, getCompanyEotyEvents, getEotyNominees, getCompanyEotyWinners } from '../api/eoty'
+import { useNotification } from '../context/NotificationContext'
 import { getJobPositions, createJobPosition, closeJobPosition, deleteJobPosition, getApplications, updateApplicationStatus } from '../api/jobs'
 
 const VALID_CA_TABS = ['overview', 'requests', 'reviews', 'eotm', 'eoty', 'jobs', 'feedback', 'settings']
@@ -834,13 +835,12 @@ function TeamFeedbackTab() {
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
 function EotmTab({ companyId }) {
+  const { addNotification } = useNotification()
   const [events, setEvents]     = useState([])
   const [winners, setWinners]   = useState([])
   const [loading, setLoading]   = useState(true)
   const [creating, setCreating] = useState(false)
   const [closing, setClosing]   = useState(null)
-  const [createError, setCreateError] = useState('')
-  const [closeError, setCloseError]   = useState('')
   const [newMonth, setNewMonth] = useState(new Date().getMonth() + 1)
   const [newYear, setNewYear]   = useState(new Date().getFullYear())
   const [nominees, setNominees] = useState({}) // { eventId: [...] }
@@ -863,21 +863,29 @@ function EotmTab({ companyId }) {
 
   const handleCreate = async () => {
     setCreating(true)
-    setCreateError('')
     try {
       await createEotmEvent({ companyId, month: newMonth, year: newYear })
+      addNotification(`EOTM event created for ${MONTHS[newMonth - 1]} ${newYear}`, 'success')
       await load()
-    } catch (e) { setCreateError(e?.message || 'Failed to create event') }
+    } catch (e) {
+      addNotification(e?.message || 'Failed to create event', 'error')
+    }
     finally { setCreating(false) }
   }
 
   const handleClose = async (eventId) => {
     setClosing(eventId)
-    setCloseError('')
     try {
-      await closeEotmEvent(eventId)
+      const res = await closeEotmEvent(eventId)
+      const winnerName = res?.data?.winner?.name || res?.winner?.name || 'Unknown'
+      const message = res?.data?.winner?.name 
+        ? `Event closed! Winner: ${winnerName} (${res?.data?.winner?.voteCount} votes)`
+        : 'Event closed with no votes'
+      addNotification(message, 'success')
       await load()
-    } catch (e) { setCloseError(e?.message || 'Failed to close event') }
+    } catch (e) {
+      addNotification(e?.message || 'Failed to close event', 'error')
+    }
     finally { setClosing(null) }
   }
 
@@ -938,16 +946,11 @@ function EotmTab({ companyId }) {
               {creating ? 'Creating…' : 'Create Event'}
             </button>
           </div>
-          {createError && (
-            <p className="mt-3 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{createError}</p>
-          )}
+          {/* Original error display removed - now using NotificationContext */}
         </div>
       </Reveal>
 
       {/* Active events */}
-      {closeError && (
-        <p className="text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{closeError}</p>
-      )}
       {events.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-xs font-semibold uppercase tracking-widest text-navy-400">Events</h3>
@@ -963,7 +966,6 @@ function EotmTab({ companyId }) {
                       <p className="text-sm font-semibold text-navy-900">
                         {MONTHS[(ev.month ?? 1) - 1]} {ev.year}
                       </p>
-                      <p className="text-xs text-navy-400">{ev.total_votes ?? 0} votes cast</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1051,6 +1053,7 @@ function EotmTab({ companyId }) {
                   <p className="text-xs text-navy-400 mt-0.5">
                     {MONTHS[(w.month ?? 1) - 1]} {w.year}
                   </p>
+                  <p className="text-xs text-navy-400">{w.voteCount} votes</p>
                 </div>
               ) : (
                 <div key={i} className="bg-gray-50 rounded-xl p-4 text-center border border-gray-200 opacity-60">
@@ -1073,6 +1076,7 @@ function EotmTab({ companyId }) {
 
 /* ─── EOTY Tab ─── */
 function EotyTab({ companyId }) {
+  const { addNotification } = useNotification()
   const [events, setEvents] = useState([])
   const [winners, setWinners] = useState([])
   const [loading, setLoading] = useState(true)
@@ -1096,21 +1100,29 @@ function EotyTab({ companyId }) {
 
   useEffect(() => { load() }, [companyId])
 
-  const [error, setError] = useState('')
-
   const handleCreate = async () => {
     setCreating(true)
-    setError('')
-    try { await createEotyEvent({ companyId, year: new Date().getFullYear() }); await load() }
-    catch (e) { setError(e?.message || 'Failed to create EOTY event') }
+    try {
+      await createEotyEvent({ companyId, year: new Date().getFullYear() })
+      addNotification(`EOTY event created for ${new Date().getFullYear()}`, 'success')
+      await load()
+    }
+    catch (e) { addNotification(e?.message || 'Failed to create EOTY event', 'error') }
     finally { setCreating(false) }
   }
 
   const handleClose = async (eventId) => {
     setClosing(p => ({ ...p, [eventId]: true }))
-    setError('')
-    try { await closeEotyEvent(eventId); await load() }
-    catch (e) { setError(e?.message || 'Failed to close event') }
+    try {
+      const res = await closeEotyEvent(eventId)
+      const winnerName = res?.data?.winner?.name || res?.winner?.name || 'Unknown'
+      const message = res?.data?.winner?.name
+        ? `Event closed! Winner: ${winnerName} (${res?.data?.winner?.voteCount} votes)`
+        : 'Event closed with no votes'
+      addNotification(message, 'success')
+      await load()
+    }
+    catch (e) { addNotification(e?.message || 'Failed to close event', 'error') }
     finally { setClosing(p => ({ ...p, [eventId]: false })) }
   }
 
@@ -1136,10 +1148,6 @@ function EotyTab({ companyId }) {
           Start {new Date().getFullYear()} EOTY
         </button>
       </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 text-sm text-red-700 font-medium">{error}</div>
-      )}
 
       {events.length === 0 && (
         <div className="bg-white rounded-2xl border border-navy-100/50 p-12 text-center">
@@ -1213,6 +1221,7 @@ function EotyTab({ companyId }) {
                   </div>
                   <p className="text-sm font-semibold text-navy-900">{w.employee_name ?? 'N/A'}</p>
                   <p className="text-xs text-navy-400 mt-0.5">{w.year}</p>
+                  <p className="text-xs text-navy-400">{w.voteCount} votes</p>
                 </div>
               ))}
             </div>

@@ -1,0 +1,581 @@
+================================================================================
+  RATEHUB — JOB FEATURE MANUAL TEST CASES
+  Branch  : ratehub.7
+  Date    : March 8, 2026
+
+  Test Accounts (create these in the system first if they don't exist):
+    Company Admin  : tech.admin@ratehub.com   / Test1234!
+    Employee A     : frank@ratehub.com        / Test1234!  (registered, has employee profile)
+    Employee B     : alice@ratehub.com        / Test1234!  (registered, has employee profile)
+    Guest          : (not logged in)
+
+  ⚠  PREREQUISITE:  Run create_job_tables.sql in Supabase SQL Editor FIRST.
+                    Then run add_hire_invite_columns.sql if not done yet.
+  ⚠  All tests assume the backend + frontend are both running locally.
+================================================================================
+
+
+════════════════════════════════════════════════════════════════════════════════
+  SECTION 1 — JOB POSITION MANAGEMENT (Company Admin)
+════════════════════════════════════════════════════════════════════════════════
+
+────────────────────────────────────────────────────────────────────────────────
+J1 — Create a Job Position
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] J1-A   Login as tech.admin → go to Company Admin Dashboard → Jobs tab
+           → fill in: Title="Backend Engineer", Dept="Engineering",
+             Type="Full-time", Description="Open role", Requirements="Node.js"
+           → click "Post Job"
+           EXPECTED: New position appears in the Jobs list with status "Open"
+
+[ ] J1-B   Refresh the page
+           EXPECTED: Position persists — not lost on refresh
+
+[ ] J1-C   Leave Title blank → click "Post Job"
+           EXPECTED: Form validation error "Title is required" (no API call)
+
+[ ] J1-D   Leave Description blank → click "Post Job"
+           EXPECTED: Form validation error "Description is required" (no API call)
+
+[ ] J1-E   Go to /companies/<your-company-id> as a guest (not logged in)
+           → scroll to "Open Positions"
+           EXPECTED: The new "Backend Engineer" position is listed publicly
+
+[ ] J1-F   Create a second position: Title="Frontend Developer", Type="Part-time"
+           EXPECTED: Both positions appear in the Jobs list
+
+
+────────────────────────────────────────────────────────────────────────────────
+J2 — Close a Job Position
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] J2-A   From Jobs tab → click "Close" on "Backend Engineer"
+           EXPECTED: Position status changes to "Closed" in admin view
+
+[ ] J2-B   Go to /companies/<id> as guest
+           EXPECTED: "Backend Engineer" is NO LONGER listed in Open Positions
+
+[ ] J2-C   Employee Dashboard → Job Board
+           EXPECTED: "Backend Engineer" does NOT appear in available positions
+
+[ ] J2-D   Try to apply to the closed position via direct API (Postman):
+           POST /api/jobs/<closedId>/apply
+           EXPECTED: 400 "This position is no longer accepting applications"
+
+
+────────────────────────────────────────────────────────────────────────────────
+J3 — Delete a Job Position
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] J3-A   From Jobs tab → click the trash icon on "Frontend Developer"
+           EXPECTED: Position disappears from the admin Jobs list
+
+[ ] J3-B   Confirm it is soft-deleted (not hard-deleted):
+           Check Supabase → job_positions → that row has deleted_at set, not removed
+
+[ ] J3-C   Deleted position must not appear in public company profile or employee job board
+           EXPECTED: No trace of "Frontend Developer" anywhere in UI
+
+
+════════════════════════════════════════════════════════════════════════════════
+  SECTION 2 — JOB APPLICATION (Employee — Apply Flow)
+════════════════════════════════════════════════════════════════════════════════
+
+────────────────────────────────────────────────────────────────────────────────
+J4 — Guest / Unauthenticated Apply Attempt
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] J4-A   Go to /companies/<id> as a guest (not logged in)
+           → find an open position → click "Apply"
+           EXPECTED: Redirected to /login?redirect=/company/<id> (not 401 error)
+
+[ ] J4-B   After logging in, verify redirect brings guest back to the company page
+           EXPECTED: Lands on /company/<id> after successful login
+
+
+────────────────────────────────────────────────────────────────────────────────
+J5 — Apply via Company Profile Page
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] J5-A   Login as Employee A → go to /companies/<id>
+           → click "Apply" on an open position
+           EXPECTED: Apply modal opens with CV upload + cover letter fields
+
+[ ] J5-B   In the modal: attach a PDF file (≤10 MB) + write cover letter → Submit
+           EXPECTED: Success state shown ("Application submitted!")
+           Button changes to "Applied ✓" on that job card
+
+[ ] J5-C   Close modal → try clicking Apply on the same position again
+           EXPECTED: Button shows "Applied ✓" (disabled) — no second modal
+
+[ ] J5-D   Attach a .txt or .jpg file → Submit
+           EXPECTED: Error "Only PDF and Word documents (.pdf, .doc, .docx) are allowed"
+
+[ ] J5-E   Attach a file > 10 MB → Submit
+           EXPECTED: Error about file size limit
+
+[ ] J5-F   Submit without attaching any file (cover letter only)
+           EXPECTED: Application submits successfully with no CV attached
+           cv_url should be null in DB
+
+[ ] J5-G   Navigate to Employee Dashboard → Jobs tab → My Applications
+           EXPECTED: Application appears with status "pending" and company name
+
+
+────────────────────────────────────────────────────────────────────────────────
+J6 — Apply via Employee Dashboard Job Board
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] J6-A   Login as Employee B → Employee Dashboard → Job Board
+           EXPECTED: Open positions are listed (from all companies)
+
+[ ] J6-B   Find an open position → upload a .docx file + add cover letter → Apply
+           EXPECTED: Loading spinner while submitting, then "Applied" badge on card
+
+[ ] J6-C   Try to apply to the same position a second time
+           EXPECTED: Apply button is disabled / shows "Applied" — no duplicate call
+
+[ ] J6-D   Employee B: submit application with no CV and no cover letter
+           EXPECTED: Submits successfully (both optional)
+
+[ ] J6-E   My Applications section updates immediately (without full page reload)
+           EXPECTED: New application appears at top with status "pending"
+
+
+────────────────────────────────────────────────────────────────────────────────
+J7 — Duplicate Application Guards
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] J7-A   Employee A already applied to Position X via company profile
+           → Employee A goes to Job Board in dashboard → tries same position
+           EXPECTED: "Applied" badge already shown (UI state persisted)
+
+[ ] J7-B   Direct API attempt (Postman) by same user:
+           POST /api/jobs/<id>/apply twice
+           EXPECTED: Second call returns 400 "You have already applied to this position"
+
+
+════════════════════════════════════════════════════════════════════════════════
+  SECTION 3 — APPLICATION REVIEW (Company Admin)
+════════════════════════════════════════════════════════════════════════════════
+
+────────────────────────────────────────────────────────────────────────────────
+J8 — View Applications
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] J8-A   Login as tech.admin → Jobs tab → click "Applications" on a position
+           EXPECTED: Applications panel expands showing applicant name, email,
+           apply date, status badge, CV button (if CV attached), action buttons
+
+[ ] J8-B   Click "CV" button on an application that has a resume
+           EXPECTED: CV viewer modal opens; PDF renders inline, .docx triggers download
+
+[ ] J8-C   Test CV viewer with a PDF file
+           EXPECTED: PDF renders in iframe inside the modal (not a download)
+
+[ ] J8-D   Test CV viewer with a .docx file
+           EXPECTED: File downloads automatically (browser cannot render .docx inline)
+
+[ ] J8-E   Close CV viewer → re-open → no memory leak (no stale blob URLs)
+           EXPECTED: Modal closes cleanly, reopens fresh
+
+
+────────────────────────────────────────────────────────────────────────────────
+J9 — Move Application: Pending → Interview
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] J9-A   On a "pending" application → click "Accept"
+           EXPECTED: Status badge changes to "interview"
+           Action buttons change to: Invite / Approve / Reject
+
+[ ] J9-B   Check Employee A's My Applications → status shows "interview"
+           EXPECTED: Status badge updated to "interview" (blue)
+
+[ ] J9-C   Check Employee A receives a notification
+           EXPECTED: Bell notification: "Your application for Backend Engineer at … is now: interview"
+
+
+────────────────────────────────────────────────────────────────────────────────
+J10 — Send Interview Invitation Email
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] J10-A  On an "interview" application → click "Invite"
+           EXPECTED: Spinner while sending, then "Interview invite sent" text appears
+           "Invite" button disappears (can only send once)
+
+[ ] J10-B  Check Employee A's email inbox
+           EXPECTED: Email with subject "Interview Invitation: Backend Engineer at …"
+           Contains "Accept Invitation" button linking to /dashboard?tab=jobs
+
+[ ] J10-C  Employee A → My Applications
+           EXPECTED: "Accept Interview" button appears alongside status badge
+
+[ ] J10-D  Check admin panel again (re-open Applications)
+           EXPECTED: "· Interview invite sent" label shown below applicant name
+
+[ ] J10-E  Verify invite can only be sent once (button removed after send)
+           If status is 'interview' and invite_sent_at is set → no Invite button shown
+
+
+────────────────────────────────────────────────────────────────────────────────
+J11 — Employee Accepts Interview Invitation
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] J11-A  Login as Employee A → Dashboard → Jobs → My Applications
+           → click "Accept Interview"
+           EXPECTED: Button shows spinner → then replaced by "Interview Accepted ✓" badge
+
+[ ] J11-B  Refresh page → "Interview Accepted ✓" badge persists
+
+[ ] J11-C  Company admin notification received
+           EXPECTED: Bell: "A candidate has accepted the interview invitation for Backend Engineer."
+
+[ ] J11-D  Admin re-opens Applications panel
+           EXPECTED: "· Interview accepted ✓" label shown (replaces "· Interview invite sent")
+
+[ ] J11-E  Try accepting again via direct API:
+           POST /api/jobs/applications/<appId>/accept-invite
+           EXPECTED: 400 "Invitation already accepted"
+
+
+────────────────────────────────────────────────────────────────────────────────
+J12 — Move Application: Interview → Approved
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] J12-A  Admin → "interview" application → click "Approve"
+           EXPECTED: Status badge changes to "approved"
+           Action buttons change to: Invite (hire) button
+
+[ ] J12-B  Check Employee A's My Applications → status "approved" (green badge)
+
+[ ] J12-C  Check Employee A notification
+           EXPECTED: "Your application for Backend Engineer … is now: approved."
+
+[ ] J12-D  Verify employment record auto-created in DB:
+           Check Supabase → employments table → row for Employee A at this company
+           Fields: is_current=true, verification_status='approved', source='job_application'
+
+[ ] J12-E  Employee A → Dashboard → Employment tab
+           EXPECTED: Company appears as current employment without needing a separate request
+
+
+────────────────────────────────────────────────────────────────────────────────
+J13 — Move Application: Pending/Interview → Rejected
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] J13-A  On a "pending" application for Employee B → click "Reject"
+           EXPECTED: Status badge changes to "rejected" (red)
+           All action buttons disappear for this application
+
+[ ] J13-B  Employee B notification received
+           EXPECTED: "Your application for … is now: rejected."
+
+[ ] J13-C  Employee B's My Applications shows "rejected" status
+           EXPECTED: Red badge "rejected" with no further action buttons
+
+
+════════════════════════════════════════════════════════════════════════════════
+  SECTION 4 — HIRE INVITE FLOW (Approved → Employed)
+════════════════════════════════════════════════════════════════════════════════
+
+────────────────────────────────────────────────────────────────────────────────
+J14 — Admin Sends Employment Offer
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] J14-A  Admin → Jobs → Applications → find "approved" application for Employee A
+           EXPECTED: Green "Invite" button is visible beside the approved status badge
+
+[ ] J14-B  Click "Invite" button
+           EXPECTED: Spinner → button disappears → "Invitation Sent" amber badge appears
+
+[ ] J14-C  Verify the offer can only be sent once:
+           Re-open the Applications panel → no "Invite" button visible (already sent)
+           "· Offer sent" label shows beside the applicant's name
+
+[ ] J14-D  Check Employee A email inbox
+           EXPECTED: Email subject "Employment Offer: Backend Engineer at … — RateHub"
+           Contains "Accept Employment Offer" button linking to /dashboard?tab=jobs
+
+[ ] J14-E  Check Employee A notification bell
+           EXPECTED: "You have received an employment offer from [Company] for Backend Engineer."
+
+[ ] J14-F  Employee A → My Applications
+           EXPECTED: "Offer Pending" amber badge + "Accept Employment" green button visible
+           Status badge still shows "approved"
+
+
+────────────────────────────────────────────────────────────────────────────────
+J15 — Employee Accepts Employment Offer
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] J15-A  Employee A → My Applications → click "Accept Employment"
+           EXPECTED: Spinner → button replaced by "Employed ✓" emerald badge
+
+[ ] J15-B  Refresh page → "Employed ✓" badge persists
+           EXPECTED: hire_invite_accepted_at is now set in DB
+
+[ ] J15-C  Admin notification received
+           EXPECTED: "A candidate has accepted the employment offer for Backend Engineer."
+
+[ ] J15-D  Admin re-opens Applications panel
+           EXPECTED: "· Employed ✓" green label shown (replaces "· Offer sent")
+           Status is still "approved" with "Employed ✓" badge shown separately
+
+[ ] J15-E  Try accepting again via direct API:
+           POST /api/jobs/applications/<appId>/accept-hire
+           EXPECTED: 400 "Hire invitation already accepted"
+
+[ ] J15-F  Try sending hire invite again via direct API (wrong user):
+           POST /api/jobs/applications/<appId>/hire-invite as Employee A (not admin)
+           EXPECTED: 403 "Only the company admin can send hire invitations"
+
+
+════════════════════════════════════════════════════════════════════════════════
+  SECTION 5 — POST-HIRE CONNECTED LOGIC
+════════════════════════════════════════════════════════════════════════════════
+
+────────────────────────────────────────────────────────────────────────────────
+J16 — Feedback to Coworkers (Quarter Rules)
+────────────────────────────────────────────────────────────────────────────────
+CONTEXT: Employee A was approved/hired at the company. The approval creates an
+employment record (is_current=true, verification_status='approved'). This
+unlocks feedback between coworkers at the same company.
+
+Prerequisites: Employee B must also have an approved employment at the SAME company.
+
+[ ] J16-A  Login as Employee A → Dashboard → Feedback tab
+           → "Give Feedback" section should list Employee B as a coworker
+           EXPECTED: Employee B appears in the coworker dropdown / list
+
+[ ] J16-B  Submit feedback for Employee B:
+           Ratings: Professionalism=4, Communication=5, Teamwork=3, Reliability=4
+           Written feedback: "Great team player."
+           Quarter: 1, Year: 2026
+           EXPECTED: Feedback submitted successfully (201)
+
+[ ] J16-C  Employee B → Dashboard → Feedback tab → "Received" section
+           EXPECTED: Feedback from Employee A appears (may show as anonymous if toggled)
+
+[ ] J16-D  Employee B receives notification
+           EXPECTED: Bell: "A coworker submitted feedback for you (Q1 2026)."
+
+[ ] J16-E  Employee B's email inbox (if email configured)
+           EXPECTED: Feedback received email notification
+
+[ ] J16-F  Try submitting feedback for Employee B again (same Q1 2026)
+           EXPECTED: 400 "Feedback already submitted for Q1 2026"
+
+[ ] J16-G  Submit feedback for a future quarter (e.g., Q4 2026 if current is Q1)
+           EXPECTED: 400 "Cannot submit feedback for a future period (current: Q1 2026)"
+
+[ ] J16-H  Self-feedback attempt (Employee A rates themselves):
+           EXPECTED: 400 "You cannot give feedback to yourself"
+
+[ ] J16-I  Employee A gives feedback to Employee C who is at a DIFFERENT company
+           EXPECTED: 403 "Both employees must have approved employment at this company"
+
+[ ] J16-J  Anonymous feedback: toggle "Submit anonymously" → submit
+           EXPECTED: Employee B can see the feedback but name shows as "Anonymous"
+
+[ ] J16-K  Employee A → "Given" section
+           EXPECTED: Shows the feedback they gave to Employee B with Q1 2026 label
+
+
+────────────────────────────────────────────────────────────────────────────────
+J17 — Company Review (After Employment Created)
+────────────────────────────────────────────────────────────────────────────────
+CONTEXT: Employee A now has an approved employment at the company.
+They can write a company review (1 per company, editable within 48h).
+
+[ ] J17-A  Employee A → Dashboard → Reviews tab (or company profile page)
+           → find the company → write a review:
+           Category ratings: Management=4, WorkLifeBalance=3, Salary=3
+           Written review text, overall rating
+           EXPECTED: Review submitted, appears on the company's public profile
+
+[ ] J17-B  Go to /companies/<id> as any user
+           EXPECTED: Employee A's review appears in the reviews section
+           Star ratings and written review visible
+
+[ ] J17-C  Try submitting a second review for the same company as Employee A
+           EXPECTED: 400 "You have already reviewed this company" (1 review per company)
+
+[ ] J17-D  Employee A → edits the review within 48 hours
+           EXPECTED: Edit succeeds, updated review shows on company profile
+
+[ ] J17-E  Try to write a review for a company where Employee A has NO employment
+           EXPECTED: 403 Forbidden — must have an approved employment record
+
+[ ] J17-F  Employee with a REJECTED application tries to write a company review
+           (Employee B who was rejected in J13)
+           EXPECTED: 403 Forbidden — rejected application does not grant review rights
+
+[ ] J17-G  Guest (not logged in) tries to submit a review
+           EXPECTED: 401 Unauthorized / redirect to login
+
+
+────────────────────────────────────────────────────────────────────────────────
+J18 — Coworker List Stays Accurate
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] J18-A  Employee A → Feedback tab → "Give Feedback" coworker list
+           EXPECTED: Only shows employees with CURRENT approved employment
+           at the same company (not rejected applicants, former employees)
+
+[ ] J18-B  Admin ends Employee B's employment (from Employees tab)
+           → Employee A refreshes Feedback tab
+           EXPECTED: Employee B is NO LONGER in the coworker list
+
+[ ] J18-C  Admin re-hires Employee B through the job flow (new application → approve → hire)
+           → Employee A → Feedback tab
+           EXPECTED: Employee B reappears in the coworker list
+
+
+════════════════════════════════════════════════════════════════════════════════
+  SECTION 6 — NOTIFICATION CHAIN (End-to-End)
+════════════════════════════════════════════════════════════════════════════════
+
+[ ] J19-A  Employee applies → Admin receives notification "New Job Application"
+
+[ ] J19-B  Admin moves to interview → Employee receives "Application Update: interview"
+
+[ ] J19-C  Admin sends interview invite → Employee receives "Interview Invitation"
+
+[ ] J19-D  Employee accepts interview → Admin receives "Interview Accepted"
+
+[ ] J19-E  Admin approves application → Employee receives "Application Update: approved"
+
+[ ] J19-F  Admin sends hire invite → Employee receives "Employment Offer 🎉"
+
+[ ] J19-G  Employee accepts hire → Admin receives "Employment Offer Accepted"
+
+[ ] J19-H  Coworker submits feedback → Recipient receives "New Peer Feedback" notification
+
+[ ] J19-I  Verify all notifications appear in the bell dropdown in the UI
+           EXPECTED: Unread count badge appears on bell; clicking marks as read
+
+
+════════════════════════════════════════════════════════════════════════════════
+  SECTION 7 — EDGE CASES & SECURITY
+════════════════════════════════════════════════════════════════════════════════
+
+────────────────────────────────────────────────────────────────────────────────
+J20 — Authorization Checks
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] J20-A  Employee trying to access another company's applications:
+           GET /api/jobs/<positionId>/applications (as Employee A, not company admin)
+           EXPECTED: 403 Forbidden
+
+[ ] J20-B  Employee trying to move application status:
+           PATCH /api/jobs/applications/<appId>/status
+           EXPECTED: 403 Forbidden (company admin only)
+
+[ ] J20-C  Employee trying to send hire invite:
+           POST /api/jobs/applications/<appId>/hire-invite (as Employee A)
+           EXPECTED: 403 Forbidden
+
+[ ] J20-D  Admin of Company X trying to manage jobs/applications of Company Y:
+           EXPECTED: 403 "Only the company admin can …" errors on all mutation endpoints
+
+[ ] J20-E  Try accepting an interview invite for another employee's application:
+           POST /api/jobs/applications/<appId>/accept-invite (as Employee B, app belongs to A)
+           EXPECTED: 404 "Application not found" (filtered by applicant_id)
+
+[ ] J20-F  Try accepting hire invite before hire invite is sent:
+           POST /api/jobs/applications/<appId>/accept-hire
+           EXPECTED: 400 "No hire invitation has been sent for this application"
+
+[ ] J20-G  Try sending interview invite when status is NOT "interview":
+           POST /api/jobs/applications/<appId>/invite (status = pending or approved)
+           EXPECTED: 400 "Application must be in interview status to send an invite"
+
+[ ] J20-H  Try sending hire invite when status is NOT "approved":
+           POST /api/jobs/applications/<appId>/hire-invite (status = interview)
+           EXPECTED: 400 "Application must be approved before sending a hire invitation"
+
+[ ] J20-I  Unauthenticated user tries to apply:
+           POST /api/jobs/<id>/apply  (no Authorization header)
+           EXPECTED: 401 Unauthorized
+
+[ ] J20-J  Serve CV endpoint — unauthenticated:
+           GET /api/jobs/cv/<filename>  (no token)
+           EXPECTED: 401 Unauthorized (CV protected, cannot be accessed publicly)
+
+[ ] J20-K  Serve CV endpoint — path traversal attempt:
+           GET /api/jobs/cv/../../../etc/passwd
+           EXPECTED: 404 "File not found" (filename sanitized via path.basename)
+
+
+────────────────────────────────────────────────────────────────────────────────
+J21 — File Upload Edge Cases
+────────────────────────────────────────────────────────────────────────────────
+
+[ ] J21-A  Upload a valid PDF → confirm stored in backend/uploads/cvs/ directory
+           EXPECTED: File saved with a timestamped random name (e.g. 17xxx-abc.pdf)
+
+[ ] J21-B  Uploaded .docx file → served back as .docx (not corrupted)
+           EXPECTED: Downloaded file opens correctly in Word / equivalent
+
+[ ] J21-C  Upload a .pdf renamed to .txt (mime spoofing)
+           EXPECTED: Rejected by file extension check (multer fileFilter)
+
+[ ] J21-D  Two simultaneous applications to different jobs (from two browser tabs)
+           EXPECTED: Both succeed independently, no race condition errors
+
+
+════════════════════════════════════════════════════════════════════════════════
+  SECTION 8 — FULL HAPPY PATH (end-to-end run-through)
+════════════════════════════════════════════════════════════════════════════════
+
+Run these in order to verify the complete job lifecycle works top-to-bottom.
+
+[ ] HP-1   Admin creates position "QA Engineer" (Full-time, Engineering dept)
+[ ] HP-2   Guest sees it on company profile page
+[ ] HP-3   Employee A applies with a PDF CV + "I'm a great tester." cover letter
+[ ] HP-4   Admin opens Applications → sees Employee A with status "pending" + CV button
+[ ] HP-5   Admin views CV in modal (PDF renders inline)
+[ ] HP-6   Admin clicks "Accept" → status → "interview"
+[ ] HP-7   Admin clicks "Invite" → interview invite email sent to Employee A
+[ ] HP-8   Employee A receives email + notification, sees "Accept Interview" button
+[ ] HP-9   Employee A clicks "Accept Interview" → "Interview Accepted ✓"
+[ ] HP-10  Admin sees "· Interview accepted ✓" in panel
+[ ] HP-11  Admin clicks "Approve" → status → "approved"
+[ ] HP-12  Employment record created automatically in DB
+[ ] HP-13  Admin clicks "Invite" (hire) → employment offer email sent
+[ ] HP-14  Employee A receives email + notification, sees "Accept Employment" button
+[ ] HP-15  Employee A clicks "Accept Employment" → "Employed ✓"
+[ ] HP-16  Admin sees "Employed ✓" in panel
+[ ] HP-17  Employee A → Feedback tab → Employee B appears as coworker
+[ ] HP-18  Employee A gives feedback to Employee B (Q1 2026)
+[ ] HP-19  Employee B receives feedback notification + email
+[ ] HP-20  Employee A writes a company review → appears on company profile
+[ ] HP-21  Admin closes the "QA Engineer" position → removed from public listing
+
+
+================================================================================
+  TEST RESULT SUMMARY TEMPLATE
+================================================================================
+
+  Date tested  : _______________
+  Tester       : _______________
+  Branch       : ratehub.7
+
+  Section 1  (Positions)       :  ___/6   passed
+  Section 2  (Apply Flow)      :  ___/11  passed
+  Section 3  (Admin Review)    :  ___/14  passed
+  Section 4  (Hire Invite)     :  ___/12  passed
+  Section 5  (Post-Hire Logic) :  ___/15  passed
+  Section 6  (Notifications)   :  ___/9   passed
+  Section 7  (Edge Cases)      :  ___/18  passed
+  Section 8  (Happy Path)      :  ___/21  passed
+  ─────────────────────────────
+  TOTAL                        :  ___/106 passed
+
+  Notes / Bugs found:
+  ────────────────────────────────────────────────────────────────────────────
+  [ ] Bug 1:
+  [ ] Bug 2:
+  [ ] Bug 3:
+================================================================================

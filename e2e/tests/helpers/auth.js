@@ -8,6 +8,9 @@ const E = process.env;
  * Saves localStorage tokens so the session persists within the page.
  */
 async function loginAs(page, email, password) {
+  // Navigate to app origin first so localStorage.clear() works across origin boundaries
+  await page.goto('/');
+  await page.evaluate(() => localStorage.clear());
   await page.goto('/login');
   await page.locator('input[type="email"]').fill(email);
   await page.locator('input[type="password"]').fill(password);

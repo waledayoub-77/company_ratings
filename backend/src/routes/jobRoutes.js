@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const jobController = require('../controllers/jobController');
 const { requireAuth } = require('../middlewares/authMiddleware');
+const { requireCompanyAdmin } = require('../middlewares/roleMiddleware');
 const { uploadCV } = require('../config/upload');
 
 // Public routes
@@ -24,9 +25,9 @@ router.post('/:id/apply', requireAuth, (req, res, next) => {
 }, jobController.applyToJob);
 router.get('/:id/applications', requireAuth, jobController.getApplications);
 router.patch('/applications/:appId/status', requireAuth, jobController.updateApplicationStatus);
-router.post('/applications/:appId/invite', requireAuth, jobController.sendInvite);
+router.post('/applications/:appId/invite', requireAuth, requireCompanyAdmin, jobController.sendInvite);
 router.post('/applications/:appId/accept-invite', requireAuth, jobController.acceptInvite);
-router.post('/applications/:appId/hire-invite', requireAuth, jobController.sendHireInvite);
+router.post('/applications/:appId/hire-invite', requireAuth, requireCompanyAdmin, jobController.sendHireInvite);
 router.post('/applications/:appId/accept-hire', requireAuth, jobController.acceptHireInvite);
 
 // Serve CV files (authenticated)

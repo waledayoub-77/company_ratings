@@ -3,10 +3,11 @@
   Branch  : ratehub.7
   Date    : March 8, 2026
 
-  Test Accounts (create these in the system first if they don't exist):
+  Test Accounts:
     Company Admin  : tech.admin@ratehub.com   / Test1234!
-    Employee A     : frank@ratehub.com        / Test1234!  (registered, has employee profile)
-    Employee B     : alice@ratehub.com        / Test1234!  (registered, has employee profile)
+    Employee A     : frank@ratehub.com        / Test1234!  (active, has employee profile)
+    Employee B     : carol@ratehub.com        / Test1234!  (currently SUSPENDED — tests
+                     requiring an active Employee B must be run with a different account)
     Guest          : (not logged in)
 
   ⚠  PREREQUISITE:  Run create_job_tables.sql in Supabase SQL Editor FIRST.

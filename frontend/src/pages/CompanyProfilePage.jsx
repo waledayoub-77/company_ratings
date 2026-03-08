@@ -933,7 +933,7 @@ export default function CompanyProfilePage() {
                   <form onSubmit={handleApplySubmit} className="space-y-4">
                     <div>
                       <label className="block text-xs font-medium text-navy-700 mb-1.5">
-                        Upload CV <span className="text-navy-400 font-normal">(PDF or Word, max 10 MB)</span>
+                        Upload CV <span className="text-red-500">*</span> <span className="text-navy-400 font-normal">(PDF or Word, max 10 MB)</span>
                       </label>
                       <label className="flex items-center gap-3 p-3 border-2 border-dashed border-navy-200 rounded-xl cursor-pointer hover:border-navy-400 hover:bg-navy-50 transition-all">
                         <FileText size={18} className="text-navy-400 flex-shrink-0" />
@@ -967,7 +967,7 @@ export default function CompanyProfilePage() {
                     <div className="flex gap-2 pt-1">
                       <button
                         type="submit"
-                        disabled={applySubmitting}
+                        disabled={applySubmitting || !applyFile}
                         className="flex-1 h-10 bg-navy-900 text-white text-sm font-semibold rounded-xl hover:bg-navy-800 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
                       >
                         {applySubmitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}

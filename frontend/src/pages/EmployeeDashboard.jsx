@@ -1828,8 +1828,9 @@ function JobBoardTab({ employments }) {
                 {alreadyApplied ? (
                   <span className="px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-lg border border-emerald-200">Applied</span>
                 ) : (
-                  <button onClick={() => handleApply(job.id)} disabled={!!applying[job.id]}
-                    className="h-8 px-4 bg-navy-900 text-white text-xs font-semibold rounded-lg hover:bg-navy-800 disabled:opacity-50 flex items-center gap-1.5">
+                  <button onClick={() => handleApply(job.id)} disabled={!!applying[job.id] || !cvFiles[job.id]}
+                    className="h-8 px-4 bg-navy-900 text-white text-xs font-semibold rounded-lg hover:bg-navy-800 disabled:opacity-50 flex items-center gap-1.5"
+                    title={!cvFiles[job.id] ? 'Please upload a CV to apply' : undefined}>
                     {applying[job.id] ? <Loader2 size={12} className="animate-spin" /> : 'Apply'}
                   </button>
                 )}

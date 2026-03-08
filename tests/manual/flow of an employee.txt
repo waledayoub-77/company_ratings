@@ -2,7 +2,7 @@ Flow of an employee — rules and lifecycle
 
 1) Registration & Verification
 - When a user registers as an employee they are NOT considered a verified employee by default.
-- A `verified` flag is required; only the System Admin can mark an employee as verified.
+- A `verified` flag is required; only the System Admin can mark an employee as verified as the verification in codes after employee submit his verification.
 - Unverified employees cannot be invited to companies, cannot belong to an `employments` record, and cannot accept employment invites.
 
 2) Single current employment constraint

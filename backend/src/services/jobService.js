@@ -418,12 +418,30 @@ const sendHireInvite = async (applicationId, userId) => {
 const acceptHireInvite = async (applicationId, userId) => {
   const { data: employee } = await supabase
     .from('employees')
-    .select('id')
+    .select('id, is_verified')
     .eq('user_id', userId)
     .is('deleted_at', null)
     .maybeSingle();
 
   if (!employee) throw new AppError('Employee profile not found', 404);
+  if (!employee.is_verified) throw new AppError('Your account must be verified by a system admin before you can accept employment offers.', 403);
+
+  // Enforce single current employment constraint
+  const { data: activeEmployment } = await supabase
+    .from('employments')
+    .select('id, company_id')
+    .eq('employee_id', employee.id)
+    .eq('is_current', true)
+    .eq('verification_status', 'approved')
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (activeEmployment) {
+    throw new AppError(
+      'You are currently employed. Your current employment must be ended by your company admin before you can accept a new employment offer.',
+      400
+    );
+  }
 
   const { data: application, error: appErr } = await supabase
     .from('job_applications')

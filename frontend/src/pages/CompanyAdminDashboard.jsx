@@ -1247,6 +1247,7 @@ function JobsTab({ companyId }) {
   const [updatingApp, setUpdatingApp] = useState({})
   const [sendingInvite, setSendingInvite] = useState({})
   const [sendingHireInvite, setSendingHireInvite] = useState({})
+  const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [jobError, setJobError] = useState('')
   const [cvViewer, setCvViewer] = useState({ open: false, blobUrl: null, isPdf: false, name: '', loading: false, error: null })
 
@@ -1280,7 +1281,8 @@ function JobsTab({ companyId }) {
   }
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete this job position? This cannot be undone.')) return
+    if (deleteConfirm !== id) { setDeleteConfirm(id); return }
+    setDeleteConfirm(null)
     try { await deleteJobPosition(id); await loadPositions() }
     catch (e) { setJobError(e?.message || 'Failed to delete position') }
   }
@@ -1422,10 +1424,24 @@ function JobsTab({ companyId }) {
                     Close
                   </button>
                 )}
-                <button onClick={() => handleDelete(pos.id)}
-                  className="h-8 px-3 border border-red-200 text-red-600 text-xs font-medium rounded-lg hover:bg-red-50 transition-colors">
-                  <Trash2 size={12} />
-                </button>
+                {deleteConfirm === pos.id ? (
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-red-600">Sure?</span>
+                    <button onClick={() => handleDelete(pos.id)}
+                      className="h-8 px-2 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors">
+                      Delete
+                    </button>
+                    <button onClick={() => setDeleteConfirm(null)}
+                      className="h-8 px-2 border border-navy-200 text-navy-500 text-xs font-medium rounded-lg hover:bg-navy-50 transition-colors">
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => handleDelete(pos.id)}
+                    className="h-8 px-3 border border-red-200 text-red-600 text-xs font-medium rounded-lg hover:bg-red-50 transition-colors">
+                    <Trash2 size={12} />
+                  </button>
+                )}
               </div>
             </div>
             {pos.description && <p className="text-xs text-navy-500 mb-2">{pos.description}</p>}

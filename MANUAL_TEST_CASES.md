@@ -45,10 +45,10 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | Open http://localhost:5173/company-admin#requests | Page loads, Employees tab is active | [ ] |
-| 2 | Look for "Invite Employee" heading or section | "Invite Employee" heading is visible | [ ] |
-| 3 | Look for an email input field | Email input is visible with placeholder e.g. "Email address" | [ ] |
-| 4 | Look for a "Send Invite" button | "Send Invite" button is visible and clickable | [ ] |
+| 1 | Open http://localhost:5173/company-admin#requests | Page loads, Employees tab is active | [P ] |
+| 2 | Look for "Invite Employee" heading or section | "Invite Employee" heading is visible | [P ] |
+| 3 | Look for an email input field | Email input is visible with placeholder e.g. "Email address" | [P ] |
+| 4 | Look for a "Send Invite" button | "Send Invite" button is visible and clickable | [P ] |
 
 ---
 
@@ -60,14 +60,14 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | Open http://localhost:5173/company-admin#requests | Employees tab is active | [ ] |
-| 2 | In the email input, type `carol@ratehub.com` | Email is typed | [ ] |
-| 3 | Click "Send Invite" button | Request is submitted | [ ] |
-| 4 | Observe the response | Success toast/message appears OR "already pending" message if already invited | [ ] |
-| 5 | Scroll to the Pending Invites section | Carol's invite appears with status "Pending" | [ ] |
+| 1 | Open http://localhost:5173/company-admin#requests | Employees tab is active | [P ] |
+| 2 | In the email input, type `carol@ratehub.com` | Email is typed | [P ] |
+| 3 | Click "Send Invite" button | Request is submitted | [P ] |
+| 4 | Observe the response | Success toast/message appears OR "already pending" message if already invited | [P- instead of alert or popup do soft message under invite button ] |
+| 5 | Scroll to the Pending Invites section | Carol's invite appears with status "Pending" | [P ] |
 
 **Notes:**  
-`________________________________`
+`| 4 | Observe the response | Success toast/message appears OR "already pending" message if already invited | [P- instead of alert or popup do soft message under invite button `
 
 ---
 
@@ -78,10 +78,13 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | Open http://localhost:5173/company-admin#requests | Employees tab is active | [ ] |
-| 2 | Locate the "Pending Invites" section | Section is visible | [ ] |
-| 3 | Verify the pending invite shows the employee's email | Email is displayed correctly | [ ] |
-| 4 | Verify a "Discard" or "Cancel" button exists per invite | Discard/Cancel button is visible | [ ] |
+| 1 | Open http://localhost:5173/company-admin#requests | Employees tab is active | [P ] |
+| 2 | Locate the "Pending Invites" section | Section is visible | [P ] |
+| 3 | Verify the pending invite shows the employee's email | Email is displayed correctly | [ P] |
+| 4 | Verify a "Discard" or "Cancel" button exists per invite | Discard/Cancel button is visible | [ P] |
+
+**Notes:**  
+`in compant admin dshboard -> employees tab, remove employment request where admin can approve or reject it beacuse we already have a section in bottom pending employees with discard button`
 
 ---
 
@@ -92,14 +95,14 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | Log out, then log in as `carol@ratehub.com` | Login succeeds | [ ] |
-| 2 | Navigate to Dashboard → Invitations section (or check notification | Invitation from TechCorp is visible | [ ] |
-| 3 | Verify invitation status shows "Pending" | Status is "Pending" | [ ] |
-| 4 | Verify an "Accept" button is present | Accept button is shown | [ ] |
-| 5 | Verify there is NO "Reject" button | Reject/Decline button does NOT exist | [ ] |
+| 1 | Log out, then log in as `carol@ratehub.com` | Login succeeds | [P ] |
+| 2 | Navigate to Dashboard → Invitations section (or check notification | Invitation from TechCorp is visible | [F - email issent to the email in emails app but no invitation tab in employee dashboard so that employee can not see pending or accepted status ] |
+| 3 | Verify invitation status shows "Pending" | Status is "Pending" | [S ] |
+| 4 | Verify an "Accept" button is present | Accept button is shown | [S ] |
+| 5 | Verify there is NO "Reject" button | Reject/Decline button does NOT exist | [S ] |
 
 **Notes:**  
-`________________________________`
+`An email is being sent to the employee email but no invitation tab that appears in it pending or accepted for the employee`
 
 ---
 
@@ -110,14 +113,14 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | Log in as `carol@ratehub.com` | Login succeeds | [ ] |
-| 2 | Find the pending invitation from TechCorp | Invitation is visible | [ ] |
-| 3 | Click "Accept" | Request submitted | [ ] |
-| 4 | Observe the result | Success message appears; invitation status changes to "Accepted" / "Active" | [ ] |
-| 5 | Log out, log back in as `tech.admin@ratehub.com` and open Employees tab | Carol now appears in the approved employees list | [ ] |
+| 1 | Log in as `carol@ratehub.com` | Login succeeds | [P ] |
+| 2 | Find the pending invitation from TechCorp | Invitation is visible | [in email not in employee dashboard ] |
+| 3 | Click "Accept" | Request submitted | [P - accepted from email not from dashboard because no invitation tab in employee dashboard ] |
+| 4 | Observe the result | Success message appears; invitation status changes to "Accepted" / "Active" | [S - i cant see because invitation tab is not available in dashboard ] |
+| 5 | Log out, log back in as `tech.admin@ratehub.com` and open Employees tab | Carol now appears in the approved employees list | [P ] |
 
 **Notes:**  
-`________________________________`
+`Company admin can not send invitation to email that already in an employment `
 
 ---
 
@@ -128,14 +131,14 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | Open http://localhost:5173/company-admin#requests | Employees tab is active | [ ] |
+| 1 | Open http://localhost:5173/company-admin#requests | Employees tab is active | [P ] |
 | 2 | Find a pending invite | Invite is visible | [ ] |
-| 3 | Click the "Discard" / "Cancel" button for that invite | A confirmation or immediate removal happens | [ ] |
-| 4 | Verify the invite disappears from the list | Invite is gone from Company Admin view | [ ] |
-| 5 | Log in as the invited employee and check their Invitations | Invitation is NOT visible to the employee | [ ] |
+| 3 | Click the "Discard" / "Cancel" button for that invite | A confirmation or immediate removal happens | [P ] |
+| 4 | Verify the invite disappears from the list | Invite is gone from Company Admin view | [P ] |
+| 5 | Log in as the invited employee and check their Invitations | Invitation is NOT visible to the employee | [P ] |
 
 **Notes:**  
-`________________________________`
+`In employee dashboard -> employment tab invitation will appear here but it apperes with pending or discard i need just pending and approve employee can not discard an invitation also employee can not be in two employment at same time`
 
 ---
 
@@ -145,14 +148,14 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | Open http://localhost:5173/company-admin#requests | Employees tab is active | [ ] |
-| 2 | In the email input, type `frank@ratehub.com` | Email is typed | [ ] |
-| 3 | Click "Send Invite" | Request submitted | [ ] |
-| 4 | Observe the response | A soft error message appears: e.g. "This employee is already in the company" or "Already pending" | [ ] |
-| 5 | Verify NO new invite was created | The invite does NOT appear as a new pending invite | [ ] |
+| 1 | Open http://localhost:5173/company-admin#requests | Employees tab is active | [P ] |
+| 2 | In the email input, type `frank@ratehub.com` | Email is typed | [P ] |
+| 3 | Click "Send Invite" | Request submitted | [P ] |
+| 4 | Observe the response | A soft error message appears: e.g. "This employee is already in the company" or "Already pending" | [P ] |
+| 5 | Verify NO new invite was created | The invite does NOT appear as a new pending invite | [P ] |
 
 **Notes:**  
-`________________________________`
+`instead of alert or poopup just a small message under the invite button`
 
 ---
 
@@ -182,10 +185,10 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | Open http://localhost:5173/company-admin#requests | Employees tab loads | [ ] |
-| 2 | Click "End Employment" on any employee | **Important:** No browser `confirm()` / popup dialog appears | [ ] |
-| 3 | Observe the page | An inline confirmation message appears ON the page, e.g. "Are you sure you want to end employment for [Name]?" | [ ] |
-| 4 | Verify "Confirm" and "Cancel" buttons appear inline | Both buttons are visible within the page (not a modal popup) | [ ] |
+| 1 | Open http://localhost:5173/company-admin#requests | Employees tab loads | [P ] |
+| 2 | Click "End Employment" on any employee | **Important:** No browser `confirm()` / popup dialog appears | [P ] |
+| 3 | Observe the page | An inline confirmation message appears ON the page, e.g. "Are you sure you want to end employment for [Name]?" | [P ] |
+| 4 | Verify "Confirm" and "Cancel" buttons appear inline | Both buttons are visible within the page (not a modal popup) | [P ] |
 
 **Notes:**  
 `________________________________`
@@ -198,10 +201,10 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | After clicking "End Employment", observe the expanded section | A reason/note text input is visible | [ ] |
-| 2 | Verify "Confirm" button exists | "Confirm" button is visible | [ ] |
-| 3 | Verify "Cancel" button exists | "Cancel" button is visible | [ ] |
-| 4 | Type a reason in the input | Text is accepted | [ ] |
+| 1 | After clicking "End Employment", observe the expanded section | A reason/note text input is visible | [F- reason is not visible in company dashboard -> employees tab after ended, and in employee dashboard ->employment also reason is not appearing ] |
+| 2 | Verify "Confirm" button exists | "Confirm" button is visible | [P ] |
+| 3 | Verify "Cancel" button exists | "Cancel" button is visible | [P ] |
+| 4 | Type a reason in the input | Text is accepted | [P ] |
 
 ---
 
@@ -211,10 +214,10 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | Click "End Employment" to open the confirmation | Confirmation appears with reason input | [ ] |
-| 2 | Click "Cancel" | Confirmation form collapses/hides | [ ] |
-| 3 | Verify the employee is still in the active list | Employee is unchanged | [ ] |
-| 4 | Verify the reason input is no longer visible | Input is hidden | [ ] |
+| 1 | Click "End Employment" to open the confirmation | Confirmation appears with reason input | [P ] |
+| 2 | Click "Cancel" | Confirmation form collapses/hides | [P ] |
+| 3 | Verify the employee is still in the active list | Employee is unchanged | [P ] |
+| 4 | Verify the reason input is no longer visible | Input is hidden | [P ] |
 
 ---
 
@@ -224,11 +227,11 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | Open http://localhost:5173/company-admin#requests | Employees tab loads | [ ] |
-| 2 | Click "End Employment" on chosen employee | Inline confirmation appears | [ ] |
-| 3 | Optionally fill in a reason, then click "Confirm" | Success message appears; employee removed from active list | [ ] |
-| 4 | Verify that employee is no longer in the active employees list | Employee is gone | [ ] |
-| 5 | Log in as that employee and navigate to Employment History | Shows status as "Ended" with a date and the company name | [ ] |
+| 1 | Open http://localhost:5173/company-admin#requests | Employees tab loads | [P ] |
+| 2 | Click "End Employment" on chosen employee | Inline confirmation appears | [P ] |
+| 3 | Optionally fill in a reason, then click "Confirm" | Success message appears; employee removed from active list | [employee still in list with all other employees, we can make a section for ended employees instead of leaving them in same list, also in company admin dashboard-> employees tab there is approved,rejected words in green and red add to them ended when employee is ended  ] |
+| 4 | Verify that employee is no longer in the active employees list | Employee is gone | [F  ] |
+| 5 | Log in as that employee and navigate to Employment History | Shows status as "Ended" with a date and the company name | [F date appears but ended status instead of approved no ] |
 
 **Notes:**  
 `________________________________`
@@ -241,10 +244,10 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | Log in as the ended employee | Login succeeds | [ ] |
-| 2 | Navigate to the Feedback section | Feedback page loads | [ ] |
-| 3 | Attempt to submit feedback to the company | Submit button is disabled OR an error message appears: "You are no longer an employee of this company" | [ ] |
-| 4 | Attempt to submit feedback to a coworker at that company | Submit is blocked with similar message | [ ] |
+| 1 | Log in as the ended employee | Login succeeds | [P ] |
+| 2 | Navigate to the Feedback section | Feedback page loads | [P ] |
+| 3 | Attempt to submit feedback to the company | Submit button is disabled OR an error message appears: "You are no longer an employee of this company" | [F- after i am ended from this emploment and company I can still send feedback to the company ] |
+| 4 | Attempt to submit feedback to a coworker at that company | Submit is blocked with similar message | [S ] |
 
 **Notes:**  
 `________________________________`
@@ -258,9 +261,9 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | Open http://localhost:5173/dashboard?tab=employment | Employment tab loads | [ ] |
-| 2 | Look for "Employment History" heading | Heading is visible | [ ] |
-| 3 | Verify at least one employment record is shown | One or more employment entries are displayed | [ ] |
+| 1 | Open http://localhost:5173/dashboard?tab=employment | Employment tab loads | [P ] |
+| 2 | Look for "Employment History" heading | Heading is visible | [P ] |
+| 3 | Verify at least one employment record is shown | One or more employment entries are displayed | [P ] |
 
 ---
 
@@ -277,13 +280,13 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | Open http://localhost:5173/company-admin#jobs | Jobs tab loads; "Job Positions" heading visible | [ ] |
-| 2 | Click "New Position" button | A form/modal opens | [ ] |
-| 3 | Fill in "Job Title" field with "Senior QA Engineer" | Text is accepted | [ ] |
-| 4 | Fill in "Description" field with a description | Text is accepted | [ ] |
-| 5 | Fill in "Requirements" field | Text is accepted | [ ] |
-| 6 | Click "Create" / "Post Job" | Form submits | [ ] |
-| 7 | Observe result | Success message shown; new job appears in the Jobs list | [ ] |
+| 1 | Open http://localhost:5173/company-admin#jobs | Jobs tab loads; "Job Positions" heading visible | [P ] |
+| 2 | Click "New Position" button | A form/modal opens | [P ] |
+| 3 | Fill in "Job Title" field with "Senior QA Engineer" | Text is accepted | [P ] |
+| 4 | Fill in "Description" field with a description | Text is accepted | [P ] |
+| 5 | Fill in "Requirements" field | Text is accepted | [P ] |
+| 6 | Click "Create" / "Post Job" | Form submits | [P ] |
+| 7 | Observe result | Success message shown; new job appears in the Jobs list | [P ] |
 
 **Notes:**  
 `________________________________`
@@ -296,11 +299,11 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | Open a new incognito/guest browser window | No user is logged in | [ ] |
-| 2 | Navigate to the Companies listing page | Companies are listed | [ ] |
-| 3 | Click on "TechCorp" company profile | Company profile opens | [ ] |
-| 4 | Scroll to "Open Positions" section | Section is visible | [ ] |
-| 5 | Verify "Senior QA Engineer" appears | Job is listed publicly | [ ] |
+| 1 | Open a new incognito/guest browser window | No user is logged in | [P ] |
+| 2 | Navigate to the Companies listing page | Companies are listed | [P ] |
+| 3 | Click on "TechCorp" company profile | Company profile opens | [P ] |
+| 4 | Scroll to "Open Positions" section | Section is visible | [P ] |
+| 5 | Verify "Senior QA Engineer" appears | Job is listed publicly | [P ] |
 
 **Notes:**  
 `________________________________`
@@ -314,12 +317,12 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | Navigate to a company's Open Positions (not logged in) | Jobs are listed with "Apply" buttons | [ ] |
-| 2 | Click "Apply" on any job | A message appears: "Please log in to apply" OR redirect to login page | [ ] |
-| 3 | Verify the application was NOT submitted | No application created | [ ] |
+| 1 | Navigate to a company's Open Positions (not logged in) | Jobs are listed with "Apply" buttons | [F - apply button is not appearing at all ] |
+| 2 | Click "Apply" on any job | A message appears: "Please log in to apply" OR redirect to login page | [S ] |
+| 3 | Verify the application was NOT submitted | No application created | [S ] |
 
 **Notes:**  
-`________________________________`
+`Apply button is not appering at all neither for gustes or logged in users`
 
 ---
 
@@ -330,11 +333,11 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | Open http://localhost:5173/dashboard?tab=jobs | Job Board tab loads | [ ] |
-| 2 | Wait for spinner to disappear | Loading completes | [ ] |
-| 3 | Verify "Open Positions" section is visible | Jobs are listed | [ ] |
-| 4 | Verify "My Applications" section is visible | Section is shown (may be empty) | [ ] |
-| 5 | Verify all listed jobs have "Apply" or "Applied" button/badge | Each job card has an action indicator | [ ] |
+| 1 | Open http://localhost:5173/dashboard?tab=jobs | Job Board tab loads | [P ] |
+| 2 | Wait for spinner to disappear | Loading completes | [ P] |
+| 3 | Verify "Open Positions" section is visible | Jobs are listed | [P ] |
+| 4 | Verify "My Applications" section is visible | Section is shown (may be empty) | [ S - because apply button is not shown at all] |
+| 5 | Verify all listed jobs have "Apply" or "Applied" button/badge | Each job card has an action indicator | [S ] |
 
 ---
 
@@ -345,16 +348,16 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | Open http://localhost:5173/dashboard?tab=jobs | Job Board loads | [ ] |
-| 2 | Find a job with an "Apply" button | Job is visible | [ ] |
-| 3 | Click "Apply" | Application form/modal opens | [ ] |
-| 4 | Fill in cover letter / upload CV if required | Fields accepted | [ ] |
-| 5 | Click "Submit Application" | Request sent | [ ] |
-| 6 | Observe result | Success message: "Application submitted successfully" | [ ] |
-| 7 | Scroll to "My Applications" section | New application appears with status "Pending" | [ ] |
+| 1 | Open http://localhost:5173/dashboard?tab=jobs | Job Board loads | [P ] |
+| 2 | Find a job with an "Apply" button | Job is visible | [F - no apply button is visible at all ] |
+| 3 | Click "Apply" | Application form/modal opens | [F - no apply button is visible at all  ] |
+| 4 | Fill in cover letter / upload CV if required | Fields accepted | [ S - because no apply button is visible at all ] |
+| 5 | Click "Submit Application" | Request sent | [S - because no apply button is visible at all ] |
+| 6 | Observe result | Success message: "Application submitted successfully" | [S - because no apply button is visible at all ] |
+| 7 | Scroll to "My Applications" section | New application appears with status "Pending" | [S - because no apply button is visible at all ] |
 
 **Notes:**  
-`________________________________`
+`Apply button should appear under the job position openings in each company then employee can apply, employee with already employment or current employment or he is already in a company he can not apply to other company unless he end from a company `
 
 ---
 
@@ -365,13 +368,13 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | Open http://localhost:5173/company-admin#jobs | Jobs tab loads | [ ] |
-| 2 | Find the job that was applied to | Job is listed | [ ] |
-| 3 | Click "Applications" button on that job | Applications list expands / navigates | [ ] |
-| 4 | Verify applicant's name is visible | Name shown | [ ] |
-| 5 | Verify applicant's email is visible | Email shown | [ ] |
-| 6 | Verify CV/Resume link is accessible (if uploaded) | Download link exists | [ ] |
-| 7 | Verify "Ignore" and "Accept" action buttons exist per applicant | Both buttons are present | [ ] |
+| 1 | Open http://localhost:5173/company-admin#jobs | Jobs tab loads | [P ] |
+| 2 | Find the job that was applied to | Job is listed | [P ] |
+| 3 | Click "Applications" button on that job | Applications list expands / navigates | [S - because no apply button is visible at all ] |
+| 4 | Verify applicant's name is visible | Name shown | [S - because no apply button is visible at all ] |
+| 5 | Verify applicant's email is visible | Email shown | [S - because no apply button is visible at all, so no applications are avilable ] |
+| 6 | Verify CV/Resume link is accessible (if uploaded) | Download link exists | [S - because no apply button is visible at all ] |
+| 7 | Verify "Ignore" and "Accept" action buttons exist per applicant | Both buttons are present | [S - because no apply button is visible at all ] |
 
 **Notes:**  
 `________________________________`
@@ -384,9 +387,9 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | In the applications list, click "Ignore" on an applicant | Request sent | [ ] |
-| 2 | Observe result | Application status changes to "Ignored"; may be removed from pending list | [ ] |
-| 3 | Verify it optionally moves to an "Archived/Ignored" section | Archived view exists (optional feature) | [ ] |
+| 1 | In the applications list, click "Ignore" on an applicant | Request sent | [S - because no apply button is visible at all ] |
+| 2 | Observe result | Application status changes to "Ignored"; may be removed from pending list | [ S - because no apply button is visible at all] |
+| 3 | Verify it optionally moves to an "Archived/Ignored" section | Archived view exists (optional feature) | [S - because no apply button is visible at all ] |
 
 **Notes:**  
 `________________________________`
@@ -399,11 +402,11 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | In the applications list, click "Accept" on an applicant | Request sent | [ ] |
-| 2 | Observe result | Application moves to "Interview Process" section | [ ] |
-| 3 | Verify an "Invite" button appears in the Interview Process section | "Invite" button is visible | [ ] |
-| 4 | Verify Interview Process shows applicant info (name, email, CV) | Info is displayed | [ ] |
-| 5 | Verify Interview Status shows "In Progress" | Status is correct | [ ] |
+| 1 | In the applications list, click "Accept" on an applicant | Request sent | [S - because no apply button is visible at all ] |
+| 2 | Observe result | Application moves to "Interview Process" section | [S - because no apply button is visible at all ] |
+| 3 | Verify an "Invite" button appears in the Interview Process section | "Invite" button is visible | [ S - because no apply button is visible at all] |
+| 4 | Verify Interview Process shows applicant info (name, email, CV) | Info is displayed | [ S - because no apply button is visible at all] |
+| 5 | Verify Interview Status shows "In Progress" | Status is correct | [ S - because no apply button is visible at all] |
 
 **Notes:**  
 `________________________________`
@@ -416,10 +419,10 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | In the Interview Process section, click "Invite" | Invitation is sent | [ ] |
-| 2 | Observe result | Success message: "Invitation sent" | [ ] |
-| 3 | Navigate to Employees tab | New pending invite visible for that applicant | [ ] |
-| 4 | Log in as the applicant, check their invitations | Invitation from TechCorp is visible | [ ] |
+| 1 | In the Interview Process section, click "Invite" | Invitation is sent | [S - because no apply button is visible at all ] |
+| 2 | Observe result | Success message: "Invitation sent" | [S - because no apply button is visible at all ] |
+| 3 | Navigate to Employees tab | New pending invite visible for that applicant | [S - because no apply button is visible at all ] |
+| 4 | Log in as the applicant, check their invitations | Invitation from TechCorp is visible | [S - because no apply button is visible at all ] |
 
 **Notes:**  
 `________________________________`
@@ -439,12 +442,12 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | Open http://localhost:5173/company-admin#jobs | Jobs tab loads | [ ] |
-| 2 | Verify "Job Positions" heading is visible | Heading is shown | [ ] |
-| 3 | Verify each job row shows: Position Title | Title is visible | [ ] |
-| 4 | Verify each job row shows: Applications count | Count is shown | [ ] |
-| 5 | Verify each job row shows: "Applications" button | Button is visible | [ ] |
-| 6 | Verify each open job row shows: "Close" button | Close button is visible for open jobs | [ ] |
+| 1 | Open http://localhost:5173/company-admin#jobs | Jobs tab loads | [P ] |
+| 2 | Verify "Job Positions" heading is visible | Heading is shown | [P ] |
+| 3 | Verify each job row shows: Position Title | Title is visible | [P ] |
+| 4 | Verify each job row shows: Applications count | Count is shown | [ S - because no apply button is visible at all so that no one can apply] |
+| 5 | Verify each job row shows: "Applications" button | Button is visible | [(button is vissible but no one appears because i cant test because apply button is not appearing) S - because no apply button is visible at all so that no employees applied so i can not test ] |
+| 6 | Verify each open job row shows: "Close" button | Close button is visible for open jobs | [ P] |
 
 ---
 
@@ -455,14 +458,14 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | Click "New Position" and create a job titled "Temp Closure Test" | Job created successfully | [ ] |
-| 2 | Verify job appears in the Jobs list with status Open | Job is visible; `is_active = true` | [ ] |
-| 3 | Navigate to Employee Job Board (/dashboard?tab=jobs as frank) | "Temp Closure Test" is visible in Open Positions | [ ] |
-| 4 | Go back to Company Admin Jobs tab | Jobs tab is active | [ ] |
-| 5 | Click "Close" on "Temp Closure Test" | Confirmation appears | [ ] |
-| 6 | Confirm the close action | Success message shown; job is removed from the active list | [ ] |
-| 7 | Verify the job is NOT visible in the admin Jobs tab open list | Job does not appear in open positions | [ ] |
-| 8 | Navigate to Employee Job Board again | "Temp Closure Test" is NOT visible to employees | [ ] |
+| 1 | Click "New Position" and create a job titled "Temp Closure Test" | Job created successfully | [P ] |
+| 2 | Verify job appears in the Jobs list with status Open | Job is visible; `is_active = true` | [ P] |
+| 3 | Navigate to Employee Job Board (/dashboard?tab=jobs as frank) | "Temp Closure Test" is visible in Open Positions | [ P] |
+| 4 | Go back to Company Admin Jobs tab | Jobs tab is active | [P ] |
+| 5 | Click "Close" on "Temp Closure Test" | Confirmation appears | [ P] |
+| 6 | Confirm the close action | Success message shown; job is removed from the active list | [P ] |
+| 7 | Verify the job is NOT visible in the admin Jobs tab open list | Job does not appear in open positions | [P ] |
+| 8 | Navigate to Employee Job Board again | "Temp Closure Test" is NOT visible to employees | [ P] |
 
 **Notes:**  
 `________________________________`
@@ -476,9 +479,9 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | Open http://localhost:5173/dashboard?tab=jobs | Job Board loads | [ ] |
-| 2 | Verify all displayed jobs are open/active | No closed or inactive job appears in the list | [ ] |
-| 3 | Search for the closed job title if search is available | Closed job is NOT found | [ ] |
+| 1 | Open http://localhost:5173/dashboard?tab=jobs | Job Board loads | [P ] |
+| 2 | Verify all displayed jobs are open/active | No closed or inactive job appears in the list | [P ] |
+| 3 | Search for the closed job title if search is available | Closed job is NOT found | [P - no search for a job is available, add search a job when user search for a job it will appear only job that he searched for] |
 
 ---
 
@@ -489,10 +492,10 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | Open http://localhost:5173/company-admin#jobs | Jobs tab loads | [ ] |
-| 2 | Click "Close" on any open position | A confirmation message appears: "Are you sure you want to close this position? It will no longer be visible to applicants." | [ ] |
-| 3 | Click "No" / "Cancel" | Dialog closes; job remains open | [ ] |
-| 4 | Verify the job is still in the open positions list | Job is unchanged | [ ] |
+| 1 | Open http://localhost:5173/company-admin#jobs | Jobs tab loads | [ P] |
+| 2 | Click "Close" on any open position | A confirmation message appears: "Are you sure you want to close this position? It will no longer be visible to applicants." | [F - when i press close it will removed (closed) directly] |
+| 3 | Click "No" / "Cancel" | Dialog closes; job remains open | [S ] |
+| 4 | Verify the job is still in the open positions list | Job is unchanged | [S] |
 
 ---
 
@@ -503,11 +506,11 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | Open http://localhost:5173/company-admin#jobs | Jobs tab loads | [ ] |
-| 2 | Find a delete/trash icon button on any job | Delete button is visible | [ ] |
-| 3 | Click the trash icon | Browser `confirm()` dialog appears | [ ] |
-| 4 | Click "Cancel" in the browser dialog | Dialog closes; job is NOT deleted | [ ] |
-| 5 | Verify the job is still listed | Job unchanged | [ ] |
+| 1 | Open http://localhost:5173/company-admin#jobs | Jobs tab loads | [P ] |
+| 2 | Find a delete/trash icon button on any job | Delete button is visible | [ P] |
+| 3 | Click the trash icon | Browser `confirm()` dialog appears | [ P- cahnge alert to soft message under the button] |
+| 4 | Click "Cancel" in the browser dialog | Dialog closes; job is NOT deleted | [ P] |
+| 5 | Verify the job is still listed | Job unchanged | [P ] |
 
 ---
 
@@ -521,9 +524,9 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | Navigate to the Companies listing page | Companies are listed | [ ] |
-| 2 | Click on any company | Company profile opens | [ ] |
-| 3 | Find the "Employees" count/label | "Employees" label with a number is visible | [ ] |
+| 1 | Navigate to the Companies listing page | Companies are listed | [ ]P |
+| 2 | Click on any company | Company profile opens | [ P] |
+| 3 | Find the "Employees" count/label | "Employees" label with a number is visible | [P ] |
 
 ---
 
@@ -533,11 +536,11 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | Navigate directly to http://localhost:5173/dashboard?tab=jobs | Job Board tab is active and shown | [ ] |
-| 2 | Navigate directly to http://localhost:5173/dashboard?tab=feedback | Feedback tab is active and shown | [ ] |
-| 3 | Navigate directly to http://localhost:5173/dashboard?tab=employment | Employment History tab is active and shown | [ ] |
-| 4 | Navigate directly to http://localhost:5173/company-admin#requests | Company Admin Employees tab is active | [ ] |
-| 5 | Navigate directly to http://localhost:5173/company-admin#jobs | Company Admin Jobs tab is active | [ ] |
+| 1 | Navigate directly to http://localhost:5173/dashboard?tab=jobs | Job Board tab is active and shown | [ P] |
+| 2 | Navigate directly to http://localhost:5173/dashboard?tab=feedback | Feedback tab is active and shown | [P ] |
+| 3 | Navigate directly to http://localhost:5173/dashboard?tab=employment | Employment History tab is active and shown | [ P] |
+| 4 | Navigate directly to http://localhost:5173/company-admin#requests | Company Admin Employees tab is active | [P ] |
+| 5 | Navigate directly to http://localhost:5173/company-admin#jobs | Company Admin Jobs tab is active | [P ] |
 
 ---
 
@@ -547,9 +550,9 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | Open the Dashboard | Navbar is visible | [ ] |
-| 2 | Click the bell/notification icon in the navbar | Notification panel opens | [ ] |
-| 3 | Verify the panel shows notifications OR a "No notifications" message | Panel content is shown | [ ] |
+| 1 | Open the Dashboard | Navbar is visible | [P ] |
+| 2 | Click the bell/notification icon in the navbar | Notification panel opens | [ P] |
+| 3 | Verify the panel shows notifications OR a "No notifications" message | Panel content is shown | [ P] |
 
 ---
 
@@ -559,9 +562,9 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | Open http://localhost:5173/dashboard | Dashboard loads | [ ] |
-| 2 | Click the "EOTM" tab | EOTM content loads | [ ] |
-| 3 | Verify NO "0 votes" text is displayed | "0 votes" does not appear anywhere on the tab | [ ] |
+| 1 | Open http://localhost:5173/dashboard | Dashboard loads | [P ] |
+| 2 | Click the "EOTM" tab | EOTM content loads | [P ] |
+| 3 | Verify NO "0 votes" text is displayed | "0 votes" does not appear anywhere on the tab | [F- as an employee I can see 0 votes , i want to remove it at all i do not want to see as an employee 0 votes ] |
 
 ---
 
@@ -571,88 +574,8 @@
 
 | # | Step | Expected Result | Result |
 |---|------|----------------|--------|
-| 1 | Open http://localhost:5173/dashboard | Dashboard loads | [ ] |
-| 2 | Click the "EOTY" tab | EOTY content loads | [ ] |
-| 3 | Verify NO "0 votes" text is displayed | "0 votes" does not appear anywhere on the tab | [ ] |
+| 1 | Open http://localhost:5173/dashboard | Dashboard loads | [P ] |
+| 2 | Click the "EOTY" tab | EOTY content loads | [P ] |
+| 3 | Verify NO "0 votes" text is displayed | "0 votes" does not appear anywhere on the tab | [ F- as an employee I can see 0 votes , i want to remove it at all i do not want to see as an employee 0 votes ] |
 
----
-
----
-
-# REGRESSION: Core API Health Checks
-
-These can be done using the browser's developer tools (Network tab) or a tool like Postman.
-
----
-
-## TC-REG.1 — Login Returns Access Token
-
-| # | Step | Expected Result | Result |
-|---|------|----------------|--------|
-| 1 | POST to `http://localhost:5000/api/auth/login` with `{"email":"frank@ratehub.com","password":"Test1234!"}` | HTTP 200; response contains `data.access_token` | [ ] |
-
----
-
-## TC-REG.2 — Companies Endpoint Returns List
-
-| # | Step | Expected Result | Result |
-|---|------|----------------|--------|
-| 1 | GET `http://localhost:5000/api/companies` (no auth) | HTTP 200; `data` is a non-empty array | [ ] |
-
----
-
-## TC-REG.3 — Filter Options Endpoint
-
-| # | Step | Expected Result | Result |
-|---|------|----------------|--------|
-| 1 | GET `http://localhost:5000/api/companies/filter-options` (no auth) | HTTP 200; response contains `data.countries` array and `data.cities` array | [ ] |
-
----
-
-## TC-REG.4 — Jobs Endpoint Returns Active Jobs
-
-| # | Step | Expected Result | Result |
-|---|------|----------------|--------|
-| 1 | Log in, get access token | Token received | [ ] |
-| 2 | GET `http://localhost:5000/api/jobs/all` with Bearer token | HTTP 200; `data` is a non-empty array; all items have `is_active: true` | [ ] |
-
----
-
-## TC-REG.5 — Notifications Endpoint
-
-| # | Step | Expected Result | Result |
-|---|------|----------------|--------|
-| 1 | Log in as frank, get token | Token received | [ ] |
-| 2 | GET `http://localhost:5000/api/notifications` with Bearer token | HTTP 200; `data` is an array | [ ] |
-
----
-
-## TC-REG.6 — Auth /me Returns User Profile
-
-| # | Step | Expected Result | Result |
-|---|------|----------------|--------|
-| 1 | Log in as frank, get token | Token received | [ ] |
-| 2 | GET `http://localhost:5000/api/auth/me` with Bearer token | HTTP 200; `data.user` object contains email | [ ] |
-
----
-
-## TC-REG.7 — Unauthenticated Request Returns 401
-
-| # | Step | Expected Result | Result |
-|---|------|----------------|--------|
-| 1 | GET `http://localhost:5000/api/notifications` with NO Authorization header | HTTP 401 Unauthorized | [ ] |
-
----
-
----
-
-# Test Run Summary
-
-| Date | Tester | Feature 1 | Feature 2 | Feature 3 | Feature 4 | Integration | Regression | Notes |
-|------|--------|-----------|-----------|-----------|-----------|-------------|------------|-------|
-| | | /7 | /7 | /9 | /5 | /5 | /7 | |
-| | | /7 | /7 | /9 | /5 | /5 | /7 | |
-
----
-
-*Total test cases: 40*
+note: employee of the month and employee of the year (winner can take a certificate or screenshot of the hall because his namae appears on it and under his name the number of votes he got)

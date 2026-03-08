@@ -38,7 +38,7 @@ import { getCompanyEotmEvents, getEotmNominees, castEotmVote, getCompanyEotmWinn
 import { getCompanyEotyEvents, getEotyNominees, castEotyVote, getCompanyEotyWinners } from '../api/eoty.js'
 import { useNotification } from '../context/NotificationContext.jsx'
 import CertificateModal from '../components/CertificateModal'
-import { getMyApplications, getAllJobPositions, applyToJob } from '../api/jobs.js'
+import { getMyApplications, getAllJobPositions, applyToJob, acceptInvite } from '../api/jobs.js'
 
 const statusConfig = {
   approved: { icon: CheckCircle2, color: 'text-emerald-500', badge: 'success', label: 'Verified' },
@@ -1673,8 +1673,10 @@ function JobBoardTab({ employments }) {
   const [loading, setLoading] = useState(true)
   const [applying, setApplying] = useState({})
   const [coverLetter, setCoverLetter] = useState({})
+  const [cvFiles, setCvFiles] = useState({})
+  const [acceptingInvite, setAcceptingInvite] = useState({})
 
-  useEffect(() => {
+  const loadData = () => {
     Promise.all([getAllJobPositions(), getMyApplications()])
       .then(([jobsRes, appsRes]) => {
         setJobs(jobsRes?.data ?? [])
@@ -1682,19 +1684,35 @@ function JobBoardTab({ employments }) {
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [])
+  }
+
+  useEffect(() => { loadData() }, [])
 
   const appliedPositionIds = new Set(myApps.map(a => a.position_id))
 
   const handleApply = async (positionId) => {
     setApplying(a => ({ ...a, [positionId]: true }))
     try {
-      await applyToJob(positionId, { coverLetter: coverLetter[positionId]?.trim() || undefined })
+      await applyToJob(positionId, {
+        cvFile: cvFiles[positionId] || undefined,
+        coverLetter: coverLetter[positionId]?.trim() || undefined,
+      })
       const updatedApps = await getMyApplications()
       setMyApps(updatedApps?.data ?? [])
       setCoverLetter(c => ({ ...c, [positionId]: '' }))
+      setCvFiles(f => ({ ...f, [positionId]: null }))
     } catch (e) { alert(e?.message || 'Application failed. Please try again.') }
     finally { setApplying(a => ({ ...a, [positionId]: false })) }
+  }
+
+  const handleAcceptInvite = async (appId) => {
+    setAcceptingInvite(a => ({ ...a, [appId]: true }))
+    try {
+      await acceptInvite(appId)
+      const updatedApps = await getMyApplications()
+      setMyApps(updatedApps?.data ?? [])
+    } catch (e) { alert(e?.message || 'Failed to accept invitation.') }
+    finally { setAcceptingInvite(a => ({ ...a, [appId]: false })) }
   }
 
   if (loading) return <div className="py-20 text-center text-navy-400 text-sm"><Loader2 size={20} className="animate-spin mx-auto" /></div>
@@ -1718,17 +1736,44 @@ function JobBoardTab({ employments }) {
           <div className="bg-white rounded-2xl border border-navy-100/50 p-5">
             <h3 className="text-sm font-semibold text-navy-900 mb-3">My Applications ({myApps.length})</h3>
             <div className="space-y-2">
-              {myApps.map(app => (
-                <div key={app.id} className="flex items-center justify-between bg-ice-50 rounded-xl px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium text-navy-900">{app.job_positions?.title ?? app.position_title ?? 'Position'}</p>
-                    <p className="text-xs text-navy-400 mt-0.5">Applied {new Date(app.created_at).toLocaleDateString()}</p>
+              {myApps.map(app => {
+                const hasInvite = !!app.invite_sent_at
+                const inviteAccepted = !!app.invite_accepted_at
+                return (
+                  <div key={app.id} className="bg-ice-50 rounded-xl px-4 py-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-navy-900">{app.job_positions?.title ?? app.position_title ?? 'Position'}</p>
+                        <p className="text-xs text-navy-400 mt-0.5">
+                          {app.job_positions?.companies?.name && <span>{app.job_positions.companies.name} · </span>}
+                          Applied {new Date(app.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {hasInvite && !inviteAccepted && app.status === 'interview' && (
+                          <button
+                            onClick={() => handleAcceptInvite(app.id)}
+                            disabled={!!acceptingInvite[app.id]}
+                            className="h-7 px-3 bg-navy-900 text-white text-xs font-semibold rounded-lg hover:bg-navy-800 disabled:opacity-50 flex items-center gap-1"
+                          >
+                            {acceptingInvite[app.id] ? <Loader2 size={11} className="animate-spin" /> : null}
+                            Accept Invite
+                          </button>
+                        )}
+                        {inviteAccepted && (
+                          <span className="px-2 py-1 bg-emerald-50 text-emerald-700 text-[11px] font-medium rounded-lg border border-emerald-200">Invite Accepted ✓</span>
+                        )}
+                        {hasInvite && !inviteAccepted && app.status === 'interview' && (
+                          <span className="px-2 py-1 bg-indigo-50 text-indigo-700 text-[11px] font-medium rounded-lg border border-indigo-200">Invitation Pending</span>
+                        )}
+                        <span className={`px-2.5 py-1 rounded-full border text-xs font-semibold ${APP_STATUS_COLORS[app.status] ?? APP_STATUS_COLORS.pending}`}>
+                          {app.status}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <span className={`px-2.5 py-1 rounded-full border text-xs font-semibold ${APP_STATUS_COLORS[app.status] ?? APP_STATUS_COLORS.pending}`}>
-                    {app.status}
-                  </span>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         </Reveal>
@@ -1769,12 +1814,26 @@ function JobBoardTab({ employments }) {
                 </div>
               )}
               {!alreadyApplied && (
-                <textarea
-                  placeholder="Cover letter (optional)..."
-                  value={coverLetter[job.id] ?? ''}
-                  onChange={e => setCoverLetter(c => ({ ...c, [job.id]: e.target.value }))}
-                  className="w-full h-20 rounded-xl border border-navy-200 bg-white px-3 py-2 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all resize-none"
-                />
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 p-2.5 border border-dashed border-navy-200 rounded-xl cursor-pointer hover:border-navy-400 hover:bg-navy-50 transition-all">
+                    <Download size={14} className="text-navy-400 flex-shrink-0" />
+                    <span className="text-xs text-navy-500 truncate">
+                      {cvFiles[job.id] ? cvFiles[job.id].name : 'Upload CV (PDF or Word, optional)'}
+                    </span>
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx"
+                      className="hidden"
+                      onChange={e => setCvFiles(f => ({ ...f, [job.id]: e.target.files?.[0] || null }))}
+                    />
+                  </label>
+                  <textarea
+                    placeholder="Cover letter (optional)..."
+                    value={coverLetter[job.id] ?? ''}
+                    onChange={e => setCoverLetter(c => ({ ...c, [job.id]: e.target.value }))}
+                    className="w-full h-20 rounded-xl border border-navy-200 bg-white px-3 py-2 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all resize-none"
+                  />
+                </div>
               )}
             </div>
           </Reveal>

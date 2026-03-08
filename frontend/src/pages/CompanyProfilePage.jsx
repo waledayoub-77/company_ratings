@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Star,
   MapPin,
@@ -23,6 +23,7 @@ import {
   Sparkles,
   Send,
   Trophy,
+  FileText,
 } from 'lucide-react'
 import StarRating from '../components/ui/StarRating.jsx'
 import Badge from '../components/ui/Badge.jsx'
@@ -32,7 +33,7 @@ import { getCompanyById, getCompanyReviews, getCompanyAnalytics, getCompanyEmplo
 import { submitReport } from '../api/admin'
 import { toggleReviewVote, createReviewReply } from '../api/reviews'
 import { getCompanyEotyWinners } from '../api/eoty'
-import { getJobPositions } from '../api/jobs'
+import { getJobPositions, applyToJob } from '../api/jobs'
 
 const CATEGORY_META = {
   work_life_balance: { label: 'Work-Life Balance', icon: Heart, color: 'bg-pink-500' },
@@ -104,6 +105,15 @@ export default function CompanyProfilePage() {
 
   // Open positions state
   const [openPositions, setOpenPositions] = useState([])
+
+  // Apply modal state
+  const [applyModal, setApplyModal] = useState({ open: false, job: null })
+  const [applyFile, setApplyFile] = useState(null)
+  const [applyCoverLetter, setApplyCoverLetter] = useState('')
+  const [applySubmitting, setApplySubmitting] = useState(false)
+  const [applyError, setApplyError] = useState('')
+  const [applySuccess, setApplySuccess] = useState(false)
+  const [appliedIds, setAppliedIds] = useState(new Set())
 
   // Fetch company + analytics
   useEffect(() => {
@@ -193,6 +203,37 @@ export default function CompanyProfilePage() {
       setReportError(err.message)
     } finally {
       setReportSubmitting(false)
+    }
+  }
+
+  const openApplyModal = (job) => {
+    if (!user) {
+      navigate(`/login?redirect=/company/${id}`)
+      return
+    }
+    setApplyModal({ open: true, job })
+    setApplyFile(null)
+    setApplyCoverLetter('')
+    setApplyError('')
+    setApplySuccess(false)
+  }
+
+  const handleApplySubmit = async (e) => {
+    e.preventDefault()
+    setApplySubmitting(true)
+    setApplyError('')
+    try {
+      await applyToJob(applyModal.job.id, {
+        cvFile: applyFile || undefined,
+        coverLetter: applyCoverLetter.trim() || undefined,
+      })
+      setApplySuccess(true)
+      setAppliedIds(prev => new Set([...prev, applyModal.job.id]))
+      setTimeout(() => setApplyModal({ open: false, job: null }), 2000)
+    } catch (err) {
+      setApplyError(err.message || 'Failed to submit application. Please try again.')
+    } finally {
+      setApplySubmitting(false)
     }
   }
 
@@ -820,7 +861,7 @@ export default function CompanyProfilePage() {
                   <Reveal key={job.id} delay={i * 0.04}>
                     <div className="p-4 rounded-xl border border-navy-100/50 hover:border-navy-200 transition-all">
                       <div className="flex items-start justify-between gap-3">
-                        <div>
+                        <div className="flex-1 min-w-0">
                           <h3 className="text-sm font-semibold text-navy-900">{job.title}</h3>
                           {job.description && (
                             <p className="text-xs text-navy-500 mt-1 line-clamp-2">{job.description}</p>
@@ -829,7 +870,18 @@ export default function CompanyProfilePage() {
                             <p className="text-xs text-navy-400 mt-1">Requirements: {job.requirements}</p>
                           )}
                         </div>
-                        <Badge variant="success" size="sm">Open</Badge>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {appliedIds.has(job.id) ? (
+                            <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-lg border border-emerald-200">Applied ✓</span>
+                          ) : (
+                            <button
+                              onClick={() => openApplyModal(job)}
+                              className="h-8 px-4 bg-navy-900 text-white text-xs font-semibold rounded-lg hover:bg-navy-800 transition-colors"
+                            >
+                              Apply
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <p className="text-[11px] text-navy-300 mt-2">
                         Posted {new Date(job.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -841,6 +893,100 @@ export default function CompanyProfilePage() {
             </div>
           </Reveal>
         )}
+
+        {/* ─── Apply Modal ─── */}
+        <AnimatePresence>
+          {applyModal.open && applyModal.job && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+              onClick={(e) => { if (e.target === e.currentTarget) setApplyModal({ open: false, job: null }) }}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96, y: 16 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: 16 }}
+                className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h3 className="text-base font-semibold text-navy-900">Apply for Position</h3>
+                    <p className="text-xs text-navy-500 mt-0.5">{applyModal.job.title} · {company?.name}</p>
+                  </div>
+                  <button
+                    onClick={() => setApplyModal({ open: false, job: null })}
+                    className="text-navy-400 hover:text-navy-600 text-lg leading-none"
+                  >✕</button>
+                </div>
+
+                {applySuccess ? (
+                  <div className="py-8 text-center">
+                    <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <CheckCircle2 size={24} className="text-emerald-600" />
+                    </div>
+                    <p className="text-sm font-semibold text-navy-900">Application Submitted!</p>
+                    <p className="text-xs text-navy-400 mt-1">Good luck with your application.</p>
+                  </div>
+                ) : (
+                  <form onSubmit={handleApplySubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-medium text-navy-700 mb-1.5">
+                        Upload CV <span className="text-navy-400 font-normal">(PDF or Word, max 10 MB)</span>
+                      </label>
+                      <label className="flex items-center gap-3 p-3 border-2 border-dashed border-navy-200 rounded-xl cursor-pointer hover:border-navy-400 hover:bg-navy-50 transition-all">
+                        <FileText size={18} className="text-navy-400 flex-shrink-0" />
+                        <span className="text-sm text-navy-500 truncate">
+                          {applyFile ? applyFile.name : 'Click to choose file'}
+                        </span>
+                        <input
+                          type="file"
+                          accept=".pdf,.doc,.docx"
+                          className="hidden"
+                          onChange={e => setApplyFile(e.target.files?.[0] || null)}
+                        />
+                      </label>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-navy-700 mb-1.5">Cover Letter <span className="text-navy-400 font-normal">(optional)</span></label>
+                      <textarea
+                        value={applyCoverLetter}
+                        onChange={e => setApplyCoverLetter(e.target.value)}
+                        placeholder="Tell us why you're a great fit..."
+                        rows={4}
+                        className="w-full rounded-xl border border-navy-200 bg-white px-3 py-2 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all resize-none"
+                      />
+                    </div>
+
+                    {applyError && (
+                      <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{applyError}</p>
+                    )}
+
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        type="submit"
+                        disabled={applySubmitting}
+                        className="flex-1 h-10 bg-navy-900 text-white text-sm font-semibold rounded-xl hover:bg-navy-800 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
+                      >
+                        {applySubmitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                        {applySubmitting ? 'Submitting…' : 'Submit Application'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setApplyModal({ open: false, job: null })}
+                        className="h-10 px-4 text-navy-500 text-sm hover:text-navy-700"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   )

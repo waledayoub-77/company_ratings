@@ -1,4 +1,4 @@
-import { authRequest, request } from './client'
+import { authRequest, authRequestMultipart, authFetch, request } from './client'
 
 /** GET /jobs?companyId=X — list active job postings for a company */
 export async function getJobPositions(companyId) {
@@ -34,11 +34,14 @@ export async function deleteJobPosition(id) {
   return authRequest(`/jobs/${id}`, { method: 'DELETE' })
 }
 
-/** POST /jobs/:id/apply — apply to a job */
-export async function applyToJob(positionId, data) {
-  return authRequest(`/jobs/${positionId}/apply`, {
+/** POST /jobs/:id/apply — apply to a job (supports CV file upload) */
+export async function applyToJob(positionId, { cvFile, coverLetter } = {}) {
+  const formData = new FormData()
+  if (cvFile) formData.append('cv', cvFile)
+  if (coverLetter) formData.append('coverLetter', coverLetter)
+  return authRequestMultipart(`/jobs/${positionId}/apply`, {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: formData,
   })
 }
 
@@ -58,4 +61,20 @@ export async function updateApplicationStatus(appId, data) {
 /** GET /jobs/my-applications — employee's own applications */
 export async function getMyApplications() {
   return authRequest('/jobs/my-applications')
+}
+
+/** POST /jobs/applications/:appId/invite — admin sends interview invite email */
+export async function sendInvite(appId) {
+  return authRequest(`/jobs/applications/${appId}/invite`, { method: 'POST' })
+}
+
+/** POST /jobs/applications/:appId/accept-invite — employee accepts invitation */
+export async function acceptInvite(appId) {
+  return authRequest(`/jobs/applications/${appId}/accept-invite`, { method: 'POST' })
+}
+
+/** Fetch a CV file as a Blob for in-page viewing */
+export async function fetchCvBlob(filename) {
+  const res = await authFetch(`/jobs/cv/${encodeURIComponent(filename)}`)
+  return res.blob()
 }

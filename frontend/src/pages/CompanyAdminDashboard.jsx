@@ -22,6 +22,8 @@ import {
   Plus,
   Briefcase,
   Trash2,
+  Eye,
+  X,
 } from 'lucide-react'
 import {
   BarChart,
@@ -47,7 +49,7 @@ import { getFeedbackReceived } from '../api/feedback'
 import { createEotmEvent, closeEotmEvent, getCompanyEotmEvents, getEotmNominees, getCompanyEotmWinners } from '../api/eotm'
 import { createEotyEvent, closeEotyEvent, getCompanyEotyEvents, getEotyNominees, getCompanyEotyWinners } from '../api/eoty'
 import { useNotification } from '../context/NotificationContext'
-import { getJobPositions, createJobPosition, closeJobPosition, deleteJobPosition, getApplications, updateApplicationStatus } from '../api/jobs'
+import { getJobPositions, createJobPosition, closeJobPosition, deleteJobPosition, getApplications, updateApplicationStatus, sendInvite, fetchCvBlob } from '../api/jobs'
 
 const VALID_CA_TABS = ['overview', 'requests', 'reviews', 'eotm', 'eoty', 'jobs', 'feedback', 'settings']
 
@@ -1243,7 +1245,9 @@ function JobsTab({ companyId }) {
   const [applications, setApplications] = useState({})
   const [loadingApps, setLoadingApps] = useState({})
   const [updatingApp, setUpdatingApp] = useState({})
+  const [sendingInvite, setSendingInvite] = useState({})
   const [jobError, setJobError] = useState('')
+  const [cvViewer, setCvViewer] = useState({ open: false, blobUrl: null, isPdf: false, name: '', loading: false, error: null })
 
   const loadPositions = async () => {
     setLoading(true)
@@ -1299,6 +1303,35 @@ function JobsTab({ companyId }) {
       setApplications(a => ({ ...a, [positionId]: res?.data ?? [] }))
     } catch (e) { setJobError(e?.message || 'Failed to update application status') }
     finally { setUpdatingApp(u => ({ ...u, [appId]: false })) }
+  }
+
+  const handleSendInvite = async (appId, positionId) => {
+    setSendingInvite(s => ({ ...s, [appId]: true }))
+    try {
+      await sendInvite(appId)
+      const res = await getApplications(positionId)
+      setApplications(a => ({ ...a, [positionId]: res?.data ?? [] }))
+    } catch (e) { setJobError(e?.message || 'Failed to send invite') }
+    finally { setSendingInvite(s => ({ ...s, [appId]: false })) }
+  }
+
+  const handleViewCv = async (resumeUrl, applicantName) => {
+    if (!resumeUrl) return
+    const filename = resumeUrl.split('/').pop()
+    setCvViewer({ open: true, blobUrl: null, isPdf: false, name: applicantName, loading: true, error: null })
+    try {
+      const blob = await fetchCvBlob(filename)
+      const blobUrl = URL.createObjectURL(blob)
+      const isPdf = blob.type === 'application/pdf' || filename.toLowerCase().endsWith('.pdf')
+      setCvViewer({ open: true, blobUrl, isPdf, name: applicantName, loading: false, error: null })
+    } catch (e) {
+      setCvViewer(v => ({ ...v, loading: false, error: 'Could not load CV.' }))
+    }
+  }
+
+  const closeCvViewer = () => {
+    if (cvViewer.blobUrl) URL.revokeObjectURL(cvViewer.blobUrl)
+    setCvViewer({ open: false, blobUrl: null, isPdf: false, name: '', loading: false, error: null })
   }
 
   if (loading) return <div className="py-20 text-center text-navy-400 text-sm">Loading jobs…</div>
@@ -1391,43 +1424,74 @@ function JobsTab({ companyId }) {
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
                   <div className="border-t border-navy-100 pt-3 mt-3 space-y-2">
                     {applications[pos.id].length === 0 && <p className="text-xs text-navy-400">No applications yet.</p>}
-                    {applications[pos.id].map(app => (
-                      <div key={app.id} className="flex items-center justify-between bg-ice-50 rounded-xl px-4 py-3">
-                        <div>
-                          <p className="text-sm font-medium text-navy-900">{app.applicant_name ?? app.employees?.full_name ?? 'Applicant'}</p>
-                          <p className="text-xs text-navy-400 mt-0.5">{app.cover_letter ? 'Has cover letter' : 'No cover letter'} · Applied {new Date(app.created_at).toLocaleDateString()}</p>
+                    {applications[pos.id].map(app => {
+                      const applicantName = app.applicant_name ?? app.employees?.full_name ?? 'Applicant'
+                      const applicantEmail = app.employees?.users?.email
+                      const hasInvited = !!app.invite_sent_at
+                      const inviteAccepted = !!app.invite_accepted_at
+                      return (
+                        <div key={app.id} className="bg-ice-50 rounded-xl px-4 py-3">
+                          <div className="flex items-start justify-between gap-2 flex-wrap">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-navy-900">{applicantName}</p>
+                              {applicantEmail && (
+                                <p className="text-xs text-navy-500 mt-0.5 flex items-center gap-1">
+                                  <Mail size={11} className="flex-shrink-0" /> {applicantEmail}
+                                </p>
+                              )}
+                              <p className="text-xs text-navy-400 mt-0.5">
+                                Applied {new Date(app.created_at).toLocaleDateString()}
+                                {hasInvited && !inviteAccepted && <span className="ml-2 text-indigo-600">· Invite sent</span>}
+                                {inviteAccepted && <span className="ml-2 text-emerald-600">· Invite accepted ✓</span>}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={`px-2.5 py-1 rounded-full border text-xs font-semibold ${STATUS_COLORS[app.status] ?? STATUS_COLORS.pending}`}>
+                                {app.status}
+                              </span>
+                              {app.resume_url && (
+                                <button
+                                  onClick={() => handleViewCv(app.resume_url, applicantName)}
+                                  className="h-7 px-3 bg-navy-100 text-navy-700 text-xs font-medium rounded-lg hover:bg-navy-200 flex items-center gap-1"
+                                >
+                                  <Eye size={12} /> CV
+                                </button>
+                              )}
+                              {app.status === 'pending' && (
+                                <>
+                                  <button onClick={() => handleStatusChange(app.id, pos.id, 'interview')} disabled={!!updatingApp[app.id]}
+                                    className="h-7 px-3 bg-blue-100 text-blue-700 text-xs font-medium rounded-lg hover:bg-blue-200 disabled:opacity-50">
+                                    Accept
+                                  </button>
+                                  <button onClick={() => handleStatusChange(app.id, pos.id, 'rejected')} disabled={!!updatingApp[app.id]}
+                                    className="h-7 px-3 bg-red-100 text-red-700 text-xs font-medium rounded-lg hover:bg-red-200 disabled:opacity-50">
+                                    Reject
+                                  </button>
+                                </>
+                              )}
+                              {app.status === 'interview' && (
+                                <>
+                                  {!hasInvited && (
+                                    <button onClick={() => handleSendInvite(app.id, pos.id)} disabled={!!sendingInvite[app.id]}
+                                      className="h-7 px-3 bg-indigo-100 text-indigo-700 text-xs font-medium rounded-lg hover:bg-indigo-200 disabled:opacity-50 flex items-center gap-1">
+                                      {sendingInvite[app.id] ? <Loader2 size={11} className="animate-spin" /> : <Mail size={11} />} Invite
+                                    </button>
+                                  )}
+                                  <button onClick={() => handleStatusChange(app.id, pos.id, 'approved')} disabled={!!updatingApp[app.id]}
+                                    className="h-7 px-3 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-lg hover:bg-emerald-200 disabled:opacity-50">
+                                    Approve
+                                  </button>
+                                  <button onClick={() => handleStatusChange(app.id, pos.id, 'rejected')} disabled={!!updatingApp[app.id]}
+                                    className="h-7 px-3 bg-red-100 text-red-700 text-xs font-medium rounded-lg hover:bg-red-200 disabled:opacity-50">
+                                    Reject
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`px-2.5 py-1 rounded-full border text-xs font-semibold ${STATUS_COLORS[app.status] ?? STATUS_COLORS.pending}`}>
-                            {app.status}
-                          </span>
-                          {app.status === 'pending' && (
-                            <>
-                              <button onClick={() => handleStatusChange(app.id, pos.id, 'interview')} disabled={!!updatingApp[app.id]}
-                                className="h-7 px-3 bg-blue-100 text-blue-700 text-xs font-medium rounded-lg hover:bg-blue-200 disabled:opacity-50">
-                                Interview
-                              </button>
-                              <button onClick={() => handleStatusChange(app.id, pos.id, 'rejected')} disabled={!!updatingApp[app.id]}
-                                className="h-7 px-3 bg-red-100 text-red-700 text-xs font-medium rounded-lg hover:bg-red-200 disabled:opacity-50">
-                                Reject
-                              </button>
-                            </>
-                          )}
-                          {app.status === 'interview' && (
-                            <>
-                              <button onClick={() => handleStatusChange(app.id, pos.id, 'approved')} disabled={!!updatingApp[app.id]}
-                                className="h-7 px-3 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-lg hover:bg-emerald-200 disabled:opacity-50">
-                                Approve
-                              </button>
-                              <button onClick={() => handleStatusChange(app.id, pos.id, 'rejected')} disabled={!!updatingApp[app.id]}
-                                className="h-7 px-3 bg-red-100 text-red-700 text-xs font-medium rounded-lg hover:bg-red-200 disabled:opacity-50">
-                                Reject
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </motion.div>
               )}
@@ -1435,6 +1499,69 @@ function JobsTab({ companyId }) {
           </div>
         </Reveal>
       ))}
+
+      {/* ─── CV Viewer Modal ─── */}
+      <AnimatePresence>
+        {cvViewer.open && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            onClick={(e) => { if (e.target === e.currentTarget) closeCvViewer() }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 16 }}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col"
+              style={{ maxHeight: '90vh' }}
+            >
+              <div className="flex items-center justify-between px-5 py-4 border-b border-navy-100">
+                <div className="flex items-center gap-2">
+                  <FileText size={16} className="text-navy-500" />
+                  <span className="text-sm font-semibold text-navy-900">{cvViewer.name}'s CV</span>
+                </div>
+                <button onClick={closeCvViewer} className="text-navy-400 hover:text-navy-600 p-1">
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="flex-1 overflow-auto p-2" style={{ minHeight: '400px' }}>
+                {cvViewer.loading && (
+                  <div className="flex items-center justify-center h-64">
+                    <Loader2 size={24} className="animate-spin text-navy-400" />
+                  </div>
+                )}
+                {cvViewer.error && (
+                  <div className="flex items-center justify-center h-64 text-red-500 text-sm">{cvViewer.error}</div>
+                )}
+                {!cvViewer.loading && !cvViewer.error && cvViewer.blobUrl && (
+                  cvViewer.isPdf ? (
+                    <iframe
+                      src={cvViewer.blobUrl}
+                      title="Applicant CV"
+                      className="w-full rounded-xl border border-navy-100"
+                      style={{ height: 'calc(90vh - 100px)' }}
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-64 gap-4">
+                      <FileText size={48} className="text-navy-300" />
+                      <p className="text-sm text-navy-500">Word document — click below to download and view.</p>
+                      <a
+                        href={cvViewer.blobUrl}
+                        download={`cv-${cvViewer.name}.docx`}
+                        className="h-9 px-5 bg-navy-900 text-white text-xs font-semibold rounded-xl hover:bg-navy-800 flex items-center gap-2"
+                      >
+                        Download CV
+                      </a>
+                    </div>
+                  )
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

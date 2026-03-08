@@ -95,3 +95,61 @@ export async function authRequest(path, options = {}, _isRetry = false) {
   if (!res.ok) throw new Error(extractError(data))
   return data
 }
+
+// ─── Multipart request (for file uploads — does NOT set Content-Type) ─────────
+export async function authRequestMultipart(path, options = {}, _isRetry = false) {
+  const token = getAccessToken()
+
+  const res = await fetch(`${BASE}${path}`, {
+    headers: {
+      // DO NOT set Content-Type — browser sets it automatically with multipart boundary
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    },
+    ...options,
+  })
+
+  if (res.status === 401 && !_isRetry) {
+    try {
+      await tryRefresh()
+      return authRequestMultipart(path, options, true)
+    } catch {
+      clearAll()
+      window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT))
+      window.location.href = '/login'
+      throw new Error('Session expired. Please sign in again.')
+    }
+  }
+
+  const data = await res.json()
+  if (!res.ok) throw new Error(extractError(data))
+  return data
+}
+
+// ─── Raw authenticated fetch (returns Response, for binary/blob data) ─────────
+export async function authFetch(path, options = {}, _isRetry = false) {
+  const token = getAccessToken()
+
+  const res = await fetch(`${BASE}${path}`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    },
+    ...options,
+  })
+
+  if (res.status === 401 && !_isRetry) {
+    try {
+      await tryRefresh()
+      return authFetch(path, options, true)
+    } catch {
+      clearAll()
+      window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT))
+      window.location.href = '/login'
+      throw new Error('Session expired. Please sign in again.')
+    }
+  }
+
+  if (!res.ok) throw new Error('Request failed')
+  return res
+}

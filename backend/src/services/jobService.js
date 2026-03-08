@@ -219,9 +219,9 @@ const getApplications = async (positionId, userId) => {
 
   const { data, error } = await supabase
     .from('job_applications')
-    .select('*, employees:applicant_id(id, full_name, user_id, users:user_id(email, avatar_url))')
+    .select('*, employees:applicant_id(id, full_name, user_id, users:user_id(email, id, avatar_url))')
     .eq('position_id', positionId)
-    .order('applied_at', { ascending: false });
+    .order('created_at', { ascending: false });
 
   if (error) throw new AppError('Failed to fetch applications', 500);
   return data || [];
@@ -328,10 +328,91 @@ const getMyApplications = async (userId) => {
     .from('job_applications')
     .select('*, job_positions!inner(title, department, company_id, companies(name, logo_url))')
     .eq('applicant_id', employee.id)
-    .order('applied_at', { ascending: false });
+    .order('created_at', { ascending: false });
 
   if (error) throw new AppError('Failed to fetch your applications', 500);
   return data || [];
+};
+
+/**
+ * Send interview invitation (admin)
+ */
+const sendInvite = async (applicationId, userId) => {
+  const { data: application, error: appErr } = await supabase
+    .from('job_applications')
+    .select('*, job_positions!inner(title, company_id)')
+    .eq('id', applicationId)
+    .single();
+
+  if (appErr || !application) throw new AppError('Application not found', 404);
+  if (application.status !== 'interview') throw new AppError('Application must be in interview status to send an invite', 400);
+
+  const { data: company } = await supabase
+    .from('companies')
+    .select('user_id, name')
+    .eq('id', application.company_id)
+    .single();
+
+  if (!company || company.user_id !== userId) throw new AppError('Only the company admin can send invitations', 403);
+
+  const { data, error } = await supabase
+    .from('job_applications')
+    .update({ invite_sent_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .eq('id', applicationId)
+    .select()
+    .single();
+
+  if (error) throw new AppError('Failed to record invite', 500);
+
+  const { data: employee } = await supabase
+    .from('employees')
+    .select('full_name, users:user_id(email, id)')
+    .eq('id', application.applicant_id)
+    .single();
+
+  return { data, companyName: company.name, positionTitle: application.job_positions.title, employee };
+};
+
+/**
+ * Accept interview invitation (employee)
+ */
+const acceptInvite = async (applicationId, userId) => {
+  const { data: employee } = await supabase
+    .from('employees')
+    .select('id')
+    .eq('user_id', userId)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (!employee) throw new AppError('Employee profile not found', 404);
+
+  const { data: application, error: appErr } = await supabase
+    .from('job_applications')
+    .select('*, job_positions!inner(title, company_id)')
+    .eq('id', applicationId)
+    .eq('applicant_id', employee.id)
+    .single();
+
+  if (appErr || !application) throw new AppError('Application not found', 404);
+  if (!application.invite_sent_at) throw new AppError('No invitation has been sent for this application', 400);
+  if (application.invite_accepted_at) throw new AppError('Invitation already accepted', 400);
+
+  const { data, error } = await supabase
+    .from('job_applications')
+    .update({ invite_accepted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .eq('id', applicationId)
+    .select()
+    .single();
+
+  if (error) throw new AppError('Failed to accept invite', 500);
+
+  const { data: company } = await supabase
+    .from('companies')
+    .select('name, user_id')
+    .eq('id', application.company_id)
+    .single();
+
+  return { data, companyName: company?.name, positionTitle: application.job_positions.title, adminUserId: company?.user_id };
 };
 
 module.exports = {
@@ -346,4 +427,6 @@ module.exports = {
   getApplications,
   updateApplicationStatus,
   getMyApplications,
+  sendInvite,
+  acceptInvite,
 };

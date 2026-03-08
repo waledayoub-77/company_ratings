@@ -312,6 +312,33 @@ async function sendJobApplicationStatusEmail({ to, name, positionTitle, companyN
   });
 }
 
+function interviewInviteTemplate(name, positionTitle, companyName) {
+  const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').split(',')[0].trim();
+  return `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px;">
+      <h2 style="color:#1a1a2e;">Interview Invitation 🎉</h2>
+      <p>Hi <strong>${name}</strong>,</p>
+      <p>You have been invited for an interview for the position of <strong>${positionTitle}</strong> at <strong>${companyName}</strong>.</p>
+      <p>Please log in to your RateHub dashboard to accept this invitation.</p>
+      <div style="text-align:center;margin:32px 0;">
+        <a href="${frontendUrl}/dashboard?tab=jobs"
+           style="background:#1a1a2e;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">
+          Accept Invitation
+        </a>
+      </div>
+      <p style="color:#888;font-size:13px;">— The RateHub Team</p>
+    </div>
+  `;
+}
+
+async function sendInterviewInviteEmail({ to, name, positionTitle, companyName }) {
+  return sendEmail({
+    to,
+    subject: `Interview Invitation: ${positionTitle} at ${companyName} — RateHub`,
+    html: interviewInviteTemplate(name, positionTitle, companyName),
+  });
+}
+
 module.exports = {
   sendWelcomeEmail,
   sendVerifyEmail,
@@ -327,4 +354,5 @@ module.exports = {
   sendEmploymentInviteEmail,
   sendEmploymentEndedByAdminEmail,
   sendJobApplicationStatusEmail,
+  sendInterviewInviteEmail,
 };

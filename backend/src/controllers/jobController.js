@@ -1,7 +1,9 @@
 // Job Controller — Job Positions + Applications
+const path = require('path');
+const fs = require('fs');
 const jobService = require('../services/jobService');
 const { createNotification } = require('../services/notificationService');
-const { sendJobApplicationStatusEmail } = require('../services/emailService');
+const { sendJobApplicationStatusEmail, sendInterviewInviteEmail } = require('../services/emailService');
 const supabase = require('../config/database');
 
 // POST /api/jobs — create job posting (company admin)
@@ -81,18 +83,13 @@ const deleteJobPosition = async (req, res, next) => {
 // POST /api/jobs/:id/apply — apply to a job (authenticated users)
 const applyToJob = async (req, res, next) => {
   try {
-    const { coverLetter } = req.body;
+    const xss = require('xss');
+    const coverLetter = req.body.coverLetter ? xss(req.body.coverLetter) : null;
 
-    // Handle CV URL - in a production system this would use file upload
-    // For now, accept cvUrl from body or set from uploaded file path
-    let cvUrl = req.body.cvUrl;
+    let cvUrl = null;
     if (req.file) {
-      // If multer middleware is used, file info is in req.file
-      cvUrl = req.file.path || req.file.location || `/uploads/cvs/${req.file.filename}`;
+      cvUrl = `/uploads/cvs/${req.file.filename}`;
     }
-
-    // cvUrl is optional — employees can apply without uploading a CV
-    if (!cvUrl) cvUrl = null;
 
     const data = await jobService.applyToJob(req.params.id, req.user.userId, {
       cvUrl,
@@ -191,6 +188,69 @@ const getMyApplications = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// POST /api/jobs/applications/:appId/invite — admin sends interview invite email
+const sendInvite = async (req, res, next) => {
+  try {
+    const result = await jobService.sendInvite(req.params.appId, req.user.userId);
+    // Send invite email (non-blocking)
+    try {
+      if (result.employee?.users?.email) {
+        await sendInterviewInviteEmail({
+          to: result.employee.users.email,
+          name: result.employee.full_name || 'Applicant',
+          positionTitle: result.positionTitle,
+          companyName: result.companyName,
+        });
+      }
+      // Notify employee
+      if (result.employee?.users?.id) {
+        await createNotification({
+          userId: result.employee.users.id,
+          type: 'interview_invite',
+          title: 'Interview Invitation',
+          message: `You have been invited for an interview at ${result.companyName} for ${result.positionTitle}.`,
+          link: '/dashboard?tab=jobs',
+        });
+      }
+    } catch (_) {}
+    res.json({ success: true, data: result.data });
+  } catch (err) { next(err); }
+};
+
+// POST /api/jobs/applications/:appId/accept-invite — employee accepts interview invitation
+const acceptInvite = async (req, res, next) => {
+  try {
+    const result = await jobService.acceptInvite(req.params.appId, req.user.userId);
+    // Notify admin (non-blocking)
+    try {
+      if (result.adminUserId) {
+        await createNotification({
+          userId: result.adminUserId,
+          type: 'invite_accepted',
+          title: 'Interview Accepted',
+          message: `A candidate has accepted the interview invitation for ${result.positionTitle}.`,
+          link: '/company-admin?tab=jobs',
+        });
+      }
+    } catch (_) {}
+    res.json({ success: true, data: result.data });
+  } catch (err) { next(err); }
+};
+
+// GET /api/jobs/cv/:filename — serve uploaded CV file (authenticated)
+const serveCv = (req, res, next) => {
+  try {
+    const filename = path.basename(req.params.filename); // prevent path traversal
+    const filePath = path.resolve(__dirname, '../../uploads/cvs', filename);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ success: false, message: 'File not found' });
+    }
+    // Remove X-Frame-Options to allow in-page iframe embedding
+    res.removeHeader('X-Frame-Options');
+    res.sendFile(filePath);
+  } catch (err) { next(err); }
+};
+
 module.exports = {
   createJobPosition,
   getJobPositions,
@@ -202,4 +262,7 @@ module.exports = {
   getApplications,
   updateApplicationStatus,
   getMyApplications,
+  sendInvite,
+  acceptInvite,
+  serveCv,
 };

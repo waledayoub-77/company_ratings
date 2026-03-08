@@ -316,6 +316,8 @@ function RequestsTab({ companyId, onCountChange }) {
   const [processing, setProcessing]   = useState({})
   const [rejectNote, setRejectNote]   = useState({})
   const [actionResult, setActionResult] = useState({})
+  const [endConfirm, setEndConfirm]   = useState({})
+  const [endReason, setEndReason]     = useState({})
 
   const load = async () => {
     setLoading(true)
@@ -352,7 +354,9 @@ function RequestsTab({ companyId, onCountChange }) {
         r.id !== id && r.verification_status === 'pending'
       ).length)
       setExpandedId(null)
-    } catch { /* silent */ } finally {
+    } catch (e) {
+      setActionResult(r => ({ ...r, [id]: { error: true, msg: e?.message || 'Action failed' } }))
+    } finally {
       setProcessing(p => ({ ...p, [id]: false }))
     }
   }
@@ -527,24 +531,54 @@ function RequestsTab({ companyId, onCountChange }) {
                                 <CheckCircle2 size={14} />
                                 This request has been approved.
                               </div>
-                              {req.is_current !== false && (
+                              {req.is_current !== false && !endConfirm[req.id] && (
                                 <button
-                                  onClick={async () => {
-                                    if (!confirm(`End employment for ${name}? This will revoke their company email access.`)) return
-                                    setProcessing(p => ({ ...p, [req.id]: true }))
-                                    try {
-                                      await endEmploymentByAdmin(req.id, { reason: 'Ended by company admin' })
-                                      await load()
-                                    } catch { /* silent */ } finally {
-                                      setProcessing(p => ({ ...p, [req.id]: false }))
-                                    }
-                                  }}
+                                  onClick={() => setEndConfirm(c => ({ ...c, [req.id]: true }))}
                                   disabled={isProcessing}
                                   className="h-8 px-4 border border-red-200 text-red-600 text-xs font-semibold rounded-xl hover:bg-red-50 transition-colors flex items-center gap-1.5 disabled:opacity-50"
                                 >
-                                  {isProcessing ? <Loader2 size={12} className="animate-spin" /> : <XCircle size={12} />}
-                                  End Employment
+                                  <XCircle size={12} /> End Employment
                                 </button>
+                              )}
+                              {endConfirm[req.id] && (
+                                <div className="space-y-2 bg-red-50/50 rounded-xl p-3 border border-red-100">
+                                  <p className="text-xs font-medium text-red-700">End employment for {name}?</p>
+                                  <input
+                                    type="text"
+                                    placeholder="Reason for ending employment"
+                                    value={endReason[req.id] || ''}
+                                    onChange={e => setEndReason(r => ({ ...r, [req.id]: e.target.value }))}
+                                    className="w-full h-8 px-3 text-xs border border-red-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-300"
+                                  />
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={async () => {
+                                        setProcessing(p => ({ ...p, [req.id]: true }))
+                                        try {
+                                          await endEmploymentByAdmin(req.id, { reason: endReason[req.id]?.trim() || 'Ended by company admin' })
+                                          setEndConfirm(c => ({ ...c, [req.id]: false }))
+                                          setEndReason(r => ({ ...r, [req.id]: '' }))
+                                          await load()
+                                        } catch (e) {
+                                          setActionResult(r => ({ ...r, [req.id]: { ok: false, msg: e?.message || 'Failed to end employment' } }))
+                                        } finally {
+                                          setProcessing(p => ({ ...p, [req.id]: false }))
+                                        }
+                                      }}
+                                      disabled={isProcessing}
+                                      className="h-7 px-3 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 transition-colors flex items-center gap-1 disabled:opacity-50"
+                                    >
+                                      {isProcessing ? <Loader2 size={12} className="animate-spin" /> : <XCircle size={12} />}
+                                      Confirm
+                                    </button>
+                                    <button
+                                      onClick={() => { setEndConfirm(c => ({ ...c, [req.id]: false })); setEndReason(r => ({ ...r, [req.id]: '' })) }}
+                                      className="h-7 px-3 border border-navy-200 text-navy-600 text-xs font-semibold rounded-lg hover:bg-navy-50 transition-colors"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
                               )}
                             </div>
                           )}
@@ -594,7 +628,7 @@ function InviteSection({ companyId, onInvited }) {
       setEmail(''); setPosition(''); setDepartment('')
       await loadInvites()
       onInvited?.()
-    } catch { /* silent */ }
+    } catch (e) { alert(e?.message || 'Failed to send invite') }
     finally { setSending(false) }
   }
 
@@ -1056,23 +1090,27 @@ function EotyTab({ companyId }) {
       ])
       setEvents(evRes?.data ?? [])
       setWinners(wRes?.data ?? [])
-    } catch { /* silent */ }
+    } catch { setEvents([]); setWinners([]) }
     finally { setLoading(false) }
   }
 
   useEffect(() => { load() }, [companyId])
 
+  const [error, setError] = useState('')
+
   const handleCreate = async () => {
     setCreating(true)
+    setError('')
     try { await createEotyEvent({ companyId, year: new Date().getFullYear() }); await load() }
-    catch { /* silent */ }
+    catch (e) { setError(e?.message || 'Failed to create EOTY event') }
     finally { setCreating(false) }
   }
 
   const handleClose = async (eventId) => {
     setClosing(p => ({ ...p, [eventId]: true }))
+    setError('')
     try { await closeEotyEvent(eventId); await load() }
-    catch { /* silent */ }
+    catch (e) { setError(e?.message || 'Failed to close event') }
     finally { setClosing(p => ({ ...p, [eventId]: false })) }
   }
 
@@ -1082,7 +1120,7 @@ function EotyTab({ companyId }) {
     try {
       const res = await getEotyNominees(eventId)
       setNominees(n => ({ ...n, [eventId]: res?.data ?? [] }))
-    } catch { /* silent */ }
+    } catch { setNominees(n => ({ ...n, [eventId]: [] })) }
     finally { setLoadingNominees(l => ({ ...l, [eventId]: false })) }
   }
 
@@ -1098,6 +1136,10 @@ function EotyTab({ companyId }) {
           Start {new Date().getFullYear()} EOTY
         </button>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 text-sm text-red-700 font-medium">{error}</div>
+      )}
 
       {events.length === 0 && (
         <div className="bg-white rounded-2xl border border-navy-100/50 p-12 text-center">
@@ -1138,7 +1180,7 @@ function EotyTab({ companyId }) {
                     {nominees[ev.id].length === 0 && <p className="text-xs text-navy-400">No votes cast yet.</p>}
                     {nominees[ev.id].map((nom, j) => (
                       <div key={j} className="flex items-center justify-between bg-ice-50 rounded-xl px-4 py-2">
-                        <span className="text-sm font-medium text-navy-900">{nom.employee_name ?? 'Employee'}</span>
+                        <span className="text-sm font-medium text-navy-900">{nom.full_name ?? nom.employee_name ?? 'Employee'}</span>
                         <span className="text-xs text-navy-500">{nom.vote_count != null ? `${nom.vote_count} votes` : ''}</span>
                       </div>
                     ))}
@@ -1192,6 +1234,7 @@ function JobsTab({ companyId }) {
   const [applications, setApplications] = useState({})
   const [loadingApps, setLoadingApps] = useState({})
   const [updatingApp, setUpdatingApp] = useState({})
+  const [jobError, setJobError] = useState('')
 
   const loadPositions = async () => {
     setLoading(true)
@@ -1213,19 +1256,19 @@ function JobsTab({ companyId }) {
       setCreateForm({ title: '', description: '', requirements: '' })
       setShowCreate(false)
       await loadPositions()
-    } catch { /* silent */ }
+    } catch (e) { setJobError(e?.message || 'Failed to create job position') }
     finally { setCreating(false) }
   }
 
   const handleClose = async (id) => {
     try { await closeJobPosition(id); await loadPositions() }
-    catch { /* silent */ }
+    catch (e) { setJobError(e?.message || 'Failed to close position') }
   }
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this job position? This cannot be undone.')) return
     try { await deleteJobPosition(id); await loadPositions() }
-    catch { /* silent */ }
+    catch (e) { setJobError(e?.message || 'Failed to delete position') }
   }
 
   const toggleApps = async (positionId) => {
@@ -1234,7 +1277,7 @@ function JobsTab({ companyId }) {
     try {
       const res = await getApplications(positionId)
       setApplications(a => ({ ...a, [positionId]: res?.data ?? [] }))
-    } catch { /* silent */ }
+    } catch { setApplications(a => ({ ...a, [positionId]: [] })) }
     finally { setLoadingApps(l => ({ ...l, [positionId]: false })) }
   }
 
@@ -1245,7 +1288,7 @@ function JobsTab({ companyId }) {
       // Reload applications for this position
       const res = await getApplications(positionId)
       setApplications(a => ({ ...a, [positionId]: res?.data ?? [] }))
-    } catch { /* silent */ }
+    } catch (e) { setJobError(e?.message || 'Failed to update application status') }
     finally { setUpdatingApp(u => ({ ...u, [appId]: false })) }
   }
 
@@ -1260,6 +1303,12 @@ function JobsTab({ companyId }) {
 
   return (
     <div className="space-y-6">
+      {jobError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 flex items-center justify-between">
+          <span>{jobError}</span>
+          <button onClick={() => setJobError('')} className="text-red-400 hover:text-red-600 text-xs font-semibold">✕</button>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-navy-900">Job Positions</h2>
         <button onClick={() => setShowCreate(!showCreate)}
@@ -1411,7 +1460,7 @@ function SettingsTab({ companyId, onNameChange }) {
       onNameChange?.(form.name)
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
-    } catch { /* silent */ } finally {
+    } catch (e) { alert(e?.message || 'Failed to save settings') } finally {
       setSaving(false)
     }
   }

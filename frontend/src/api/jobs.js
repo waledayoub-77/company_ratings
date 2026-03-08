@@ -7,7 +7,8 @@ export async function getJobPositions(companyId) {
 
 /** GET /jobs/all?companyId=X — all job postings (admin) */
 export async function getAllJobPositions(companyId) {
-  return authRequest(`/jobs/all?companyId=${companyId}`)
+  const params = companyId ? `?companyId=${companyId}` : ''
+  return authRequest(`/jobs/all${params}`)
 }
 
 /** GET /jobs/:id — single job posting */

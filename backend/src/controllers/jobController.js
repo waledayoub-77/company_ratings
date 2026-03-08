@@ -32,6 +32,8 @@ const getJobPositions = async (req, res, next) => {
 const getAllJobPositions = async (req, res, next) => {
   try {
     let { companyId } = req.query;
+    // Sanitize string literals that should be treated as missing
+    if (companyId === 'undefined' || companyId === 'null' || companyId === '') companyId = undefined;
     // Auto-detect companyId for company_admin users
     if (!companyId && req.user?.role === 'company_admin') {
       const { data: company } = await supabase
@@ -89,9 +91,8 @@ const applyToJob = async (req, res, next) => {
       cvUrl = req.file.path || req.file.location || `/uploads/cvs/${req.file.filename}`;
     }
 
-    if (!cvUrl) {
-      return res.status(400).json({ success: false, message: 'CV is required (cvUrl or file upload)' });
-    }
+    // cvUrl is optional — employees can apply without uploading a CV
+    if (!cvUrl) cvUrl = null;
 
     const data = await jobService.applyToJob(req.params.id, req.user.userId, {
       cvUrl,
@@ -172,7 +173,7 @@ const updateApplicationStatus = async (req, res, next) => {
             type: 'application_status',
             title: 'Application Update',
             message: `Your application for ${result.positionTitle} at ${result.companyName} is now: ${status}.`,
-            link: '/dashboard',
+            link: '/dashboard?tab=jobs',
           });
         }
       }

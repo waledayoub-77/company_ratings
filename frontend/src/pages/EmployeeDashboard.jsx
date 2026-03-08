@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Star,
@@ -53,7 +53,10 @@ const gradients = [
 
 export default function EmployeeDashboard() {
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState('overview')
+  const [searchParams] = useSearchParams()
+  const validTabs = ['overview', 'employment', 'reviews', 'feedback', 'eotm', 'eoty', 'jobs']
+  const initialTab = validTabs.includes(searchParams.get('tab')) ? searchParams.get('tab') : 'overview'
+  const [activeTab, setActiveTab] = useState(initialTab)
   const [employments, setEmployments] = useState([])
   const [reviews, setReviews] = useState([])
   const [feedback, setFeedback] = useState([])
@@ -1386,7 +1389,7 @@ function EotmVoteTab({ employments }) {
                     <p className="text-sm font-semibold text-navy-900">
                       {EOTM_MONTHS[(ev.month ?? 1) - 1]} {ev.year}
                     </p>
-                    <p className="text-xs text-navy-400">{ev.total_votes ?? 0} total votes</p>
+                    <p className="text-xs text-navy-400">{(ev.total_votes ?? 0) > 0 ? `${ev.total_votes} total votes` : 'No votes yet'}</p>
                   </div>
                   <Badge variant="success">Open for Voting</Badge>
                 </div>
@@ -1488,6 +1491,7 @@ function EotyVoteTab({ employments }) {
   const [expanded, setExpanded] = useState(null)
   const [nominees, setNominees] = useState({})
   const [voting, setVoting] = useState({})
+  const [voteError, setVoteError] = useState('')
   const [voteSearch, setVoteSearch] = useState('')
   const [votingForEvent, setVotingForEvent] = useState(null)
   const [coworkerResults, setCoworkerResults] = useState([])
@@ -1512,15 +1516,16 @@ function EotyVoteTab({ employments }) {
     try {
       const res = await getEotyNominees(eventId)
       setNominees(n => ({ ...n, [eventId]: res?.data ?? [] }))
-    } catch { /* silent */ }
+    } catch { setNominees(n => ({ ...n, [eventId]: [] })) }
   }
 
   const handleVote = async (eventId, nomineeId) => {
     setVoting(v => ({ ...v, [nomineeId]: true }))
+    setVoteError('')
     try {
       await castEotyVote(eventId, nomineeId)
       await loadNominees(eventId)
-    } catch { /* silent */ }
+    } catch (e) { setVoteError(e?.message || 'Vote failed') }
     finally { setVoting(v => ({ ...v, [nomineeId]: false })) }
   }
 
@@ -1549,7 +1554,7 @@ function EotyVoteTab({ employments }) {
                 <Trophy size={18} className="text-amber-500" />
                 <div>
                   <p className="text-sm font-semibold text-navy-900">Year {ev.year}</p>
-                  <p className="text-xs text-navy-400">{ev.total_votes ?? 0} total votes</p>
+                  <p className="text-xs text-navy-400">{(ev.total_votes ?? 0) > 0 ? `${ev.total_votes} total votes` : 'No votes yet'}</p>
                 </div>
                 <Badge variant="success">Open for Voting</Badge>
               </div>
@@ -1579,6 +1584,9 @@ function EotyVoteTab({ employments }) {
                         </button>
                       </div>
                     ))}
+                    {voteError && (
+                      <p className="text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mt-2">{voteError}</p>
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -1638,7 +1646,7 @@ function JobBoardTab({ employments }) {
       const updatedApps = await getMyApplications()
       setMyApps(updatedApps?.data ?? [])
       setCoverLetter(c => ({ ...c, [positionId]: '' }))
-    } catch { /* silent */ }
+    } catch (e) { alert(e?.message || 'Application failed. Please try again.') }
     finally { setApplying(a => ({ ...a, [positionId]: false })) }
   }
 

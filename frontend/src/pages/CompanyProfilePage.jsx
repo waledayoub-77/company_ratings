@@ -351,6 +351,10 @@ export default function CompanyProfilePage() {
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
+                    <span className="text-navy-500">Employees</span>
+                    <span className="font-semibold text-navy-900">{employees.length}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
                     <span className="text-navy-500">Total reviews</span>
                     <span className="font-semibold text-navy-900">{company.total_reviews}</span>
                   </div>

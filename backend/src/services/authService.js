@@ -211,7 +211,7 @@ const logout = async (token) => {
 const getMe = async (userId) => {
   const { data: user, error } = await supabase
     .from('users')
-    .select('id, email, role, email_verified, is_active, created_at, full_name')
+    .select('id, email, role, email_verified, is_active, created_at, full_name, identity_verified')
     .eq('id', userId)
     .eq('is_deleted', false)
     .single();
@@ -250,6 +250,7 @@ const getMe = async (userId) => {
     fullName,
     employeeId,
     ...(companyId ? { companyId } : {}),
+    isVerified: user.identity_verified ?? false,
     emailVerified: user.email_verified,
     isActive: user.is_active,
     createdAt: user.created_at,

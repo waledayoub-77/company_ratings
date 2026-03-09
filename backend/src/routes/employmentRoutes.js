@@ -19,11 +19,19 @@ router.patch("/invite/:id/resend", requireAuth, employmentController.resendInvit
 router.get("/pending", requireAuth, employmentController.listPendingEmployments);
 router.get("/all",     requireAuth, employmentController.listAllEmployments);
 
+// List current employees (company admin view)
+router.get("/current", requireAuth, employmentController.listCurrentEmployees);
+
 // Approve / reject / end / cancel
 router.patch("/:id/approve", requireAuth, employmentController.approveEmployment);
 router.patch("/:id/reject", requireAuth, employmentController.rejectEmployment);
 router.patch("/:id/end", requireAuth, employmentController.endEmployment);
 router.patch("/:id/end-by-admin", requireAuth, employmentController.endEmploymentByAdmin);
 router.delete("/:id/cancel", requireAuth, employmentController.cancelEmployment);
+
+// Employee end-request flow
+router.patch("/:id/request-end", requireAuth, employmentController.requestEndEmployment);
+router.patch("/:id/approve-end-request", requireAuth, employmentController.approveEndRequest);
+router.patch("/:id/reject-end-request", requireAuth, employmentController.rejectEndRequest);
 
 module.exports = router;

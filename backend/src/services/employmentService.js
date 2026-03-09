@@ -99,6 +99,8 @@ async function listEmploymentsByEmployee(employeeId) {
       rejection_note,
       verified_at,
       created_at,
+      end_requested_at,
+      end_request_reason,
       companies (
         id,
         name,
@@ -436,9 +438,141 @@ async function endEmploymentByAdmin({ employmentId, companyId, adminUserId, endD
   return { data };
 }
 
+/**
+ * List current (active/employed) employees for a company admin view
+ */
+async function listCurrentEmployees(companyId) {
+  const { data, error } = await supabase
+    .from('employments')
+    .select(`
+      id,
+      employee_id,
+      company_id,
+      position,
+      department,
+      start_date,
+      is_current,
+      verification_status,
+      end_requested_at,
+      end_request_reason,
+      created_at,
+      employees:employee_id!inner ( id, full_name, deleted_at )
+    `)
+    .eq('company_id', companyId)
+    .eq('verification_status', 'approved')
+    .eq('is_current', true)
+    .is('deleted_at', null)
+    .is('employees.deleted_at', null)
+    .order('created_at', { ascending: false });
+
+  if (error) return { error: error.message };
+  return { data: data || [] };
+}
+
+/**
+ * Employee requests to end their current employment
+ */
+async function requestEndEmployment({ employmentId, employeeId, reason }) {
+  const { data: emp, error: empErr } = await supabase
+    .from('employments')
+    .select('id, employee_id, company_id, is_current, verification_status')
+    .eq('id', employmentId)
+    .is('deleted_at', null)
+    .single();
+
+  if (empErr || !emp) return { error: 'Employment not found' };
+  if (emp.employee_id !== employeeId) return { error: 'This employment does not belong to you' };
+  if (emp.verification_status !== 'approved' || !emp.is_current) return { error: 'You are not currently employed here' };
+
+  const { data, error } = await supabase
+    .from('employments')
+    .update({
+      end_requested_at: new Date().toISOString(),
+      end_request_reason: reason || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', employmentId)
+    .select('*')
+    .single();
+
+  if (error) return { error: error.message };
+  return { data };
+}
+
+/**
+ * Company admin approves an employee end request
+ */
+async function approveEndRequest({ employmentId, companyId, adminUserId }) {
+  const { data: emp, error: empErr } = await supabase
+    .from('employments')
+    .select('id, company_id, employee_id, is_current, verification_status, end_requested_at, company_email')
+    .eq('id', employmentId)
+    .is('deleted_at', null)
+    .single();
+
+  if (empErr || !emp) return { error: 'Employment not found' };
+  if (emp.company_id !== companyId) return { error: 'Employment does not belong to your company' };
+  if (!emp.end_requested_at) return { error: 'No end request has been submitted for this employment' };
+  if (!emp.is_current) return { error: 'Employment already ended' };
+
+  const { data, error } = await supabase
+    .from('employments')
+    .update({
+      is_current: false,
+      end_date: new Date().toISOString().split('T')[0],
+      end_requested_at: null,
+      end_request_reason: null,
+      ended_by_admin: false,
+      ended_by_admin_id: adminUserId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', employmentId)
+    .select('*')
+    .single();
+
+  if (error) return { error: error.message };
+
+  if (emp.company_email) {
+    await revokeCompanyEmail(companyId, emp.company_email, emp.employee_id);
+  }
+
+  return { data };
+}
+
+/**
+ * Company admin rejects an employee end request
+ */
+async function rejectEndRequest({ employmentId, companyId }) {
+  const { data: emp, error: empErr } = await supabase
+    .from('employments')
+    .select('id, company_id, end_requested_at')
+    .eq('id', employmentId)
+    .is('deleted_at', null)
+    .single();
+
+  if (empErr || !emp) return { error: 'Employment not found' };
+  if (emp.company_id !== companyId) return { error: 'Employment does not belong to your company' };
+  if (!emp.end_requested_at) return { error: 'No end request has been submitted for this employment' };
+
+  const { data, error } = await supabase
+    .from('employments')
+    .update({
+      end_requested_at: null,
+      end_request_reason: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', employmentId)
+    .select('*')
+    .single();
+
+  if (error) return { error: error.message };
+  return { data };
+}
+
 module.exports = {
   requestEmployment,
   listEmploymentsByEmployee,
+  listCurrentEmployees,
   updateEmploymentStatus,
   inviteEmployee,
   acceptInvite,
@@ -446,6 +580,9 @@ module.exports = {
   cancelInvite,
   resendInvite,
   endEmploymentByAdmin,
+  requestEndEmployment,
+  approveEndRequest,
+  rejectEndRequest,
   checkRevokedEmail,
   revokeCompanyEmail,
 };

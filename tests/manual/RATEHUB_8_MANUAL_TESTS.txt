@@ -1,0 +1,311 @@
+================================================================================
+  RATEHUB.8 — MANUAL TEST CASES
+  Features: Employee Hiring Flow, EOTM/EOTY Visibility, Ended Employee Access Control
+================================================================================
+
+PREREQUISITE ACCOUNTS
+---------------------
+- System Admin account (role: system_admin)
+- Company Admin account (role: company_admin) — owns a company (e.g. TechCorp)
+- Employee account A (role: employee) — NOT yet employed at TechCorp
+- Employee account B (role: employee) — already a current verified employee at TechCorp
+
+
+================================================================================
+FLOW 1: JOB POSTING → HIRE → EMPLOYEE SEES EVERYTHING
+================================================================================
+
+TC-1.1  Company Admin Creates a Job Position
+  PRE:    Log in as Company Admin
+  STEPS:  1. Go to Company Admin Dashboard
+          2. Navigate to Job Positions tab
+          3. Create a new job position (title, description, department)
+          4. Publish the job position
+  EXPECT: Job position appears in the list with status "open"
+
+TC-1.2  Employee Applies to a Job
+  PRE:    Log in as Employee A (not employed at TechCorp)
+  STEPS:  1. Go to Employee Dashboard → Job Board tab
+          2. Find the job posted by Company Admin in TC-1.1
+          3. Click "Apply" and submit the application (upload CV if required)
+  EXPECT: Application status shows "pending"
+          Employee sees the application in "My Applications" section
+
+TC-1.3  Company Admin Sends Hire Invite
+  PRE:    Log in as Company Admin
+  STEPS:  1. Go to Company Admin Dashboard → Job Positions tab
+          2. Click into the job position from TC-1.1
+          3. Find Employee A's application
+          4. Click "Hire" / send hire invite
+  EXPECT: Application status changes to "hire_invited" or equivalent
+
+TC-1.4  Employee Accepts Hire Invite
+  PRE:    Log in as Employee A
+  STEPS:  1. Go to Employee Dashboard → Job Board tab
+          2. Find the application with hire invite
+          3. Click "Accept Hire"
+  EXPECT: - Application status updates to "accepted" / "hired"
+          - Employment is automatically created with:
+              verification_status = 'approved'
+              is_current = true
+              source = 'job_application'
+          - WITHOUT refreshing the page, the employee immediately sees:
+              * Their new employment in the Employment tab
+              * Company appears in Overview tab stats (Verified Employments count goes up)
+              * "Give Peer Feedback" button is visible in Overview tab
+              * "Give Feedback" button is visible in Feedback tab
+
+TC-1.5  Employee Appears in Company Admin's Employee List
+  PRE:    Log in as Company Admin
+  STEPS:  1. Go to Company Admin Dashboard → Employees tab
+  EXPECT: Employee A is listed as a current verified employee
+
+
+================================================================================
+FLOW 2: EOTM / EOTY TABS — ALWAYS VISIBLE, ALL EVENTS SHOWN
+================================================================================
+
+TC-2.1  EOTM Tab is Always Visible
+  PRE:    Log in as Employee A (now employed at TechCorp)
+  STEPS:  1. Go to Employee Dashboard
+          2. Check that the "EOTM" tab is visible in the tab bar
+  EXPECT: EOTM tab is always visible regardless of whether any EOTM events exist
+
+TC-2.2  EOTY Tab is Always Visible
+  PRE:    Log in as Employee A
+  STEPS:  1. Go to Employee Dashboard
+          2. Check that the "EOTY" tab is visible in the tab bar
+  EXPECT: EOTY tab is always visible regardless of whether any EOTY events exist
+
+TC-2.3  EOTM Shows Open Events — Employee Can Vote
+  PRE:    Company Admin has created an active/open EOTM event for TechCorp
+  STEPS:  1. Log in as Employee A
+          2. Go to Employee Dashboard → EOTM tab
+          3. Find the open event for TechCorp
+          4. See the list of nominees (only current employees should appear)
+          5. Cast a vote for Employee B
+  EXPECT: - Open event is visible with a "Vote" button
+          - Only current verified employees appear as nominees
+          - Vote is recorded successfully
+          - Employee cannot vote for themselves
+          - Employee cannot vote twice in same event
+
+TC-2.4  EOTM Shows Closed Events — View Results
+  PRE:    An EOTM event has been closed (winner determined)
+  STEPS:  1. Log in as Employee A
+          2. Go to Employee Dashboard → EOTM tab
+          3. Find the closed event
+  EXPECT: - Closed event is visible (not hidden)
+          - Event shows results / winner information
+          - No "Vote" button for closed events
+
+TC-2.5  EOTY Shows Open Events — Employee Can Vote
+  PRE:    Company Admin has created an active/open EOTY event for TechCorp
+  STEPS:  1. Log in as Employee A
+          2. Go to Employee Dashboard → EOTY tab
+          3. Find the open event for TechCorp
+          4. See the list of nominees
+          5. Cast a vote for Employee B
+  EXPECT: - Open event is visible with a "Vote" button
+          - Only current verified employees appear as nominees
+          - Vote is recorded successfully
+
+TC-2.6  EOTY Shows Closed Events — View Results
+  PRE:    An EOTY event has been closed
+  STEPS:  1. Log in as Employee A
+          2. Go to Employee Dashboard → EOTY tab
+          3. Find the closed event
+  EXPECT: - Closed event is visible
+          - Event shows results / winner information
+          - No "Vote" button for closed events
+
+
+================================================================================
+FLOW 3: FEEDBACK — CURRENT EMPLOYEES ONLY
+================================================================================
+
+TC-3.1  Current Employee Can Give Feedback
+  PRE:    Log in as Employee A (current, verified employee at TechCorp)
+  STEPS:  1. Go to Employee Dashboard → Feedback tab
+          2. Click "Give Feedback" button
+          3. Select a coworker (Employee B) from the same company
+          4. Fill in ratings (professionalism, communication, teamwork, reliability)
+          5. Submit
+  EXPECT: - "Give Feedback" button is visible
+          - Coworker list only shows current employees from the same company
+          - Feedback is submitted successfully
+
+TC-3.2  Current Employee Can Give Feedback from Overview Tab
+  PRE:    Log in as Employee A (current, verified employee)
+  STEPS:  1. Go to Employee Dashboard → Overview tab
+          2. See "Give Peer Feedback" quick action card
+          3. Click it
+  EXPECT: - "Give Peer Feedback" card is visible
+          - Navigates to the feedback page
+
+
+================================================================================
+FLOW 4: COMPANY ADMIN ENDS EMPLOYEE — ALL ACCESS REVOKED
+================================================================================
+
+TC-4.1  Company Admin Ends an Employee
+  PRE:    Log in as Company Admin
+  STEPS:  1. Go to Company Admin Dashboard → Employees tab
+          2. Find Employee A
+          3. Click "End Employment" (or equivalent action)
+          4. Confirm the action
+  EXPECT: Employee A's employment record is updated:
+            is_current = false
+            end_date is set
+          Employee A disappears from the active employees list
+
+TC-4.2  Ended Employee — Overview Tab Hides Feedback Action
+  PRE:    Log in as Employee A (employment ended at TechCorp)
+  STEPS:  1. Go to Employee Dashboard → Overview tab
+          2. Check the quick actions section
+  EXPECT: - "Give Peer Feedback" card is NOT visible
+            (because no current approved employments remain)
+          - "Verified Employments" stat shows 0 (for that company)
+
+TC-4.3  Ended Employee — Feedback Tab Hides "Give Feedback" Button
+  PRE:    Log in as Employee A (employment ended)
+  STEPS:  1. Go to Employee Dashboard → Feedback tab
+  EXPECT: - Past received feedback is still visible (read-only)
+          - "Give Feedback" button is NOT visible
+          - Employee cannot navigate to /feedback and submit
+            (backend rejects: "You must be a current approved employee")
+
+TC-4.4  Ended Employee — Cannot Vote in EOTM
+  PRE:    - Log in as Employee A (employment ended at TechCorp)
+          - There is an open EOTM event at TechCorp
+  STEPS:  1. Go to Employee Dashboard → EOTM tab
+          2. Try to find the TechCorp event
+  EXPECT: - TechCorp does not appear in Employee A's EOTM company list
+            (because approvedEmployments filters out is_current = false)
+          - If employee somehow sends a direct API request to vote,
+            backend rejects: "You must be a current verified employee to vote"
+
+TC-4.5  Ended Employee — Cannot Vote in EOTY
+  PRE:    - Log in as Employee A (employment ended at TechCorp)
+          - There is an open EOTY event at TechCorp
+  STEPS:  1. Go to Employee Dashboard → EOTY tab
+          2. Try to find the TechCorp event
+  EXPECT: - TechCorp does not appear in Employee A's EOTY company list
+          - If employee somehow sends a direct API request to vote,
+            backend rejects: "You must be a current verified employee to vote"
+
+TC-4.6  Ended Employee — Not a Nominee in EOTM
+  PRE:    - Employee A was ended from TechCorp
+          - There is an open EOTM event at TechCorp
+  STEPS:  1. Log in as Employee B (current employee at TechCorp)
+          2. Go to Employee Dashboard → EOTM tab
+          3. Open the TechCorp EOTM event
+          4. View the nominee list
+  EXPECT: Employee A does NOT appear in the nominee list
+          (getEventNominees filters by is_current = true)
+
+TC-4.7  Ended Employee — Not a Nominee in EOTY
+  PRE:    - Employee A was ended from TechCorp
+          - There is an open EOTY event at TechCorp
+  STEPS:  1. Log in as Employee B (current employee at TechCorp)
+          2. Go to Employee Dashboard → EOTY tab
+          3. Open the TechCorp EOTY event
+          4. View the nominee list
+  EXPECT: Employee A does NOT appear in the nominee list
+
+TC-4.8  Ended Employee — Cannot Submit Feedback via Direct API
+  PRE:    Employee A is ended from TechCorp
+  STEPS:  1. Send POST /api/feedback with Employee A's auth token
+          2. Target a coworker at TechCorp
+  EXPECT: API returns error:
+          "You must be a current approved employee at this company to submit feedback"
+
+
+================================================================================
+FLOW 5: IDENTITY VERIFICATION FIX (is_verified → identity_verified)
+================================================================================
+
+TC-5.1  Employee Profile Uses users.identity_verified
+  PRE:    Log in as any employee
+  STEPS:  1. Navigate around the app (dashboard, profile, etc.)
+  EXPECT: - No "Employee profile not found" errors
+          - Verification status is read from users.identity_verified
+            (NOT from the old employees.is_verified column)
+
+TC-5.2  Job Application Uses users.identity_verified
+  PRE:    Log in as an employee with identity_verified = true
+  STEPS:  1. Go to Job Board tab
+          2. Apply to a job that requires identity verification
+  EXPECT: Application succeeds (no error about missing is_verified column)
+
+
+================================================================================
+FLOW 6: COMPANY ADMIN DASHBOARD — TEAM FEEDBACK TAB REMOVED
+================================================================================
+
+TC-6.1  No Team Feedback Tab in Company Admin Dashboard
+  PRE:    Log in as Company Admin
+  STEPS:  1. Go to Company Admin Dashboard
+          2. Look at the available tabs
+  EXPECT: - "Team Feedback" tab does NOT exist
+          - All other tabs (Employees, Reviews, EOTM, EOTY, Job Positions, etc.)
+            are present and functional
+
+
+================================================================================
+FLOW 7: EMPLOYMENT MANAGEMENT — END REQUEST FLOW
+================================================================================
+
+TC-7.1  Employee Can Request End of Employment
+  PRE:    Log in as Employee B (current verified employee at TechCorp)
+  STEPS:  1. Go to Employee Dashboard → Employment tab
+          2. Find TechCorp employment
+          3. Click "Request End" (or equivalent)
+          4. Provide a reason
+  EXPECT: - Employment shows end_requested_at is set
+          - Company Admin can see the end request
+
+TC-7.2  Company Admin Can Process End Request
+  PRE:    Log in as Company Admin
+  STEPS:  1. Go to Company Admin Dashboard → Employees tab
+          2. Find the employee with a pending end request
+          3. Approve/process the end request
+  EXPECT: - Employee's is_current is set to false
+          - Employee loses all access per Flow 4 test cases
+
+
+================================================================================
+EDGE CASES
+================================================================================
+
+TC-E.1  Employee with Multiple Employments — Ending One Doesn't Affect Others
+  PRE:    Employee has verified employment at Company X AND Company Y
+  STEPS:  1. Company X admin ends the employee
+  EXPECT: - Employee can still give feedback at Company Y
+          - Employee can still vote in EOTM/EOTY at Company Y
+          - Employee cannot give feedback at Company X
+          - Employee cannot vote in EOTM/EOTY at Company X
+
+TC-E.2  Employee with No Employments — Clean State
+  PRE:    New employee account with no employments
+  STEPS:  1. Go to Employee Dashboard
+  EXPECT: - Overview shows 0 Verified Employments
+          - "Give Peer Feedback" quick action is NOT visible
+          - Feedback tab: "Give Feedback" button is NOT visible
+          - EOTM/EOTY tabs are visible but show no company events
+          - Job Board tab is functional (can browse + apply)
+
+TC-E.3  Rehire After Being Ended
+  PRE:    Employee A was previously ended from TechCorp
+  STEPS:  1. Company Admin posts a new job
+          2. Employee A applies and gets hired again
+          3. Employee A accepts hire invite
+  EXPECT: - A new employment record is created (is_current = true)
+          - Employee A regains full access: EOTM, EOTY, feedback
+          - Employee A appears in CA Employees tab again
+          - Employee A appears as a nominee in EOTM/EOTY events
+
+
+================================================================================
+END OF TEST CASES
+================================================================================

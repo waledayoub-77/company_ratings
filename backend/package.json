@@ -32,6 +32,7 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.1.1",
     "nodemailer": "^8.0.1",
+    "pg": "^8.20.0",
     "resend": "^6.9.2",
     "sentiment": "^5.0.2",
     "validator": "^13.11.0",

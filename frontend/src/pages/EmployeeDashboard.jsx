@@ -31,14 +31,14 @@ import Badge from '../components/ui/Badge.jsx'
 import Reveal from '../components/ui/Reveal.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { getMyReviews, updateReview, deleteReview } from '../api/reviews.js'
-import { getMyEmployments, requestEmployment, endEmployment, cancelEmployment } from '../api/employments.js'
+import { getMyEmployments, requestEmployment, endEmployment, cancelEmployment, requestEndEmployment } from '../api/employments.js'
 import { getFeedbackReceived, reportFeedback } from '../api/feedback.js'
 import { getCompanies } from '../api/companies.js'
 import { getCompanyEotmEvents, getEotmNominees, castEotmVote, getCompanyEotmWinners } from '../api/eotm.js'
 import { getCompanyEotyEvents, getEotyNominees, castEotyVote, getCompanyEotyWinners } from '../api/eoty.js'
 import { useNotification } from '../context/NotificationContext.jsx'
 import CertificateModal from '../components/CertificateModal'
-import { getMyApplications, getAllJobPositions, applyToJob, acceptInvite, acceptHireInvite } from '../api/jobs.js'
+import { getMyApplications, getAllJobPositions, applyToJob, acceptHireInvite } from '../api/jobs.js'
 
 const statusConfig = {
   approved: { icon: CheckCircle2, color: 'text-emerald-500', badge: 'success', label: 'Verified' },
@@ -139,10 +139,10 @@ export default function EmployeeDashboard() {
             {activeTab === 'overview'   && <OverviewTab   user={user} employments={employments} reviews={reviews} feedback={feedback} />}
             {activeTab === 'employment' && <EmploymentTab employments={employments} refetch={refetchEmployments} />}
             {activeTab === 'reviews'    && <ReviewsTab    reviews={reviews} employments={employments} refetch={refetchReviews} />}
-            {activeTab === 'feedback'   && <FeedbackTab   feedback={feedback} />}
+            {activeTab === 'feedback'   && <FeedbackTab   feedback={feedback} employments={employments} />}
             {activeTab === 'eotm'       && <EotmVoteTab   employments={employments} user={user} />}
             {activeTab === 'eoty'       && <EotyVoteTab   employments={employments} user={user} />}
-            {activeTab === 'jobs'       && <JobBoardTab   employments={employments} />}
+            {activeTab === 'jobs'       && <JobBoardTab   employments={employments} refetchEmployments={refetchEmployments} />}
           </>
         )}
       </div>
@@ -152,7 +152,7 @@ export default function EmployeeDashboard() {
 
 /* ─── Overview Tab ─── */
 function OverviewTab({ user, employments, reviews, feedback }) {
-  const approvedEmployments = employments.filter(e => (e.verification_status ?? e.status) === 'approved')
+  const approvedEmployments = employments.filter(e => (e.verification_status ?? e.status) === 'approved' && e.is_current !== false)
   const verifiedCount = approvedEmployments.length
 
   // IDs of companies the employee is actually approved at
@@ -222,6 +222,7 @@ function OverviewTab({ user, employments, reviews, feedback }) {
 
       {/* Quick actions */}
       <div className="grid sm:grid-cols-2 gap-4">
+        {verifiedCount > 0 && (
         <Reveal delay={0.1}>
           <Link
             to="/feedback"
@@ -237,6 +238,7 @@ function OverviewTab({ user, employments, reviews, feedback }) {
             <ChevronRight size={18} className="text-navy-400 group-hover:translate-x-1 transition-transform" />
           </Link>
         </Reveal>
+        )}
         <Reveal delay={0.15}>
           <Link
             to="/companies"
@@ -371,6 +373,10 @@ function EmploymentTab({ employments, refetch }) {
   const [discardingId, setDiscardingId] = useState(null)
   const [discardSubmitting, setDiscardSubmitting] = useState(false)
   const [discardError, setDiscardError] = useState('')
+  const [requestEndId, setRequestEndId] = useState(null)
+  const [requestEndReason, setRequestEndReason] = useState({})
+  const [requestEndSubmitting, setRequestEndSubmitting] = useState({})
+  const [requestEndError, setRequestEndError] = useState({})
   const [companySearch, setCompanySearch] = useState('')
   const [companyResults, setCompanyResults] = useState([])
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -488,6 +494,22 @@ function EmploymentTab({ employments, refetch }) {
       setDiscardError(err?.message ?? 'Failed to cancel request.')
     } finally {
       setDiscardSubmitting(false)
+    }
+  }
+
+  const handleRequestEndEmployment = async (empId) => {
+    const reason = requestEndReason[empId]?.trim()
+    setRequestEndError(e => ({ ...e, [empId]: '' }))
+    setRequestEndSubmitting(s => ({ ...s, [empId]: true }))
+    try {
+      await requestEndEmployment(empId, { reason: reason || undefined })
+      setRequestEndId(null)
+      setRequestEndReason(r => ({ ...r, [empId]: '' }))
+      await refetch()
+    } catch (err) {
+      setRequestEndError(e => ({ ...e, [empId]: err?.message ?? 'Failed to submit request.' }))
+    } finally {
+      setRequestEndSubmitting(s => ({ ...s, [empId]: false }))
     }
   }
 
@@ -748,16 +770,19 @@ function EmploymentTab({ employments, refetch }) {
                             <Badge variant="danger">Ended</Badge>
                           )}
                           {(emp.verification_status ?? emp.status) === 'approved' && emp.is_current && (
-                            <button
-                              onClick={() => {
-                                setEndingId(endingId === emp.id ? null : emp.id)
-                                setEndError('')
-                                setEndingDate('')
-                              }}
-                              className="text-xs text-red-400 hover:text-red-600 font-medium transition-colors"
-                            >
-                              End
-                            </button>
+                            emp.end_requested_at ? (
+                              <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-medium rounded-lg">End requested</span>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  setRequestEndId(requestEndId === emp.id ? null : emp.id)
+                                  setRequestEndError(e => ({ ...e, [emp.id]: '' }))
+                                }}
+                                className="text-xs text-red-400 hover:text-red-600 font-medium transition-colors"
+                              >
+                                Request End
+                              </button>
+                            )
                           )}
                           {(emp.verification_status ?? emp.status) === 'pending' && (
                             <button
@@ -795,9 +820,9 @@ function EmploymentTab({ employments, refetch }) {
                       {emp.rejection_note && (
                         <p className="mt-2 text-xs text-red-500">Reason: {emp.rejection_note}</p>
                       )}
-                      {/* Inline end-employment confirmation */}
+                      {/* Inline request-end confirmation */}
                       <AnimatePresence>
-                        {endingId === emp.id && (
+                        {requestEndId === emp.id && (
                           <motion.div
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: 'auto' }}
@@ -806,36 +831,31 @@ function EmploymentTab({ employments, refetch }) {
                             className="overflow-hidden"
                           >
                             <div className="mt-4 pt-4 border-t border-navy-100 space-y-3">
-                              <p className="text-xs font-semibold text-navy-700">End employment at {name}?</p>
-                              <p className="text-xs text-navy-400">This will mark you as no longer current at this company. You will no longer be able to give or receive feedback here.</p>
-                              {endError && (
+                              <p className="text-xs font-semibold text-navy-700">Request to end employment at {name}?</p>
+                              <p className="text-xs text-navy-400">The company admin will review your request and approve or reject it.</p>
+                              {requestEndError[emp.id] && (
                                 <div className="flex items-center gap-1.5 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                                  <AlertCircle size={12} />{endError}
+                                  <AlertCircle size={12} />{requestEndError[emp.id]}
                                 </div>
                               )}
-                              <div className="flex items-center gap-3">
-                                <div className="space-y-1">
-                                  <label className="block text-[11px] font-medium text-navy-600">End date (leave blank for today)</label>
-                                  <input
-                                    type="date"
-                                    value={endingDate}
-                                    max={new Date().toISOString().split('T')[0]}
-                                    onChange={e => setEndingDate(e.target.value)}
-                                    className="h-9 rounded-xl border border-navy-200 bg-white px-3 text-xs focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
-                                  />
-                                </div>
-                              </div>
+                              <input
+                                type="text"
+                                placeholder="Reason (optional)"
+                                value={requestEndReason[emp.id] ?? ''}
+                                onChange={e => setRequestEndReason(r => ({ ...r, [emp.id]: e.target.value }))}
+                                className="w-full h-9 rounded-xl border border-navy-200 bg-white px-3 text-xs focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
+                              />
                               <div className="flex items-center gap-2">
                                 <button
-                                  onClick={() => handleEndEmployment(emp.id)}
-                                  disabled={endSubmitting}
+                                  onClick={() => handleRequestEndEmployment(emp.id)}
+                                  disabled={!!requestEndSubmitting[emp.id]}
                                   className="h-8 px-4 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-all disabled:opacity-50 inline-flex items-center gap-1.5"
                                 >
-                                  {endSubmitting ? <Loader2 size={11} className="animate-spin" /> : null}
-                                  Confirm End
+                                  {requestEndSubmitting[emp.id] ? <Loader2 size={11} className="animate-spin" /> : null}
+                                  Submit Request
                                 </button>
                                 <button
-                                  onClick={() => { setEndingId(null); setEndError('') }}
+                                  onClick={() => { setRequestEndId(null); setRequestEndError(e => ({ ...e, [emp.id]: '' })) }}
                                   className="h-8 px-4 text-xs text-navy-500 hover:text-navy-700 transition-colors"
                                 >
                                   Cancel
@@ -1087,7 +1107,7 @@ function ReviewsTab({ reviews, employments = [], refetch }) {
 }
 
 /* ─── Feedback Tab ─── */
-function FeedbackTab({ feedback }) {
+function FeedbackTab({ feedback, employments }) {
   const [reportingId, setReportingId] = useState(null)
   const [reportReason, setReportReason] = useState('')
   const [reportDescription, setReportDescription] = useState('')
@@ -1145,13 +1165,15 @@ function FeedbackTab({ feedback }) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-navy-900">Feedback Received</h2>
-        <Link
-          to="/feedback"
-          className="h-10 px-5 bg-navy-900 text-white text-sm font-medium rounded-xl inline-flex items-center gap-2 hover:bg-navy-800 transition-all"
-        >
-          <MessageSquare size={15} />
-          Give Feedback
-        </Link>
+        {(employments || []).some(e => (e.verification_status ?? e.status) === 'approved' && e.is_current !== false) && (
+          <Link
+            to="/feedback"
+            className="h-10 px-5 bg-navy-900 text-white text-sm font-medium rounded-xl inline-flex items-center gap-2 hover:bg-navy-800 transition-all"
+          >
+            <MessageSquare size={15} />
+            Give Feedback
+          </Link>
+        )}
       </div>
 
       {/* Avg scores */}
@@ -1297,7 +1319,7 @@ const EOTM_MONTHS = ['January','February','March','April','May','June','July','A
 
 function EotmVoteTab({ employments, user }) {
   const { addNotification } = useNotification()
-  const approvedEmployments = employments.filter(e => (e.verification_status ?? e.status) === 'approved')
+  const approvedEmployments = employments.filter(e => (e.verification_status ?? e.status) === 'approved' && e.is_current !== false)
   const [selectedCompany, setSelectedCompany] = useState(approvedEmployments[0]?.company_id ?? null)
   const [events, setEvents]     = useState([])
   const [nominees, setNominees] = useState({})
@@ -1386,7 +1408,7 @@ function EotmVoteTab({ employments, user }) {
         </div>
       ) : (
         <div className="space-y-3">
-          {events.filter(ev => ev.status === 'open').map((ev, i) => (
+          {events.map((ev, i) => (
             <Reveal key={ev.id} delay={i * 0.05}>
               <div className="bg-white rounded-2xl border border-navy-100/50 p-5 hover:border-navy-200 transition-all">
                 <div className="flex items-center justify-between mb-3">
@@ -1396,13 +1418,13 @@ function EotmVoteTab({ employments, user }) {
                     </p>
                     <p className="text-xs text-navy-400">{(ev.total_votes ?? 0) > 0 ? `${ev.total_votes} total votes` : 'No votes yet'}</p>
                   </div>
-                  <Badge variant="success">Open for Voting</Badge>
+                  <Badge variant={ev.status === 'open' ? 'success' : 'default'}>{ev.status === 'open' ? 'Open for Voting' : 'Closed'}</Badge>
                 </div>
                 <button
                   onClick={() => loadNominees(ev.id)}
                   className="text-xs text-navy-500 hover:text-navy-700 font-medium transition-colors"
                 >
-                  {expanded === ev.id ? 'Hide Nominees' : 'View & Vote'}
+                  {expanded === ev.id ? 'Hide Nominees' : ev.status === 'open' ? 'View & Vote' : 'View Results'}
                 </button>
 
                 <AnimatePresence>
@@ -1415,7 +1437,7 @@ function EotmVoteTab({ employments, user }) {
                     >
                       <div className="mt-4 pt-4 border-t border-navy-100 space-y-2">
                         {(nominees[ev.id] ?? []).length === 0 ? (
-                          <p className="text-xs text-navy-400 text-center py-3">No nominees yet. Cast the first vote!</p>
+                          <p className="text-xs text-navy-400 text-center py-3">{ev.status === 'open' ? 'No nominees yet. Cast the first vote!' : 'No nominees in this event.'}</p>
                         ) : (nominees[ev.id] ?? []).map((nom, j) => (
                           <div key={j} className="flex items-center justify-between bg-navy-50/50 rounded-xl px-4 py-3">
                             <div className="flex items-center gap-3">
@@ -1431,13 +1453,15 @@ function EotmVoteTab({ employments, user }) {
                                 )}
                               </div>
                             </div>
-                            <button
-                              onClick={() => handleVote(ev.id, nom.employee_id)}
-                              disabled={voting === nom.employee_id}
-                              className="h-8 px-3 border border-amber-300 text-amber-700 text-xs font-medium rounded-lg hover:bg-amber-50 transition-colors disabled:opacity-50"
-                            >
-                              {voting === nom.employee_id ? <Loader2 size={11} className="animate-spin" /> : 'Vote'}
-                            </button>
+                            {ev.status === 'open' && (
+                              <button
+                                onClick={() => handleVote(ev.id, nom.employee_id)}
+                                disabled={voting === nom.employee_id}
+                                className="h-8 px-3 border border-amber-300 text-amber-700 text-xs font-medium rounded-lg hover:bg-amber-50 transition-colors disabled:opacity-50"
+                              >
+                                {voting === nom.employee_id ? <Loader2 size={11} className="animate-spin" /> : 'Vote'}
+                              </button>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -1509,7 +1533,7 @@ function EotmVoteTab({ employments, user }) {
 /* ─── EOTY Vote Tab ─── */
 function EotyVoteTab({ employments, user }) {
   const { addNotification } = useNotification()
-  const approvedEmps = employments.filter(e => (e.verification_status ?? e.status) === 'approved')
+  const approvedEmps = employments.filter(e => (e.verification_status ?? e.status) === 'approved' && e.is_current !== false)
   const [events, setEvents] = useState([])
   const [winners, setWinners] = useState([])
   const [loading, setLoading] = useState(true)
@@ -1556,22 +1580,22 @@ function EotyVoteTab({ employments, user }) {
 
   if (loading) return <div className="py-20 text-center text-navy-400 text-sm"><Loader2 size={20} className="animate-spin mx-auto" /></div>
 
-  const activeEvents = events.filter(e => e.status === 'open' || e.status === 'active')
-
   return (
     <div className="space-y-6">
       <h2 className="text-lg font-semibold text-navy-900 flex items-center gap-2">
         <Trophy size={18} className="text-amber-500" /> Employee of the Year
       </h2>
 
-      {activeEvents.length === 0 && (
+      {events.length === 0 && (
         <div className="bg-white rounded-2xl border border-navy-100/50 p-12 text-center">
           <Trophy size={32} className="text-navy-200 mx-auto mb-3" />
-          <p className="text-sm text-navy-400">No active EOTY events at your companies right now.</p>
+          <p className="text-sm text-navy-400">No EOTY events at your companies right now.</p>
         </div>
       )}
 
-      {activeEvents.map((ev, i) => (
+      {events.map((ev, i) => {
+        const isOpen = ev.status === 'open' || ev.status === 'active'
+        return (
         <Reveal key={ev.id} delay={i * 0.05}>
           <div className="bg-white rounded-2xl border border-navy-100/50 p-5 space-y-3">
             <div className="flex items-center justify-between">
@@ -1581,11 +1605,11 @@ function EotyVoteTab({ employments, user }) {
                   <p className="text-sm font-semibold text-navy-900">Year {ev.year}</p>
                   <p className="text-xs text-navy-400">{(ev.total_votes ?? 0) > 0 ? `${ev.total_votes} total votes` : 'No votes yet'}</p>
                 </div>
-                <Badge variant="success">Open for Voting</Badge>
+                <Badge variant={isOpen ? 'success' : 'default'}>{isOpen ? 'Open for Voting' : 'Closed'}</Badge>
               </div>
               <button onClick={() => loadNominees(ev.id)}
                 className="text-xs text-navy-500 hover:text-navy-700 font-medium transition-colors">
-                {expanded === ev.id ? 'Hide Nominees' : 'View & Vote'}
+                {expanded === ev.id ? 'Hide Nominees' : isOpen ? 'View & Vote' : 'View Results'}
               </button>
             </div>
 
@@ -1594,7 +1618,7 @@ function EotyVoteTab({ employments, user }) {
                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                   <div className="border-t border-navy-100 pt-3 space-y-2">
                     {(nominees[ev.id] ?? []).length === 0 ? (
-                      <p className="text-xs text-navy-400 text-center py-3">No nominees yet. Cast the first vote!</p>
+                      <p className="text-xs text-navy-400 text-center py-3">{isOpen ? 'No nominees yet. Cast the first vote!' : 'No nominees in this event.'}</p>
                     ) : (nominees[ev.id] ?? []).map((nom, j) => (
                       <div key={j} className="flex items-center justify-between bg-navy-50/50 rounded-xl px-4 py-3">
                         <div className="flex items-center gap-3">
@@ -1610,10 +1634,12 @@ function EotyVoteTab({ employments, user }) {
                             )}
                           </div>
                         </div>
-                        <button onClick={() => handleVote(ev.id, nom.employee_id ?? nom.nominee_id)} disabled={!!voting[nom.employee_id ?? nom.nominee_id]}
-                          className="h-8 px-4 bg-amber-500 text-white text-xs font-semibold rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50">
-                          {voting[nom.employee_id ?? nom.nominee_id] ? <Loader2 size={12} className="animate-spin" /> : 'Vote'}
-                        </button>
+                        {isOpen && (
+                          <button onClick={() => handleVote(ev.id, nom.employee_id ?? nom.nominee_id)} disabled={!!voting[nom.employee_id ?? nom.nominee_id]}
+                            className="h-8 px-4 bg-amber-500 text-white text-xs font-semibold rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50">
+                            {voting[nom.employee_id ?? nom.nominee_id] ? <Loader2 size={12} className="animate-spin" /> : 'Vote'}
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1622,7 +1648,8 @@ function EotyVoteTab({ employments, user }) {
             </AnimatePresence>
           </div>
         </Reveal>
-      ))}
+        )
+      })}
 
       {winners.length > 0 && (
         <Reveal delay={0.1}>
@@ -1667,14 +1694,15 @@ function EotyVoteTab({ employments, user }) {
 }
 
 /* ─── Job Board Tab ─── */
-function JobBoardTab({ employments }) {
+function JobBoardTab({ employments, refetchEmployments }) {
+  const { user } = useAuth()
   const [jobs, setJobs] = useState([])
   const [myApps, setMyApps] = useState([])
   const [loading, setLoading] = useState(true)
   const [applying, setApplying] = useState({})
   const [coverLetter, setCoverLetter] = useState({})
   const [cvFiles, setCvFiles] = useState({})
-  const [acceptingInvite, setAcceptingInvite] = useState({})
+  const [acceptingHire, setAcceptingHire] = useState({})
 
   const loadData = () => {
     Promise.all([getAllJobPositions(), getMyApplications()])
@@ -1705,24 +1733,15 @@ function JobBoardTab({ employments }) {
     finally { setApplying(a => ({ ...a, [positionId]: false })) }
   }
 
-  const handleAcceptInvite = async (appId) => {
-    setAcceptingInvite(a => ({ ...a, [appId]: true }))
-    try {
-      await acceptInvite(appId)
-      const updatedApps = await getMyApplications()
-      setMyApps(updatedApps?.data ?? [])
-    } catch (e) { alert(e?.message || 'Failed to accept invitation.') }
-    finally { setAcceptingInvite(a => ({ ...a, [appId]: false })) }
-  }
-
   const handleAcceptHireInvite = async (appId) => {
-    setAcceptingInvite(a => ({ ...a, [`hire_${appId}`]: true }))
+    setAcceptingHire(a => ({ ...a, [appId]: true }))
     try {
       await acceptHireInvite(appId)
       const updatedApps = await getMyApplications()
       setMyApps(updatedApps?.data ?? [])
+      refetchEmployments?.()
     } catch (e) { alert(e?.message || 'Failed to accept employment offer.') }
-    finally { setAcceptingInvite(a => ({ ...a, [`hire_${appId}`]: false })) }
+    finally { setAcceptingHire(a => ({ ...a, [appId]: false })) }
   }
 
   if (loading) return <div className="py-20 text-center text-navy-400 text-sm"><Loader2 size={20} className="animate-spin mx-auto" /></div>
@@ -1740,6 +1759,16 @@ function JobBoardTab({ employments }) {
         <Briefcase size={18} className="text-navy-500" /> Job Board
       </h2>
 
+      {/* Verification warning */}
+      {user?.isVerified === false && (
+        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <ShieldCheck size={16} className="text-amber-600 shrink-0 mt-0.5" />
+          <p className="text-xs text-amber-700">
+            Your account must be <strong>verified by a system admin</strong> before you can apply for jobs or accept employment offers.
+          </p>
+        </div>
+      )}
+
       {/* My applications */}
       {myApps.length > 0 && (
         <Reveal delay={0.05}>
@@ -1747,8 +1776,6 @@ function JobBoardTab({ employments }) {
             <h3 className="text-sm font-semibold text-navy-900 mb-3">My Applications ({myApps.length})</h3>
             <div className="space-y-2">
               {myApps.map(app => {
-                const hasInvite = !!app.invite_sent_at
-                const inviteAccepted = !!app.invite_accepted_at
                 const hireInviteSent = !!app.hire_invite_sent_at
                 const hireInviteAccepted = !!app.hire_invite_accepted_at
                 return (
@@ -1762,35 +1789,18 @@ function JobBoardTab({ employments }) {
                         </p>
                       </div>
                       <div className="flex items-center gap-2 flex-wrap justify-end">
-                        {/* Interview invite */}
-                        {hasInvite && !inviteAccepted && app.status === 'interview' && (
-                          <button
-                            onClick={() => handleAcceptInvite(app.id)}
-                            disabled={!!acceptingInvite[app.id]}
-                            className="h-7 px-3 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-1"
-                          >
-                            {acceptingInvite[app.id] ? <Loader2 size={11} className="animate-spin" /> : null}
-                            Accept Interview
-                          </button>
-                        )}
-                        {inviteAccepted && app.status === 'interview' && (
-                          <span className="px-2 py-1 bg-indigo-50 text-indigo-700 text-[11px] font-medium rounded-lg border border-indigo-200">Interview Accepted ✓</span>
-                        )}
-                        {/* Employment offer */}
-                        {hireInviteSent && !hireInviteAccepted && app.status === 'approved' && (
+                        {/* Hire offer — shown when admin sent hire invite (from interview status) */}
+                        {hireInviteSent && !hireInviteAccepted && app.status === 'interview' && (
                           <button
                             onClick={() => handleAcceptHireInvite(app.id)}
-                            disabled={!!acceptingInvite[`hire_${app.id}`]}
+                            disabled={!!acceptingHire[app.id]}
                             className="h-7 px-3 bg-emerald-700 text-white text-xs font-semibold rounded-lg hover:bg-emerald-800 disabled:opacity-50 flex items-center gap-1"
                           >
-                            {acceptingInvite[`hire_${app.id}`] ? <Loader2 size={11} className="animate-spin" /> : null}
+                            {acceptingHire[app.id] ? <Loader2 size={11} className="animate-spin" /> : null}
                             Accept Employment
                           </button>
                         )}
-                        {hireInviteSent && !hireInviteAccepted && app.status === 'approved' && (
-                          <span className="px-2 py-1 bg-amber-50 text-amber-700 text-[11px] font-medium rounded-lg border border-amber-200">Offer Pending</span>
-                        )}
-                        {hireInviteAccepted && (
+                        {app.status === 'approved' && hireInviteAccepted && (
                           <span className="px-2 py-1 bg-emerald-50 text-emerald-700 text-[11px] font-semibold rounded-lg border border-emerald-200">Employed ✓</span>
                         )}
                         <span className={`px-2.5 py-1 rounded-full border text-xs font-semibold ${APP_STATUS_COLORS[app.status] ?? APP_STATUS_COLORS.pending}`}>

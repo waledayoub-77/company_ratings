@@ -118,3 +118,34 @@ export async function endEmploymentByAdmin(id, data) {
     body: JSON.stringify(data),
   })
 }
+
+/**
+ * GET /employments/current — company admin: list currently employed employees
+ */
+export async function getCurrentEmployees() {
+  return authRequest('/employments/current')
+}
+
+/**
+ * PATCH /employments/:id/request-end — employee requests to end their employment
+ */
+export async function requestEndEmployment(id, data = {}) {
+  return authRequest(`/employments/${id}/request-end`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
+/**
+ * PATCH /employments/:id/approve-end-request — company admin approves end request
+ */
+export async function approveEndRequest(id) {
+  return authRequest(`/employments/${id}/approve-end-request`, { method: 'PATCH' })
+}
+
+/**
+ * PATCH /employments/:id/reject-end-request — company admin rejects end request
+ */
+export async function rejectEndRequest(id) {
+  return authRequest(`/employments/${id}/reject-end-request`, { method: 'PATCH' })
+}

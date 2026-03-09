@@ -171,6 +171,17 @@ const applyToJob = async (positionId, applicantUserId, { cvUrl, coverLetter }) =
 
   if (!employee) throw new AppError('Employee profile not found. Please complete your profile first.', 400);
 
+  // Gate: employee must be verified by system admin before applying
+  const { data: applicantUser } = await supabase
+    .from('users')
+    .select('identity_verified')
+    .eq('id', applicantUserId)
+    .single();
+
+  if (!applicantUser?.identity_verified) {
+    throw new AppError('You must be verified by a system admin before applying for jobs. Please submit your ID document on your Profile page and wait for approval.', 403);
+  }
+
   // Check for duplicate application
   const { data: existing } = await supabase
     .from('job_applications')
@@ -249,10 +260,10 @@ const updateApplicationStatus = async (applicationId, userId, { status, adminNot
     throw new AppError('Only the company admin can update application status', 403);
   }
 
-  // Valid transitions
+  // Valid transitions — 'interview→approved' only happens when employee accepts hire invite
   const validTransitions = {
     pending: ['interview', 'rejected'],
-    interview: ['approved', 'rejected'],
+    interview: ['rejected'],
   };
 
   const allowed = validTransitions[application.status];
@@ -276,36 +287,6 @@ const updateApplicationStatus = async (applicationId, userId, { status, adminNot
     .single();
 
   if (error) throw new AppError('Failed to update application status', 500);
-
-  // If approved, create employment record
-  if (status === 'approved') {
-    // applicant_id is an employee_id in the DB
-    const employeeId = application.applicant_id;
-
-    if (employeeId) {
-      // Soft-delete any prior approved ended records to avoid unique constraint issues
-      await supabase
-        .from('employments')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('employee_id', employeeId)
-        .eq('company_id', application.company_id)
-        .eq('verification_status', 'approved')
-        .eq('is_current', false)
-        .is('deleted_at', null);
-
-      await supabase.from('employments').insert({
-        employee_id: employeeId,
-        company_id: application.company_id,
-        position: application.job_positions.title,
-        is_current: true,
-        verification_status: 'approved',
-        source: 'job_application',
-        start_date: new Date().toISOString().split('T')[0],
-        verified_at: new Date().toISOString(),
-        verified_by: userId,
-      });
-    }
-  }
 
   return { data, companyName: company.name, positionTitle: application.job_positions.title };
 };
@@ -374,7 +355,7 @@ const sendInvite = async (applicationId, userId) => {
 };
 
 /**
- * Send hire invitation (admin — for approved applications)
+ * Send hire invitation (admin — for applications in interview status)
  */
 const sendHireInvite = async (applicationId, userId) => {
   const { data: application, error: appErr } = await supabase
@@ -384,7 +365,7 @@ const sendHireInvite = async (applicationId, userId) => {
     .single();
 
   if (appErr || !application) throw new AppError('Application not found', 404);
-  if (application.status !== 'approved') throw new AppError('Application must be approved before sending a hire invitation', 400);
+  if (application.status !== 'interview') throw new AppError('Application must be in interview status before sending a hire invitation', 400);
 
   const { data: company } = await supabase
     .from('companies')
@@ -413,18 +394,25 @@ const sendHireInvite = async (applicationId, userId) => {
 };
 
 /**
- * Accept hire invitation (employee)
+ * Accept hire invitation (employee) — creates employment record
  */
 const acceptHireInvite = async (applicationId, userId) => {
   const { data: employee } = await supabase
     .from('employees')
-    .select('id, is_verified')
+    .select('id')
     .eq('user_id', userId)
     .is('deleted_at', null)
     .maybeSingle();
 
   if (!employee) throw new AppError('Employee profile not found', 404);
-  if (!employee.is_verified) throw new AppError('Your account must be verified by a system admin before you can accept employment offers.', 403);
+
+  const { data: hireUser } = await supabase
+    .from('users')
+    .select('identity_verified')
+    .eq('id', userId)
+    .single();
+
+  if (!hireUser?.identity_verified) throw new AppError('Your account must be verified by a system admin before you can accept employment offers.', 403);
 
   // Enforce single current employment constraint
   const { data: activeEmployment } = await supabase
@@ -438,7 +426,7 @@ const acceptHireInvite = async (applicationId, userId) => {
 
   if (activeEmployment) {
     throw new AppError(
-      'You are currently employed. Your current employment must be ended by your company admin before you can accept a new employment offer.',
+      'You are currently employed at another company. You must end your current employment before accepting a new offer.',
       400
     );
   }
@@ -451,12 +439,18 @@ const acceptHireInvite = async (applicationId, userId) => {
     .single();
 
   if (appErr || !application) throw new AppError('Application not found', 404);
+  if (application.status !== 'interview') throw new AppError('Application is not in interview status', 400);
   if (!application.hire_invite_sent_at) throw new AppError('No hire invitation has been sent for this application', 400);
   if (application.hire_invite_accepted_at) throw new AppError('Hire invitation already accepted', 400);
 
+  // Update application: accepted + set status to 'approved'
   const { data, error } = await supabase
     .from('job_applications')
-    .update({ hire_invite_accepted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .update({
+      hire_invite_accepted_at: new Date().toISOString(),
+      status: 'approved',
+      updated_at: new Date().toISOString(),
+    })
     .eq('id', applicationId)
     .select()
     .single();
@@ -468,6 +462,29 @@ const acceptHireInvite = async (applicationId, userId) => {
     .select('name, user_id')
     .eq('id', application.company_id)
     .single();
+
+  // Create employment record
+  // Soft-delete any prior approved ended records to avoid unique constraint issues
+  await supabase
+    .from('employments')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('employee_id', employee.id)
+    .eq('company_id', application.company_id)
+    .eq('verification_status', 'approved')
+    .eq('is_current', false)
+    .is('deleted_at', null);
+
+  await supabase.from('employments').insert({
+    employee_id: employee.id,
+    company_id: application.company_id,
+    position: application.job_positions.title,
+    is_current: true,
+    verification_status: 'approved',
+    source: 'job_application',
+    start_date: new Date().toISOString().split('T')[0],
+    verified_at: new Date().toISOString(),
+    verified_by: company?.user_id,
+  });
 
   return { data, companyName: company?.name, positionTitle: application.job_positions.title, adminUserId: company?.user_id };
 };

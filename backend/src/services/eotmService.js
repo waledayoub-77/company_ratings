@@ -105,9 +105,10 @@ const castVote = async (eventId, userId, candidateEmployeeId) => {
     .eq('employee_id', voterEmployeeId)
     .eq('company_id', event.company_id)
     .eq('verification_status', 'approved')
+    .eq('is_current', true)
     .limit(1);
 
-  if (!voterEmps || voterEmps.length === 0) throw new AppError('You must be a verified employee to vote', 403);
+  if (!voterEmps || voterEmps.length === 0) throw new AppError('You must be a current verified employee to vote', 403);
 
   // Check existing vote (unique constraint: event_id + voter_id)
   const { data: existingVote } = await supabase
@@ -262,7 +263,8 @@ const getEventNominees = async (eventId, userRole) => {
     .from('employments')
     .select('employee_id, employees!inner(id, full_name, user_id)')
     .eq('company_id', event.company_id)
-    .eq('verification_status', 'approved');
+    .eq('verification_status', 'approved')
+    .eq('is_current', true);
 
   // Get vote counts (candidate_id is employee id)
   const { data: votes } = await supabase

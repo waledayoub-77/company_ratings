@@ -18,7 +18,6 @@ import {
   Award,
   Trophy,
   Calendar,
-  Mail,
   Plus,
   Briefcase,
   Trash2,
@@ -44,14 +43,13 @@ import Button from '../components/ui/Button.jsx'
 import Input from '../components/ui/Input.jsx'
 import { useAuth } from '../context/AuthContext'
 import { getCompanyStats, getCompanyAnalytics, getCompanyReviews, getCompanyById, updateCompany } from '../api/companies'
-import { getPendingEmployments, approveEmployment, rejectEmployment, getAllEmploymentsForAdmin, inviteEmployee, getPendingInvites, cancelInvite, resendInvite, endEmploymentByAdmin } from '../api/employments'
-import { getFeedbackReceived } from '../api/feedback'
+import { getPendingEmployments, approveEmployment, rejectEmployment, getAllEmploymentsForAdmin, endEmploymentByAdmin, getCurrentEmployees, approveEndRequest, rejectEndRequest } from '../api/employments'
 import { createEotmEvent, closeEotmEvent, getCompanyEotmEvents, getEotmNominees, getCompanyEotmWinners } from '../api/eotm'
 import { createEotyEvent, closeEotyEvent, getCompanyEotyEvents, getEotyNominees, getCompanyEotyWinners } from '../api/eoty'
 import { useNotification } from '../context/NotificationContext'
-import { getJobPositions, createJobPosition, closeJobPosition, deleteJobPosition, getApplications, updateApplicationStatus, sendInvite, sendHireInvite, fetchCvBlob } from '../api/jobs'
+import { getJobPositions, createJobPosition, closeJobPosition, deleteJobPosition, getApplications, updateApplicationStatus, sendHireInvite, fetchCvBlob } from '../api/jobs'
 
-const VALID_CA_TABS = ['overview', 'requests', 'reviews', 'eotm', 'eoty', 'jobs', 'feedback', 'settings']
+const VALID_CA_TABS = ['overview', 'requests', 'reviews', 'eotm', 'eoty', 'jobs', 'settings']
 
 export default function CompanyAdminDashboard() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -63,7 +61,6 @@ export default function CompanyAdminDashboard() {
   const [activeEotmCount, setActiveEotmCount] = useState(0)
   const [activeEotyCount, setActiveEotyCount] = useState(0)
   const [jobCount, setJobCount] = useState(0)
-  const [feedbackCount, setFeedbackCount] = useState(0)
   const [companyName, setCompanyName] = useState('')
   const { user } = useAuth()
   const companyId = user?.companyId
@@ -108,23 +105,16 @@ export default function CompanyAdminDashboard() {
         setJobCount(Array.isArray(list) ? list.filter(j => j.status === 'open' || j.is_active).length : 0)
       })
       .catch(() => {})
-    getFeedbackReceived()
-      .then(res => {
-        const list = res?.data?.feedback ?? res?.data ?? []
-        setFeedbackCount(Array.isArray(list) ? list.length : 0)
-      })
-      .catch(() => {})
   }, [companyId])
 
   const tabs = [
-    { id: 'overview', label: 'Analytics', icon: BarChart3 },
-    { id: 'requests', label: 'Employees', icon: Users, badge: pendingCount || null },
-    { id: 'reviews', label: 'Reviews', icon: FileText, badge: reviewCount || null },
-    { id: 'eotm', label: 'EOTM', icon: Award, badge: activeEotmCount || null },
-    { id: 'eoty', label: 'EOTY', icon: Trophy, badge: activeEotyCount || null },
-    { id: 'jobs', label: 'Jobs', icon: Briefcase, badge: jobCount || null },
-    { id: 'feedback', label: 'Team Feedback', icon: MessageSquare, badge: feedbackCount || null },
-    { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'overview',  label: 'Analytics', icon: BarChart3 },
+    { id: 'requests',  label: 'Employees', icon: Users, badge: pendingCount || null },
+    { id: 'reviews',   label: 'Reviews',   icon: FileText, badge: reviewCount || null },
+    { id: 'eotm',      label: 'EOTM',      icon: Award, badge: activeEotmCount || null },
+    { id: 'eoty',      label: 'EOTY',      icon: Trophy, badge: activeEotyCount || null },
+    { id: 'jobs',      label: 'Jobs',       icon: Briefcase, badge: jobCount || null },
+    { id: 'settings',  label: 'Settings',  icon: Settings },
   ]
 
   if (!companyId) return (
@@ -180,7 +170,6 @@ export default function CompanyAdminDashboard() {
         {activeTab === 'eotm'      && <EotmTab companyId={companyId} />}
         {activeTab === 'eoty'      && <EotyTab companyId={companyId} />}
         {activeTab === 'jobs'      && <JobsTab companyId={companyId} />}
-        {activeTab === 'feedback'  && <TeamFeedbackTab />}
         {activeTab === 'settings'  && <SettingsTab companyId={companyId} onNameChange={setCompanyName} />}
       </div>
     </div>
@@ -304,33 +293,27 @@ function AnalyticsTab({ companyId }) {
   )
 }
 
-/* ─── Requests Tab ─── */
-const REQ_STATUS = {
-  pending:  { badge: 'bg-amber-50 text-amber-700 border-amber-200',   icon: Clock,         label: 'Pending'  },
-  approved: { badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle2, label: 'Approved' },
-  rejected: { badge: 'bg-red-50 text-red-700 border-red-200',          icon: XCircle,       label: 'Rejected' },
-}
-
+/* ─── Employees Tab ─── */
 function RequestsTab({ companyId, onCountChange }) {
-  const [allRequests, setAllRequests] = useState([])
-  const [loading, setLoading]         = useState(true)
-  const [search, setSearch]           = useState('')
-  const [expandedId, setExpandedId]   = useState(null)
-  const [processing, setProcessing]   = useState({})
-  const [rejectNote, setRejectNote]   = useState({})
-  const [actionResult, setActionResult] = useState({})
-  const [endConfirm, setEndConfirm]   = useState({})
-  const [endReason, setEndReason]     = useState({})
+  const [employees, setEmployees] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [ending, setEnding] = useState({})
+  const [endConfirm, setEndConfirm] = useState({})
+  const [endReason, setEndReason] = useState({})
+  const [approvingEnd, setApprovingEnd] = useState({})
+  const [rejectingEnd, setRejectingEnd] = useState({})
+  const [error, setError] = useState('')
 
   const load = async () => {
     setLoading(true)
     try {
-      const res  = await getAllEmploymentsForAdmin()
+      const res = await getCurrentEmployees()
       const list = Array.isArray(res?.data) ? res.data : []
-      setAllRequests(list)
-      onCountChange?.(list.filter(r => r.verification_status === 'pending').length)
+      setEmployees(list)
+      // badge: count of pending end requests
+      onCountChange?.(list.filter(e => !!e.end_requested_at).length)
     } catch {
-      setAllRequests([])
+      setEmployees([])
     } finally {
       setLoading(false)
     }
@@ -338,351 +321,196 @@ function RequestsTab({ companyId, onCountChange }) {
 
   useEffect(() => { load() }, [])
 
-  const handle = async (id, action) => {
-    setProcessing(p => ({ ...p, [id]: true }))
+  const handleEnd = async (emp) => {
+    setEnding(s => ({ ...s, [emp.id]: true }))
+    setError('')
     try {
-      if (action === 'approve') {
-        await approveEmployment(id)
-      } else {
-        await rejectEmployment(id, { rejectionNote: rejectNote[id] ?? '' })
-      }
-      setActionResult(r => ({ ...r, [id]: action }))
-      // update in-place so it's instant
-      setAllRequests(prev => prev.map(r =>
-        r.id === id
-          ? { ...r, verification_status: action === 'approve' ? 'approved' : 'rejected', rejection_note: rejectNote[id] ?? '' }
-          : r
-      ))
-      onCountChange?.(allRequests.filter(r =>
-        r.id !== id && r.verification_status === 'pending'
-      ).length)
-      setExpandedId(null)
+      await endEmploymentByAdmin(emp.id, { reason: endReason[emp.id]?.trim() || undefined })
+      setEndConfirm(c => ({ ...c, [emp.id]: false }))
+      setEndReason(r => ({ ...r, [emp.id]: '' }))
+      await load()
     } catch (e) {
-      setActionResult(r => ({ ...r, [id]: { error: true, msg: e?.message || 'Action failed' } }))
+      setError(e?.message || 'Failed to end employment')
     } finally {
-      setProcessing(p => ({ ...p, [id]: false }))
+      setEnding(s => ({ ...s, [emp.id]: false }))
     }
   }
 
-  const filtered = allRequests.filter(r => {
-    if (!search.trim()) return true
-    const q = search.toLowerCase()
-    const name = (r.employees?.full_name ?? '').toLowerCase()
-    const pos  = (r.position ?? '').toLowerCase()
-    const dept = (r.department ?? '').toLowerCase()
-    return name.includes(q) || pos.includes(q) || dept.includes(q)
-  })
+  const handleApproveEnd = async (emp) => {
+    setApprovingEnd(s => ({ ...s, [emp.id]: true }))
+    setError('')
+    try {
+      await approveEndRequest(emp.id)
+      await load()
+    } catch (e) {
+      setError(e?.message || 'Failed to approve end request')
+    } finally {
+      setApprovingEnd(s => ({ ...s, [emp.id]: false }))
+    }
+  }
 
-  const pending  = filtered.filter(r => r.verification_status === 'pending')
-  const resolved = filtered.filter(r => r.verification_status !== 'pending')
-  const groups   = [
-    { label: 'Pending', items: pending },
-    { label: 'Resolved', items: resolved },
-  ]
+  const handleRejectEnd = async (emp) => {
+    setRejectingEnd(s => ({ ...s, [emp.id]: true }))
+    setError('')
+    try {
+      await rejectEndRequest(emp.id)
+      await load()
+    } catch (e) {
+      setError(e?.message || 'Failed to reject end request')
+    } finally {
+      setRejectingEnd(s => ({ ...s, [emp.id]: false }))
+    }
+  }
 
   if (loading) return <div className="py-20 text-center text-navy-400 text-sm"><Loader2 size={20} className="animate-spin mx-auto" /></div>
 
+  const withEndRequest = employees.filter(e => !!e.end_requested_at)
+  const regular = employees.filter(e => !e.end_requested_at)
+
   return (
     <div className="space-y-5">
-      {/* Header + search */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+      <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-navy-900">
-          Employment Requests
-          <span className="ml-2 text-sm font-normal text-navy-400">({allRequests.length})</span>
+          Employees
+          <span className="ml-2 text-sm font-normal text-navy-400">({employees.length})</span>
         </h2>
-        <div className="relative w-full sm:w-72">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-navy-400 pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search by name, position, department…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full h-10 rounded-xl border border-navy-200 bg-white pl-8 pr-4 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
-          />
-        </div>
       </div>
 
-      {filtered.length === 0 && (
-        <div className="bg-white rounded-2xl border border-navy-100/50 p-12 text-center">
-          <Search size={28} className="text-navy-200 mx-auto mb-3" />
-          <p className="text-sm text-navy-400">{search ? `No requests match "${search}"` : 'No employment requests yet.'}</p>
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError('')} className="text-red-400 hover:text-red-600 text-xs font-semibold">✕</button>
         </div>
       )}
 
-      {groups.map(({ label, items }) => items.length === 0 ? null : (
-        <div key={label} className="space-y-3">
-          <h3 className="text-xs font-semibold uppercase tracking-widest text-navy-400">{label} ({items.length})</h3>
-          {items.map((req, i) => {
-            const name     = req.employees?.full_name ?? 'Unknown'
+      {employees.length === 0 && (
+        <div className="bg-white rounded-2xl border border-navy-100/50 p-12 text-center">
+          <Users size={32} className="text-navy-200 mx-auto mb-3" />
+          <p className="text-sm text-navy-400">No employees yet. Hire employees via the Jobs tab.</p>
+        </div>
+      )}
+
+      {/* Pending end requests */}
+      {withEndRequest.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-xs font-semibold uppercase tracking-widest text-amber-600">Pending End Requests ({withEndRequest.length})</h3>
+          {withEndRequest.map((emp, i) => {
+            const name = emp.employees?.full_name ?? 'Unknown'
             const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-            const status   = req.verification_status ?? 'pending'
-            const cfg      = REQ_STATUS[status] ?? REQ_STATUS.pending
-            const Icon     = cfg.icon
-            const isOpen   = expandedId === req.id
-            const isProcessing = !!processing[req.id]
-
             return (
-              <Reveal key={req.id} delay={i * 0.05}>
-                <div className={`bg-white rounded-2xl border transition-all ${
-                  isOpen ? 'border-navy-300 shadow-md shadow-navy-900/5' : 'border-navy-100/50 hover:border-navy-200'
-                }`}>
-                  {/* Row — always visible */}
-                  <button
-                    type="button"
-                    onClick={() => setExpandedId(isOpen ? null : req.id)}
-                    className="w-full text-left px-6 py-4"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-navy-400 to-navy-700 flex items-center justify-center shrink-0">
-                        <span className="text-white text-sm font-semibold">{initials}</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-navy-900 truncate">{name}</p>
-                        <p className="text-xs text-navy-400 mt-0.5">
-                          {req.position ?? '–'}{req.department ? ` · ${req.department}` : ''}
-                        </p>
-                      </div>
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold ${cfg.badge}`}>
-                        <Icon size={11} />{cfg.label}
-                      </span>
-                      <ChevronDown
-                        size={16}
-                        className={`text-navy-400 transition-transform duration-200 shrink-0 ${isOpen ? 'rotate-180' : ''}`}
-                      />
+              <Reveal key={emp.id} delay={i * 0.05}>
+                <div className="bg-white rounded-2xl border border-amber-200 p-5">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shrink-0">
+                      <span className="text-white text-sm font-semibold">{initials}</span>
                     </div>
-                  </button>
-
-                  {/* Expanded panel */}
-                  <AnimatePresence>
-                    {isOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="overflow-hidden"
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-navy-900">{name}</p>
+                      <p className="text-xs text-navy-400 mt-0.5">{emp.position ?? '–'}</p>
+                      {emp.end_request_reason && (
+                        <p className="text-xs text-amber-700 mt-1">Reason: {emp.end_request_reason}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="px-2.5 py-1 rounded-full border border-amber-200 bg-amber-50 text-amber-700 text-xs font-semibold flex items-center gap-1">
+                        <Clock size={11} /> End Requested
+                      </span>
+                      <button
+                        onClick={() => handleApproveEnd(emp)}
+                        disabled={!!approvingEnd[emp.id]}
+                        className="h-8 px-4 bg-emerald-600 text-white text-xs font-semibold rounded-xl hover:bg-emerald-700 transition-colors flex items-center gap-1.5 disabled:opacity-50"
                       >
-                        <div className="px-6 pb-5 border-t border-navy-100 pt-4 space-y-4">
-                          {/* Details grid */}
-                          <div className="grid sm:grid-cols-3 gap-3 text-sm">
-                            <div>
-                              <p className="text-xs text-navy-400 mb-0.5">Start Date</p>
-                              <p className="font-medium text-navy-800">
-                                {req.start_date ? new Date(req.start_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '–'}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-navy-400 mb-0.5">End Date</p>
-                              <p className="font-medium text-navy-800">
-                                {req.end_date ? new Date(req.end_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Present'}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-navy-400 mb-0.5">Submitted</p>
-                              <p className="font-medium text-navy-800">
-                                {req.created_at ? new Date(req.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '–'}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Rejection note (already rejected) */}
-                          {status === 'rejected' && req.rejection_note && (
-                            <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
-                              <AlertCircle size={14} className="text-red-400 mt-0.5 shrink-0" />
-                              <p className="text-xs text-red-700"><span className="font-semibold">Rejection reason:</span> {req.rejection_note}</p>
-                            </div>
-                          )}
-
-                          {/* Action area — only for pending */}
-                          {status === 'pending' && (
-                            <div className="space-y-3">
-                              <div>
-                                <label className="text-xs font-medium text-navy-600 block mb-1">Rejection note <span className="text-navy-400">(optional, shown to employee)</span></label>
-                                <input
-                                  type="text"
-                                  placeholder="e.g. Could not verify employment details…"
-                                  value={rejectNote[req.id] ?? ''}
-                                  onChange={e => setRejectNote(n => ({ ...n, [req.id]: e.target.value }))}
-                                  className="w-full h-9 rounded-xl border border-navy-200 bg-white px-3 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
-                                />
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => handle(req.id, 'approve')}
-                                  disabled={isProcessing}
-                                  className="h-9 px-5 bg-emerald-600 text-white text-xs font-semibold rounded-xl hover:bg-emerald-700 transition-colors flex items-center gap-1.5 disabled:opacity-50"
-                                >
-                                  {isProcessing ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
-                                  Approve
-                                </button>
-                                <button
-                                  onClick={() => handle(req.id, 'reject')}
-                                  disabled={isProcessing}
-                                  className="h-9 px-5 border border-red-200 text-red-600 text-xs font-semibold rounded-xl hover:bg-red-50 transition-colors flex items-center gap-1.5 disabled:opacity-50"
-                                >
-                                  {isProcessing ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />}
-                                  Reject
-                                </button>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Already resolved label */}
-                          {status === 'approved' && (
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2 text-emerald-700 text-xs font-medium">
-                                <CheckCircle2 size={14} />
-                                This request has been approved.
-                              </div>
-                              {req.is_current !== false && !endConfirm[req.id] && (
-                                <button
-                                  onClick={() => setEndConfirm(c => ({ ...c, [req.id]: true }))}
-                                  disabled={isProcessing}
-                                  className="h-8 px-4 border border-red-200 text-red-600 text-xs font-semibold rounded-xl hover:bg-red-50 transition-colors flex items-center gap-1.5 disabled:opacity-50"
-                                >
-                                  <XCircle size={12} /> End Employment
-                                </button>
-                              )}
-                              {endConfirm[req.id] && (
-                                <div className="space-y-2 bg-red-50/50 rounded-xl p-3 border border-red-100">
-                                  <p className="text-xs font-medium text-red-700">End employment for {name}?</p>
-                                  <input
-                                    type="text"
-                                    placeholder="Reason for ending employment"
-                                    value={endReason[req.id] || ''}
-                                    onChange={e => setEndReason(r => ({ ...r, [req.id]: e.target.value }))}
-                                    className="w-full h-8 px-3 text-xs border border-red-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-300"
-                                  />
-                                  <div className="flex gap-2">
-                                    <button
-                                      onClick={async () => {
-                                        setProcessing(p => ({ ...p, [req.id]: true }))
-                                        try {
-                                          await endEmploymentByAdmin(req.id, { reason: endReason[req.id]?.trim() || 'Ended by company admin' })
-                                          setEndConfirm(c => ({ ...c, [req.id]: false }))
-                                          setEndReason(r => ({ ...r, [req.id]: '' }))
-                                          await load()
-                                        } catch (e) {
-                                          setActionResult(r => ({ ...r, [req.id]: { ok: false, msg: e?.message || 'Failed to end employment' } }))
-                                        } finally {
-                                          setProcessing(p => ({ ...p, [req.id]: false }))
-                                        }
-                                      }}
-                                      disabled={isProcessing}
-                                      className="h-7 px-3 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 transition-colors flex items-center gap-1 disabled:opacity-50"
-                                    >
-                                      {isProcessing ? <Loader2 size={12} className="animate-spin" /> : <XCircle size={12} />}
-                                      Confirm
-                                    </button>
-                                    <button
-                                      onClick={() => { setEndConfirm(c => ({ ...c, [req.id]: false })); setEndReason(r => ({ ...r, [req.id]: '' })) }}
-                                      className="h-7 px-3 border border-navy-200 text-navy-600 text-xs font-semibold rounded-lg hover:bg-navy-50 transition-colors"
-                                    >
-                                      Cancel
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                        {approvingEnd[emp.id] ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleRejectEnd(emp)}
+                        disabled={!!rejectingEnd[emp.id]}
+                        className="h-8 px-4 border border-red-200 text-red-600 text-xs font-semibold rounded-xl hover:bg-red-50 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        {rejectingEnd[emp.id] ? <Loader2 size={12} className="animate-spin" /> : <XCircle size={12} />}
+                        Reject
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </Reveal>
             )
           })}
         </div>
-      ))}
+      )}
 
-      {/* Invite Employee Section */}
-      <InviteSection companyId={companyId} onInvited={load} />
-    </div>
-  )
-}
-
-/* ─── Invite Employee Section ─── */
-function InviteSection({ companyId, onInvited }) {
-  const [email, setEmail] = useState('')
-  const [position, setPosition] = useState('')
-  const [department, setDepartment] = useState('')
-  const [sending, setSending] = useState(false)
-  const [invites, setInvites] = useState([])
-  const [loadingInvites, setLoadingInvites] = useState(true)
-
-  const loadInvites = async () => {
-    setLoadingInvites(true)
-    try {
-      const res = await getPendingInvites()
-      setInvites(res?.data ?? [])
-    } catch { setInvites([]) }
-    finally { setLoadingInvites(false) }
-  }
-
-  useEffect(() => { loadInvites() }, [])
-
-  const handleInvite = async (e) => {
-    e.preventDefault()
-    if (!email.trim()) return
-    setSending(true)
-    try {
-      await inviteEmployee({ email: email.trim(), companyId, position: position.trim() || undefined, department: department.trim() || undefined })
-      setEmail(''); setPosition(''); setDepartment('')
-      await loadInvites()
-      onInvited?.()
-    } catch (e) { alert(e?.message || 'Failed to send invite') }
-    finally { setSending(false) }
-  }
-
-  return (
-    <div className="space-y-4 mt-8">
-      <h3 className="text-sm font-semibold text-navy-900 flex items-center gap-2">
-        <Mail size={15} className="text-navy-500" /> Invite Employee
-      </h3>
-      <form onSubmit={handleInvite} className="bg-white rounded-2xl border border-navy-100/50 p-5 space-y-3">
-        <div className="grid sm:grid-cols-3 gap-3">
-          <input type="email" required placeholder="Email address *" value={email} onChange={e => setEmail(e.target.value)}
-            className="w-full h-10 rounded-xl border border-navy-200 bg-white px-3 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all" />
-          <input type="text" placeholder="Position (optional)" value={position} onChange={e => setPosition(e.target.value)}
-            className="w-full h-10 rounded-xl border border-navy-200 bg-white px-3 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all" />
-          <input type="text" placeholder="Department (optional)" value={department} onChange={e => setDepartment(e.target.value)}
-            className="w-full h-10 rounded-xl border border-navy-200 bg-white px-3 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all" />
-        </div>
-        <button type="submit" disabled={sending || !email.trim()}
-          className="h-9 px-5 bg-navy-900 text-white text-xs font-semibold rounded-xl hover:bg-navy-800 transition-colors flex items-center gap-1.5 disabled:opacity-50">
-          {sending ? <Loader2 size={13} className="animate-spin" /> : <Mail size={13} />}
-          Send Invite
-        </button>
-      </form>
-
-      {/* Pending invites list */}
-      {!loadingInvites && invites.length > 0 && (
-        <div className="space-y-2">
-          <h4 className="text-xs font-semibold uppercase tracking-widest text-navy-400">Pending Invites ({invites.length})</h4>
-          {invites.map(inv => (
-            <div key={inv.id} className="bg-white rounded-xl border border-navy-100/50 px-5 py-3 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-navy-900">{inv.invite_email}</p>
-                <p className="text-xs text-navy-400">{inv.position || 'No position'} · Expires {new Date(inv.invite_expires_at).toLocaleDateString()}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button onClick={async () => { await resendInvite(inv.id); await loadInvites() }}
-                  className="h-8 px-3 border border-navy-200 text-navy-600 text-xs font-medium rounded-lg hover:bg-navy-50 transition-colors">
-                  Resend
-                </button>
-                <button onClick={async () => { await cancelInvite(inv.id); await loadInvites() }}
-                  className="h-8 px-3 border border-red-200 text-red-600 text-xs font-medium rounded-lg hover:bg-red-50 transition-colors">
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ))}
+      {/* Active employees */}
+      {regular.length > 0 && (
+        <div className="space-y-3">
+          {withEndRequest.length > 0 && <h3 className="text-xs font-semibold uppercase tracking-widest text-navy-400">Active Employees ({regular.length})</h3>}
+          {regular.map((emp, i) => {
+            const name = emp.employees?.full_name ?? 'Unknown'
+            const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+            const isEnding = !!ending[emp.id]
+            return (
+              <Reveal key={emp.id} delay={i * 0.05}>
+                <div className="bg-white rounded-2xl border border-navy-100/50 p-5">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-navy-400 to-navy-700 flex items-center justify-center shrink-0">
+                      <span className="text-white text-sm font-semibold">{initials}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-navy-900">{name}</p>
+                      <p className="text-xs text-navy-400 mt-0.5">
+                        {emp.position ?? '–'}{emp.department ? ` · ${emp.department}` : ''}
+                        {emp.start_date && <span className="ml-2">Since {new Date(emp.start_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="px-2.5 py-1 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-semibold flex items-center gap-1">
+                        <CheckCircle2 size={11} /> Employed
+                      </span>
+                      {!endConfirm[emp.id] ? (
+                        <button
+                          onClick={() => setEndConfirm(c => ({ ...c, [emp.id]: true }))}
+                          className="h-8 px-4 border border-red-200 text-red-600 text-xs font-semibold rounded-xl hover:bg-red-50 transition-colors flex items-center gap-1.5"
+                        >
+                          <XCircle size={12} /> End
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            placeholder="Reason (optional)"
+                            value={endReason[emp.id] || ''}
+                            onChange={e => setEndReason(r => ({ ...r, [emp.id]: e.target.value }))}
+                            className="h-8 px-3 text-xs border border-red-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-300 w-36"
+                          />
+                          <button
+                            onClick={() => handleEnd(emp)}
+                            disabled={isEnding}
+                            className="h-8 px-3 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 transition-colors flex items-center gap-1 disabled:opacity-50"
+                          >
+                            {isEnding ? <Loader2 size={12} className="animate-spin" /> : null}
+                            Confirm
+                          </button>
+                          <button
+                            onClick={() => { setEndConfirm(c => ({ ...c, [emp.id]: false })); setEndReason(r => ({ ...r, [emp.id]: '' })) }}
+                            className="h-8 px-2 border border-navy-200 text-navy-500 text-xs rounded-lg hover:bg-navy-50 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Reveal>
+            )
+          })}
         </div>
       )}
     </div>
   )
 }
+
+
 
 /* ─── Reviews List Tab ─── */
 function ReviewsListTab({ companyId }) {
@@ -732,103 +560,6 @@ function ReviewsListTab({ companyId }) {
           </Reveal>
         )
       })}
-    </div>
-  )
-}
-
-/* ─── Team Feedback Tab ─── */
-function TeamFeedbackTab() {
-  const [feedback, setFeedback] = useState([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    getFeedbackReceived()
-      .then(res => setFeedback(res?.data?.feedback ?? res?.data ?? []))
-      .catch(() => setFeedback([]))
-      .finally(() => setLoading(false))
-  }, [])
-
-  /* Aggregate category scores across all feedback entries */
-  const aggregate = feedback.reduce((acc, fb) => {
-    const cats = ['professionalism', 'communication', 'teamwork', 'reliability']
-    cats.forEach(cat => {
-      const val = fb[cat] ?? fb.scores?.[cat]
-      if (val != null) {
-        if (!acc[cat]) acc[cat] = { sum: 0, count: 0 }
-        acc[cat].sum += val
-        acc[cat].count += 1
-      }
-    })
-    return acc
-  }, {})
-
-  const summary = Object.entries(aggregate).map(([cat, { sum, count }]) => ({
-    category: cat.charAt(0).toUpperCase() + cat.slice(1),
-    avg: sum / count,
-    count,
-  }))
-
-  if (loading) return <div className="py-20 text-center text-navy-400 text-sm">Loading feedback…</div>
-
-  if (!feedback.length) return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-semibold text-navy-900">Team Feedback Overview</h2>
-      <div className="bg-white rounded-2xl border border-navy-100/50 p-12 text-center">
-        <p className="text-sm text-navy-500">No feedback data yet.</p>
-      </div>
-    </div>
-  )
-
-  return (
-    <div className="space-y-6">
-      <h2 className="text-lg font-semibold text-navy-900">Team Feedback Overview</h2>
-
-      <Reveal>
-        <div className="bg-white rounded-2xl border border-navy-100/50 p-6">
-          <h3 className="text-sm font-semibold text-navy-900 mb-6">Company-Wide Feedback Averages</h3>
-          <div className="grid sm:grid-cols-4 gap-6">
-            {summary.map((item, i) => (
-              <div key={item.category} className="text-center">
-                <div className="relative inline-flex items-center justify-center w-20 h-20 mb-3">
-                  <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
-                    <circle cx="40" cy="40" r="34" fill="none" stroke="#e8f2fa" strokeWidth="6" />
-                    <motion.circle
-                      cx="40" cy="40" r="34" fill="none" stroke="#4988C4" strokeWidth="6"
-                      strokeLinecap="round"
-                      strokeDasharray={`${2 * Math.PI * 34}`}
-                      initial={{ strokeDashoffset: 2 * Math.PI * 34 }}
-                      whileInView={{ strokeDashoffset: 2 * Math.PI * 34 * (1 - item.avg / 5) }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 1, delay: i * 0.15 }}
-                    />
-                  </svg>
-                  <span className="absolute text-lg font-serif font-bold text-navy-900">
-                    {item.avg.toFixed(1)}
-                  </span>
-                </div>
-                <p className="text-sm font-medium text-navy-900">{item.category}</p>
-                <p className="text-xs text-navy-400 mt-0.5">{item.count} responses</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </Reveal>
-
-      <Reveal delay={0.1}>
-        <div className="bg-navy-900 rounded-2xl p-6 text-white">
-          <div className="flex items-start gap-4">
-            <MessageSquare size={20} className="text-navy-400 mt-0.5" />
-            <div>
-              <h3 className="font-semibold mb-1">About Internal Feedback</h3>
-              <p className="text-sm text-navy-300 leading-relaxed">
-                You can view internal feedback exchanged between employees at your company.
-                This helps identify team strengths and areas for improvement.
-                You <strong className="text-white">cannot</strong> see the identity of anonymous reviewers.
-              </p>
-            </div>
-          </div>
-        </div>
-      </Reveal>
     </div>
   )
 }
@@ -1245,7 +976,6 @@ function JobsTab({ companyId }) {
   const [applications, setApplications] = useState({})
   const [loadingApps, setLoadingApps] = useState({})
   const [updatingApp, setUpdatingApp] = useState({})
-  const [sendingInvite, setSendingInvite] = useState({})
   const [sendingHireInvite, setSendingHireInvite] = useState({})
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [jobError, setJobError] = useState('')
@@ -1306,16 +1036,6 @@ function JobsTab({ companyId }) {
       setApplications(a => ({ ...a, [positionId]: res?.data ?? [] }))
     } catch (e) { setJobError(e?.message || 'Failed to update application status') }
     finally { setUpdatingApp(u => ({ ...u, [appId]: false })) }
-  }
-
-  const handleSendInvite = async (appId, positionId) => {
-    setSendingInvite(s => ({ ...s, [appId]: true }))
-    try {
-      await sendInvite(appId)
-      const res = await getApplications(positionId)
-      setApplications(a => ({ ...a, [positionId]: res?.data ?? [] }))
-    } catch (e) { setJobError(e?.message || 'Failed to send invite') }
-    finally { setSendingInvite(s => ({ ...s, [appId]: false })) }
   }
 
   const handleSendHireInvite = async (appId, positionId) => {
@@ -1454,8 +1174,6 @@ function JobsTab({ companyId }) {
                     {applications[pos.id].map(app => {
                       const applicantName = app.applicant_name ?? app.employees?.full_name ?? 'Applicant'
                       const applicantEmail = app.employees?.users?.email
-                      const hasInvited = !!app.invite_sent_at
-                      const inviteAccepted = !!app.invite_accepted_at
                       const hireInviteSent = !!app.hire_invite_sent_at
                       const hireInviteAccepted = !!app.hire_invite_accepted_at
                       return (
@@ -1464,15 +1182,11 @@ function JobsTab({ companyId }) {
                             <div className="min-w-0">
                               <p className="text-sm font-medium text-navy-900">{applicantName}</p>
                               {applicantEmail && (
-                                <p className="text-xs text-navy-500 mt-0.5 flex items-center gap-1">
-                                  <Mail size={11} className="flex-shrink-0" /> {applicantEmail}
-                                </p>
+                                <p className="text-xs text-navy-500 mt-0.5">{applicantEmail}</p>
                               )}
                               <p className="text-xs text-navy-400 mt-0.5">
                                 Applied {new Date(app.created_at).toLocaleDateString()}
-                                {hasInvited && !inviteAccepted && <span className="ml-2 text-indigo-600">· Interview invite sent</span>}
-                                {inviteAccepted && <span className="ml-2 text-indigo-600">· Interview accepted ✓</span>}
-                                {hireInviteSent && !hireInviteAccepted && <span className="ml-2 text-amber-600">· Offer sent</span>}
+                                {hireInviteSent && !hireInviteAccepted && <span className="ml-2 text-amber-600">· Hire offer sent</span>}
                                 {hireInviteAccepted && <span className="ml-2 text-emerald-600">· Employed ✓</span>}
                               </p>
                             </div>
@@ -1492,7 +1206,7 @@ function JobsTab({ companyId }) {
                                 <>
                                   <button onClick={() => handleStatusChange(app.id, pos.id, 'interview')} disabled={!!updatingApp[app.id]}
                                     className="h-7 px-3 bg-blue-100 text-blue-700 text-xs font-medium rounded-lg hover:bg-blue-200 disabled:opacity-50">
-                                    Accept
+                                    Accept CV
                                   </button>
                                   <button onClick={() => handleStatusChange(app.id, pos.id, 'rejected')} disabled={!!updatingApp[app.id]}
                                     className="h-7 px-3 bg-red-100 text-red-700 text-xs font-medium rounded-lg hover:bg-red-200 disabled:opacity-50">
@@ -1502,16 +1216,14 @@ function JobsTab({ companyId }) {
                               )}
                               {app.status === 'interview' && (
                                 <>
-                                  {!hasInvited && (
-                                    <button onClick={() => handleSendInvite(app.id, pos.id)} disabled={!!sendingInvite[app.id]}
-                                      className="h-7 px-3 bg-indigo-100 text-indigo-700 text-xs font-medium rounded-lg hover:bg-indigo-200 disabled:opacity-50 flex items-center gap-1">
-                                      {sendingInvite[app.id] ? <Loader2 size={11} className="animate-spin" /> : <Mail size={11} />} Invite
+                                  {!hireInviteSent ? (
+                                    <button onClick={() => handleSendHireInvite(app.id, pos.id)} disabled={!!sendingHireInvite[app.id]}
+                                      className="h-7 px-3 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-lg hover:bg-emerald-200 disabled:opacity-50 flex items-center gap-1">
+                                      {sendingHireInvite[app.id] ? <Loader2 size={11} className="animate-spin" /> : null} Hire
                                     </button>
-                                  )}
-                                  <button onClick={() => handleStatusChange(app.id, pos.id, 'approved')} disabled={!!updatingApp[app.id]}
-                                    className="h-7 px-3 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-lg hover:bg-emerald-200 disabled:opacity-50">
-                                    Approve
-                                  </button>
+                                  ) : !hireInviteAccepted ? (
+                                    <span className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-semibold rounded-full">Hire offer pending</span>
+                                  ) : null}
                                   <button onClick={() => handleStatusChange(app.id, pos.id, 'rejected')} disabled={!!updatingApp[app.id]}
                                     className="h-7 px-3 bg-red-100 text-red-700 text-xs font-medium rounded-lg hover:bg-red-200 disabled:opacity-50">
                                     Reject
@@ -1519,20 +1231,9 @@ function JobsTab({ companyId }) {
                                 </>
                               )}
                               {app.status === 'approved' && (
-                                <>
-                                  {!hireInviteSent && (
-                                    <button onClick={() => handleSendHireInvite(app.id, pos.id)} disabled={!!sendingHireInvite[app.id]}
-                                      className="h-7 px-3 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-lg hover:bg-emerald-200 disabled:opacity-50 flex items-center gap-1">
-                                      {sendingHireInvite[app.id] ? <Loader2 size={11} className="animate-spin" /> : <Mail size={11} />} Invite
-                                    </button>
-                                  )}
-                                  {hireInviteSent && !hireInviteAccepted && (
-                                    <span className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-semibold rounded-full">Invitation Sent</span>
-                                  )}
-                                  {hireInviteAccepted && (
-                                    <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold rounded-full">Employed ✓</span>
-                                  )}
-                                </>
+                                hireInviteAccepted
+                                  ? <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold rounded-full">Employed ✓</span>
+                                  : <span className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-semibold rounded-full">Awaiting acceptance</span>
                               )}
                             </div>
                           </div>

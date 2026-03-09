@@ -697,3 +697,190 @@ exports.endEmploymentByAdmin = async (req, res) => {
     return res.status(500).json({ message: 'Server error' });
   }
 };
+
+// GET /api/employments/current — company admin: list currently employed employees
+exports.listCurrentEmployees = async (req, res) => {
+  try {
+    const role = req.user?.role;
+    if (role !== 'company_admin') return res.status(403).json({ message: 'Company admin only' });
+
+    const { data: companies } = await supabase
+      .from('companies')
+      .select('id, name')
+      .eq('user_id', req.user.userId)
+      .is('deleted_at', null);
+
+    if (!companies || companies.length === 0) return res.json({ data: [] });
+
+    const allEmployees = [];
+    for (const c of companies) {
+      const result = await employmentService.listCurrentEmployees(c.id);
+      if (result.data) allEmployees.push(...result.data);
+    }
+    return res.json({ data: allEmployees });
+  } catch (e) {
+    console.error('listCurrentEmployees error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// PATCH /api/employments/:id/request-end — employee requests to end their employment
+exports.requestEndEmployment = async (req, res) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const { data: employee } = await supabase
+      .from('employees')
+      .select('id')
+      .eq('user_id', userId)
+      .is('deleted_at', null)
+      .maybeSingle();
+
+    if (!employee) return res.status(400).json({ message: 'Employee profile not found' });
+
+    const { reason } = req.body;
+    const result = await employmentService.requestEndEmployment({
+      employmentId: req.params.id,
+      employeeId: employee.id,
+      reason,
+    });
+
+    if (result.error) return res.status(400).json({ message: result.error });
+
+    // Notify company admin (non-blocking)
+    try {
+      const { data: employment } = await supabase
+        .from('employments')
+        .select('company_id, employees:employee_id(full_name)')
+        .eq('id', req.params.id)
+        .single();
+      if (employment?.company_id) {
+        const { data: company } = await supabase
+          .from('companies')
+          .select('name, user_id')
+          .eq('id', employment.company_id)
+          .single();
+        if (company?.user_id) {
+          await createNotification({
+            userId: company.user_id,
+            type: 'end_request',
+            title: 'End Employment Request',
+            message: `${employment.employees?.full_name || 'An employee'} has requested to end their employment at ${company.name}.`,
+            link: '/company-admin#requests',
+          });
+        }
+      }
+    } catch (_) {}
+
+    return res.json({ data: result.data });
+  } catch (e) {
+    console.error('requestEndEmployment error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// PATCH /api/employments/:id/approve-end-request — company admin approves end request
+exports.approveEndRequest = async (req, res) => {
+  try {
+    const adminUserId = req.user?.userId;
+    const role = req.user?.role;
+    if (role !== 'company_admin') return res.status(403).json({ message: 'Company admin only' });
+
+    const { data: companies } = await supabase
+      .from('companies')
+      .select('id, name')
+      .eq('user_id', adminUserId)
+      .is('deleted_at', null);
+
+    if (!companies || companies.length === 0) return res.status(404).json({ message: 'No companies found' });
+
+    const { data: employment } = await supabase
+      .from('employments')
+      .select('company_id, employee_id')
+      .eq('id', req.params.id)
+      .maybeSingle();
+
+    const company = companies.find(c => c.id === employment?.company_id);
+    if (!company) return res.status(403).json({ message: 'Employment does not belong to your company' });
+
+    const result = await employmentService.approveEndRequest({
+      employmentId: req.params.id,
+      companyId: company.id,
+      adminUserId,
+    });
+
+    if (result.error) return res.status(400).json({ message: result.error });
+
+    // Notify employee (non-blocking)
+    try {
+      const { data: empData } = await supabase.from('employees').select('full_name, user_id').eq('id', employment.employee_id).single();
+      if (empData?.user_id) {
+        await createNotification({
+          userId: empData.user_id,
+          type: 'end_request_approved',
+          title: 'End Request Approved',
+          message: `Your request to end employment at ${company.name} has been approved.`,
+          link: '/dashboard#employment',
+        });
+      }
+    } catch (_) {}
+
+    return res.json({ data: result.data });
+  } catch (e) {
+    console.error('approveEndRequest error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// PATCH /api/employments/:id/reject-end-request — company admin rejects end request
+exports.rejectEndRequest = async (req, res) => {
+  try {
+    const adminUserId = req.user?.userId;
+    const role = req.user?.role;
+    if (role !== 'company_admin') return res.status(403).json({ message: 'Company admin only' });
+
+    const { data: companies } = await supabase
+      .from('companies')
+      .select('id, name')
+      .eq('user_id', adminUserId)
+      .is('deleted_at', null);
+
+    if (!companies || companies.length === 0) return res.status(404).json({ message: 'No companies found' });
+
+    const { data: employment } = await supabase
+      .from('employments')
+      .select('company_id, employee_id')
+      .eq('id', req.params.id)
+      .maybeSingle();
+
+    const company = companies.find(c => c.id === employment?.company_id);
+    if (!company) return res.status(403).json({ message: 'Employment does not belong to your company' });
+
+    const result = await employmentService.rejectEndRequest({
+      employmentId: req.params.id,
+      companyId: company.id,
+    });
+
+    if (result.error) return res.status(400).json({ message: result.error });
+
+    // Notify employee (non-blocking)
+    try {
+      const { data: empData } = await supabase.from('employees').select('full_name, user_id').eq('id', employment.employee_id).single();
+      if (empData?.user_id) {
+        await createNotification({
+          userId: empData.user_id,
+          type: 'end_request_rejected',
+          title: 'End Request Rejected',
+          message: `Your request to end employment at ${company.name} has been rejected. You remain employed there.`,
+          link: '/dashboard#employment',
+        });
+      }
+    } catch (_) {}
+
+    return res.json({ data: result.data });
+  } catch (e) {
+    console.error('rejectEndRequest error:', e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};

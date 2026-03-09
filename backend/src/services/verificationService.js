@@ -163,12 +163,7 @@ const approveVerification = async (requestId, adminId, adminNotes) => {
       .update({ identity_verified: true })
       .eq('id', request.user_id);
 
-    // Also mark the employee profile as verified so they can accept employment offers
-    await supabase
-      .from('employees')
-      .update({ is_verified: true })
-      .eq('user_id', request.user_id)
-      .is('deleted_at', null);
+
   } else if (request.verification_type === 'company') {
     // Find the company owned by this user
     const { data: company } = await supabase

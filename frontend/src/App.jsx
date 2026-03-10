@@ -11,6 +11,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx'
 import ResetPasswordPage from './pages/ResetPasswordPage.jsx'
 import CompaniesPage from './pages/CompaniesPage.jsx'
 import CompanyProfilePage from './pages/CompanyProfilePage.jsx'
+import JobsBoard from './pages/JobsBoard.jsx'
 import EmployeeDashboard from './pages/EmployeeDashboard.jsx'
 import CompanyAdminDashboard from './pages/CompanyAdminDashboard.jsx'
 import AdminPanel from './pages/AdminPanel.jsx'
@@ -61,6 +62,7 @@ function AppRoutes() {
         <Route element={<Layout />}>
           {/* Public */}
           <Route path="/companies"    element={<CompaniesPage />} />
+          <Route path="/jobs" element={<JobsBoard />} />
           <Route path="/companies/:id" element={<CompanyProfilePage />} />
 
           {/* Only employees can write reviews */}

@@ -7,7 +7,8 @@ const { uploadCV } = require('../config/upload');
 
 // Public routes
 router.get('/', jobController.getJobPositions);
-router.get('/all', requireAuth, jobController.getAllJobPositions);
+// Make /all public so guests can browse open positions across companies
+router.get('/all', jobController.getAllJobPositions);
 router.get('/my-applications', requireAuth, jobController.getMyApplications);
 router.get('/:id', jobController.getJobPositionById);
 

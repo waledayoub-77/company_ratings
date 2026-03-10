@@ -225,6 +225,7 @@ export default function CompanyProfilePage() {
       navigate(`/login?redirect=/company/${id}`)
       return
     }
+    if (user.role === 'company_admin' || user.role === 'system_admin') return
     setApplyModal({ open: true, job })
     setApplyFile(null)
     setApplyCoverLetter('')
@@ -889,7 +890,7 @@ export default function CompanyProfilePage() {
                             <p className="text-xs text-navy-400 mt-1">Requirements: {job.requirements}</p>
                           )}
                         </div>
-                        {user?.role !== 'company_admin' && (
+                        {user?.role !== 'company_admin' && user?.role !== 'system_admin' && (
                         <div className="flex items-center gap-2 flex-shrink-0">
                           {appliedIds.has(job.id) ? (
                             <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-lg border border-emerald-200">Applied ✓</span>

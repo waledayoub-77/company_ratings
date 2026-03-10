@@ -92,23 +92,31 @@ export default function Navbar() {
     if (link) navigate(link)
   }
 
-  /* Role-based nav links */
-  const navLinks =
-    user?.role === 'company_admin'
-      ? [
-          { label: 'Companies', href: '/companies' },
-          { label: 'Company Admin', href: '/company-admin' },
-        ]
-      : user?.role === 'system_admin'
-      ? [
-          { label: 'Companies', href: '/companies' },
-          { label: 'Admin Panel', href: '/admin' },
-        ]
-      : [
-          { label: 'Companies', href: '/companies' },
-          { label: 'Dashboard', href: '/dashboard' },
-          { label: 'Feedback', href: '/dashboard/feedback' },
-        ]
+  /* Role-based nav links. Guests should still see Companies + Jobs */
+  const navLinks = user
+    ? (user.role === 'company_admin'
+        ? [
+            { label: 'Companies', href: '/companies' },
+            { label: 'Jobs', href: '/jobs' },
+            { label: 'Company Admin', href: '/company-admin' },
+          ]
+        : user.role === 'system_admin'
+        ? [
+            { label: 'Companies', href: '/companies' },
+            { label: 'Admin Panel', href: '/admin' },
+          ]
+        : [
+            { label: 'Companies', href: '/companies' },
+            { label: 'Jobs', href: '/jobs' },
+            { label: 'Dashboard', href: '/dashboard' },
+            { label: 'Feedback', href: '/dashboard/feedback' },
+          ])
+    : [
+        { label: 'Features', href: '/#features' },
+        { label: 'How It Works', href: '/#how-it-works' },
+        { label: 'Companies', href: '/companies' },
+        { label: 'Jobs', href: '/jobs' },
+      ]
 
   /* Derive initials and short name from fullName */
   const nameParts = user?.fullName?.trim().split(/\s+/) ?? []

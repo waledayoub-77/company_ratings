@@ -107,6 +107,7 @@ export default function LandingPage() {
             <a href="#features" className="text-sm text-navy-600 hover:text-navy-900 transition-colors">Features</a>
             <a href="#how-it-works" className="text-sm text-navy-600 hover:text-navy-900 transition-colors">How It Works</a>
             <a href="#companies" className="text-sm text-navy-600 hover:text-navy-900 transition-colors">Companies</a>
+            <Link to="/jobs" className="text-sm text-navy-600 hover:text-navy-900 transition-colors">Jobs</Link>
           </div>
           <div className="flex items-center gap-3">
             {user ? (

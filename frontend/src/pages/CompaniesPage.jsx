@@ -15,7 +15,8 @@ import {
 import PageHeader from '../components/ui/PageHeader.jsx'
 import Reveal from '../components/ui/Reveal.jsx'
 import StarRating from '../components/ui/StarRating.jsx'
-import { getCompanies, getFilterOptions } from '../api/companies'
+import { getCompanies } from '../api/companies'
+import { Country, City } from 'country-state-city'
 
 /* ─── Constants ─── */
 
@@ -46,6 +47,20 @@ function buildPageButtons(cur, total) {
   p.push(total)
   return p
 }
+const INDUSTRIES = [
+  'Technology', 'Software & SaaS', 'Finance & Banking', 'Healthcare',
+  'Education', 'Retail & E-commerce', 'Manufacturing', 'Consulting',
+  'Media & Entertainment', 'Real Estate', 'Telecommunications',
+  'Automotive', 'Aerospace & Defense', 'Energy & Utilities',
+  'Food & Beverage', 'Pharmaceuticals', 'Logistics & Transportation',
+  'Legal Services', 'Non-Profit', 'Government & Public Sector',
+  'Insurance', 'Construction', 'Agriculture', 'Hospitality & Tourism',
+  'Marketing & Advertising', 'Human Resources', 'Cybersecurity',
+  'Artificial Intelligence', 'Biotechnology', 'Environmental Services',
+].sort()
+
+const ALL_COUNTRIES = Country.getAllCountries().map(c => ({ name: c.name, isoCode: c.isoCode }))
+
 const LIMIT = 9
 
 export default function CompaniesPage() {
@@ -63,20 +78,17 @@ export default function CompaniesPage() {
   const [pagination, setPagination] = useState({ total: 0, totalPages: 1 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [filterOptions, setFilterOptions] = useState({ countries: [], citiesByCountry: {}, industries: [] })
+
+  const selectedCountryCode = ALL_COUNTRIES.find(c => c.name === countryFilter)?.isoCode
+  const availableCities = selectedCountryCode
+    ? [...new Set(City.getCitiesOfCountry(selectedCountryCode).map(c => c.name))].sort()
+    : []
 
   // Debounce search input
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 400)
     return () => clearTimeout(t)
   }, [search])
-
-  // Fetch country/city filter options
-  useEffect(() => {
-    getFilterOptions()
-      .then(res => setFilterOptions(res?.data ?? { countries: [], citiesByCountry: {} }))
-      .catch(() => {})
-  }, [])
 
   // Reset city when country changes
   useEffect(() => { setCityFilter('All Cities') }, [countryFilter])
@@ -164,9 +176,9 @@ export default function CompaniesPage() {
         <AnimatedPanel show={showFilters}>
           <div className="mb-8 p-6 rounded-2xl bg-white border border-navy-100/50 shadow-sm">
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <SelectFilter label="Industry" value={industry} options={['All Industries', ...(filterOptions.industries || [])]} onChange={setIndustry} />
-              <SelectFilter label="Country" value={countryFilter} options={['All Countries', ...(filterOptions.countries || [])]} onChange={setCountryFilter} />
-              <SelectFilter label="City" value={cityFilter} options={['All Cities', ...(countryFilter !== 'All Countries' ? (filterOptions.citiesByCountry?.[countryFilter] || []) : Object.values(filterOptions.citiesByCountry || {}).flat())]} onChange={setCityFilter} />
+              <SelectFilter label="Industry" value={industry} options={['All Industries', ...INDUSTRIES]} onChange={setIndustry} />
+              <SelectFilter label="Country" value={countryFilter} options={['All Countries', ...ALL_COUNTRIES.map(c => c.name)]} onChange={setCountryFilter} />
+              <SelectFilter label="City" value={cityFilter} options={['All Cities', ...availableCities]} onChange={setCityFilter} disabled={countryFilter === 'All Countries'} />
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
               <SelectFilter label="Sort by" value={sort} options={sortOptions.map(s => s.label)} onChange={setSort} />
@@ -370,15 +382,16 @@ function AnimatedPanel({ show, children }) {
   )
 }
 
-function SelectFilter({ label, value, options, onChange }) {
+function SelectFilter({ label, value, options, onChange, disabled = false }) {
   return (
     <div className="space-y-1.5">
-      <label className="block text-[13px] font-medium text-navy-700">{label}</label>
+      <label className={`block text-[13px] font-medium ${disabled ? 'text-navy-300' : 'text-navy-700'}`}>{label}</label>
       <div className="relative">
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full h-10 rounded-xl border border-navy-200 bg-white pl-3 pr-8 text-sm text-navy-700 appearance-none focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all cursor-pointer"
+          disabled={disabled}
+          className={`w-full h-10 rounded-xl border bg-white pl-3 pr-8 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all ${disabled ? 'border-navy-100 text-navy-300 cursor-not-allowed opacity-60' : 'border-navy-200 text-navy-700 cursor-pointer'}`}
         >
           {options.map(o => <option key={o} value={o}>{o}</option>)}
         </select>

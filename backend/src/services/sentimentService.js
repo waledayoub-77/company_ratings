@@ -15,8 +15,8 @@
 // Thresholds (tuned for workplace reviews):
 //   comparative >= 0.05          → positive
 //   -0.05 < comparative < 0.05   → neutral
-//   -0.25 <= comparative < -0.05 → negative
-//   comparative < -0.25          → very_negative
+//   -0.10 <= comparative < -0.05 → negative
+//   comparative < -0.10          → very_negative
 // ─────────────────────────────────────────────────────────────────────────────
 
 const Sentiment = require('sentiment');
@@ -26,7 +26,7 @@ const analyzer = new Sentiment();
 // Thresholds
 const POSITIVE_THRESHOLD      =  0.05;
 const NEGATIVE_THRESHOLD      = -0.05;
-const VERY_NEGATIVE_THRESHOLD = -0.25;
+const VERY_NEGATIVE_THRESHOLD = -0.10;
 
 /**
  * Analyze text and return sentiment classification.

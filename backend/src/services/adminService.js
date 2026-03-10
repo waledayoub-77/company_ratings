@@ -608,7 +608,7 @@ const getSentimentFlaggedReviews = async ({ label, page = 1, limit = 20 } = {}) 
     .from('company_reviews')
     .select(
       `id, content, sentiment, sentiment_score, auto_flagged, is_anonymous,
-       overall_rating, created_at, company_id,
+       overall_rating, created_at, company_id, is_published,
        companies ( name ),
        employees ( id, full_name, user_id )`,
       { count: 'exact' }
@@ -720,6 +720,83 @@ const dismissPendingSuspension = async (targetUserId, adminId) => {
   return { dismissed: true };
 };
 
+/**
+ * Approve a flagged review — publishes it so it becomes visible.
+ */
+const approveFlaggedReview = async (reviewId, adminId) => {
+  const { data: review, error: findErr } = await supabase
+    .from('company_reviews')
+    .select('id, is_published, auto_flagged, company_id')
+    .eq('id', reviewId)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (findErr || !review) throw new AppError('Review not found', 404);
+  if (review.is_published) throw new AppError('Review is already published', 400);
+
+  const { error } = await supabase
+    .from('company_reviews')
+    .update({ is_published: true })
+    .eq('id', reviewId);
+
+  if (error) throw error;
+
+  // Recalculate company rating now that the review is published
+  try {
+    const { data: reviews } = await supabase
+      .from('company_reviews')
+      .select('overall_rating')
+      .eq('company_id', review.company_id)
+      .eq('is_published', true)
+      .is('deleted_at', null);
+    if (reviews && reviews.length > 0) {
+      const avg = reviews.reduce((s, r) => s + r.overall_rating, 0) / reviews.length;
+      await supabase.from('companies').update({ overall_rating: avg.toFixed(1), total_reviews: reviews.length }).eq('id', review.company_id);
+    }
+  } catch (_) {}
+
+  await logAdminAction({
+    adminId,
+    action:     'APPROVE_FLAGGED_REVIEW',
+    entityType: 'review',
+    entityId:   reviewId,
+    details:    { reason: 'Admin approved flagged review for publication' },
+  });
+
+  return { approved: true };
+};
+
+/**
+ * Reject a flagged review — soft-deletes it so it never becomes visible.
+ */
+const rejectFlaggedReview = async (reviewId, adminId) => {
+  const { data: review, error: findErr } = await supabase
+    .from('company_reviews')
+    .select('id, is_published, auto_flagged')
+    .eq('id', reviewId)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (findErr || !review) throw new AppError('Review not found', 404);
+
+  const { error } = await supabase
+    .from('company_reviews')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', reviewId);
+
+  if (error) throw error;
+
+  await logAdminAction({
+    adminId,
+    action:     'REJECT_FLAGGED_REVIEW',
+    entityType: 'review',
+    entityId:   reviewId,
+    details:    { reason: 'Admin rejected flagged review — defamatory content' },
+  });
+
+  return { rejected: true };
+};
+
 module.exports = {
   // Reports (delegated)
   getReports,
@@ -742,4 +819,6 @@ module.exports = {
   getSentimentFlaggedReviews,
   confirmPendingSuspension,
   dismissPendingSuspension,
+  approveFlaggedReview,
+  rejectFlaggedReview,
 };

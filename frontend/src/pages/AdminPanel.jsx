@@ -44,6 +44,8 @@ import {
   getSentimentFlaggedReviews,
   confirmPendingSuspension,
   dismissPendingSuspension,
+  approveFlaggedReview,
+  rejectFlaggedReview,
 } from '../api/admin.js'
 import {
   getVerificationRequests,
@@ -1061,7 +1063,7 @@ function SentimentTab({ openDialog, onActionDone }) {
   const [reviews, setReviews]           = useState([])
   const [loading, setLoading]           = useState(true)
   const [labelFilter, setLabelFilter]   = useState('')
-  const [working, setWorking]           = useState(null)  // userId currently being acted on
+  const [working, setWorking]           = useState(null)  // id currently being acted on
   const [page, setPage]                 = useState(1)
   const [pagination, setPagination]     = useState(null)
 
@@ -1078,6 +1080,7 @@ function SentimentTab({ openDialog, onActionDone }) {
 
   useEffect(() => { load(1, labelFilter) }, [labelFilter]) // eslint-disable-line
 
+  /* ── User suspension actions ── */
   const handleConfirm = (userId) => {
     openDialog({
       title: 'Suspend User',
@@ -1110,6 +1113,49 @@ function SentimentTab({ openDialog, onActionDone }) {
     } finally {
       setWorking(null)
     }
+  }
+
+  /* ── Review approve / reject actions ── */
+  const handleApproveReview = (reviewId) => {
+    openDialog({
+      title: 'Approve Review',
+      message: 'This will publish the review so it becomes visible to everyone. Are you sure?',
+      variant: 'warning',
+      confirmLabel: 'Approve & Publish',
+      onConfirm: async () => {
+        setWorking(reviewId)
+        try {
+          await approveFlaggedReview(reviewId)
+          onActionDone?.()
+          load(page)
+        } catch (e) {
+          openDialog({ title: 'Error', message: e?.message || 'Approve failed.', variant: 'danger', cancelLabel: false, confirmLabel: 'OK' })
+        } finally {
+          setWorking(null)
+        }
+      },
+    })
+  }
+
+  const handleRejectReview = (reviewId) => {
+    openDialog({
+      title: 'Reject Review',
+      message: 'This will permanently remove the review. It will not be published. Are you sure?',
+      variant: 'danger',
+      confirmLabel: 'Reject & Delete',
+      onConfirm: async () => {
+        setWorking(reviewId)
+        try {
+          await rejectFlaggedReview(reviewId)
+          onActionDone?.()
+          load(page)
+        } catch (e) {
+          openDialog({ title: 'Error', message: e?.message || 'Reject failed.', variant: 'danger', cancelLabel: false, confirmLabel: 'OK' })
+        } finally {
+          setWorking(null)
+        }
+      },
+    })
   }
 
   return (
@@ -1162,6 +1208,7 @@ function SentimentTab({ openDialog, onActionDone }) {
             const userInfo    = review.employees?.user
             const isPending   = userInfo?.pending_suspension === true
             const isSuspended = userInfo?.is_active === false
+            const isUnpublished = review.is_published === false
 
             return (
               <Reveal key={review.id}>
@@ -1170,6 +1217,16 @@ function SentimentTab({ openDialog, onActionDone }) {
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="flex items-center gap-2 flex-wrap">
                       <SentimentBadge label={review.sentiment} />
+                      {isUnpublished && (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border bg-amber-50 border-amber-200 text-amber-700">
+                          <Clock size={11} /> Pending Approval
+                        </span>
+                      )}
+                      {!isUnpublished && (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border bg-emerald-50 border-emerald-200 text-emerald-600">
+                          <CheckCircle2 size={11} /> Published
+                        </span>
+                      )}
                       {isPending && (
                         <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border bg-orange-50 border-orange-200 text-orange-600">
                           <AlertTriangle size={11} /> Pending Suspension
@@ -1197,9 +1254,33 @@ function SentimentTab({ openDialog, onActionDone }) {
                     <span>Company: <strong className="text-navy-600">{company}</strong></span>
                   </div>
 
-                  {/* Action buttons — only shown if user is flagged and not already suspended */}
-                  {isPending && userId && (
+                  {/* Review moderation buttons — shown if review is unpublished */}
+                  {isUnpublished && (
                     <div className="flex items-center gap-2 pt-3 border-t border-navy-50">
+                      <p className="text-xs text-navy-500 flex-1">
+                        This review is held for moderation. Approve to publish it, or reject to permanently remove it.
+                      </p>
+                      <button
+                        onClick={() => handleApproveReview(review.id)}
+                        disabled={working === review.id}
+                        className="flex items-center gap-1.5 text-xs font-medium bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                      >
+                        {working === review.id ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleRejectReview(review.id)}
+                        disabled={working === review.id}
+                        className="flex items-center gap-1.5 text-xs font-medium bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                      >
+                        <Trash2 size={12} /> Reject
+                      </button>
+                    </div>
+                  )}
+
+                  {/* User suspension actions — only shown if user is flagged and not already suspended */}
+                  {isPending && userId && (
+                    <div className={`flex items-center gap-2 pt-3 ${isUnpublished ? 'mt-3' : ''} border-t border-navy-50`}>
                       <p className="text-xs text-navy-500 flex-1">
                         This user was auto-flagged for very negative content. Confirm to suspend or dismiss as a false positive.
                       </p>

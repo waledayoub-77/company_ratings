@@ -13,6 +13,14 @@ const createReview = async (req, res, next) => {
       req.user.userId
     );
 
+    if (review?._held_for_moderation) {
+      return res.status(201).json({
+        success: true,
+        message: 'Your review has been submitted and is under review by our moderation team. It will be published once approved.',
+        data: { id: review.id, held_for_moderation: true }
+      });
+    }
+
     res.status(201).json({
       success: true,
       message: 'Review submitted successfully',

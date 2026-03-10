@@ -109,49 +109,55 @@ const createReview = async (reviewData, userId) => {
     throw new AppError('No verified employment record found for this company', 400);
   }
 
-  // ── SENTIMENT PRE-CHECK — block very negative reviews before saving ───────
+  // ── SENTIMENT PRE-CHECK — hold very negative reviews for admin moderation ──
   const sentiment = analyzeText(content || '');
   if (shouldFlagForSuspension(sentiment.label)) {
-    // Very negative review: do NOT publish. Notify system admins.
-    try {
-      // Save a hidden/flagged copy so admin can review it
-      const { data: flaggedReview } = await supabase
-        .from('company_reviews')
-        .insert({
-          employee_id: employeeId,
-          company_id: companyId,
-          employment_id: employment.id,
-          overall_rating: overallRating,
-          content,
-          is_anonymous: isAnonymous || false,
-          can_edit_until: new Date().toISOString(),
-          departure_reason: departureReason || null,
-          sentiment: sentiment.label,
-          sentiment_score: sentiment.comparative,
-          auto_flagged: true,
-          deleted_at: new Date().toISOString(), // soft-delete so it won't appear publicly
-        })
-        .select()
-        .single();
+    // Very negative review: save but don't publish — admin must approve
+    const canEditUntil = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const { data: flaggedReview, error: flagErr } = await supabase
+      .from('company_reviews')
+      .insert({
+        employee_id: employeeId,
+        company_id: companyId,
+        employment_id: employment.id,
+        overall_rating: overallRating,
+        content,
+        is_anonymous: isAnonymous || false,
+        can_edit_until: canEditUntil,
+        departure_reason: departureReason || null,
+        sentiment: sentiment.label,
+        sentiment_score: sentiment.comparative,
+        auto_flagged: true,
+        is_published: false, // held for admin moderation
+      })
+      .select()
+      .single();
 
-      if (flaggedReview) {
-        await autoReportReview(flaggedReview.id, sentiment);
-      }
-
-      // Flag the user for admin review
-      await supabase
-        .from('users')
-        .update({ pending_suspension: true })
-        .eq('id', userId);
-      console.warn(`⚠️  User ${userId} blocked from publishing very negative review (${sentiment.comparative.toFixed(3)})`);
-    } catch (blockErr) {
-      console.error('Error handling blocked review:', blockErr.message);
+    if (flagErr) {
+      console.error('❌ Error saving flagged review:', flagErr);
+      throw new AppError('Failed to submit review', 500);
     }
 
-    throw new AppError(
-      'Your review could not be published because it contains highly negative language. It has been forwarded to the system administrator for review.',
-      400
-    );
+    // Save category ratings if provided
+    if (flaggedReview && categoryRatings && Object.keys(categoryRatings).length > 0) {
+      await saveCategoryRatings(flaggedReview.id, categoryRatings);
+    }
+
+    // Auto-report for admin visibility
+    if (flaggedReview) {
+      try { await autoReportReview(flaggedReview.id, sentiment); } catch (_) {}
+    }
+
+    // Flag the user for admin review
+    await supabase
+      .from('users')
+      .update({ pending_suspension: true })
+      .eq('id', userId);
+
+    console.warn(`⚠️  Review ${flaggedReview?.id} held for moderation — very negative (${sentiment.comparative.toFixed(3)})`);
+
+    // Return special response so frontend can show "under review" message
+    return { ...flaggedReview, _held_for_moderation: true };
   }
   // ─────────────────────────────────────────────────────────────────────────
 

@@ -36,5 +36,7 @@ router.get('/admin/audit-logs', requireAuth, requireSystemAdmin, adminController
 router.get('/admin/sentiment-reviews',              requireAuth, requireSystemAdmin, adminController.getSentimentFlaggedReviews);
 router.patch('/admin/users/:id/confirm-suspension', requireAuth, requireSystemAdmin, adminController.confirmPendingSuspension);
 router.patch('/admin/users/:id/dismiss-suspension', requireAuth, requireSystemAdmin, adminController.dismissPendingSuspension);
+router.patch('/admin/reviews/:id/approve',          requireAuth, requireSystemAdmin, adminController.approveFlaggedReview);
+router.patch('/admin/reviews/:id/reject',           requireAuth, requireSystemAdmin, adminController.rejectFlaggedReview);
 
 module.exports = router;

@@ -716,3 +716,37 @@ exports.dismissPendingSuspension = async (req, res) => {
     return res.status(status).json({ success: false, error: { message: err.message, code: err.code || 'SERVER_ERROR' } });
   }
 };
+
+/**
+ * PATCH /api/admin/reviews/:id/approve
+ * Admin approves a flagged review for publication.
+ */
+exports.approveFlaggedReview = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.user.userId;
+    const result = await adminService.approveFlaggedReview(id, adminId);
+    return res.json({ success: true, data: result });
+  } catch (err) {
+    console.error('approveFlaggedReview error:', err);
+    const status = err.statusCode || 500;
+    return res.status(status).json({ success: false, error: { message: err.message, code: err.code || 'SERVER_ERROR' } });
+  }
+};
+
+/**
+ * PATCH /api/admin/reviews/:id/reject
+ * Admin rejects a flagged review — soft-deletes it.
+ */
+exports.rejectFlaggedReview = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.user.userId;
+    const result = await adminService.rejectFlaggedReview(id, adminId);
+    return res.json({ success: true, data: result });
+  } catch (err) {
+    console.error('rejectFlaggedReview error:', err);
+    const status = err.statusCode || 500;
+    return res.status(status).json({ success: false, error: { message: err.message, code: err.code || 'SERVER_ERROR' } });
+  }
+};

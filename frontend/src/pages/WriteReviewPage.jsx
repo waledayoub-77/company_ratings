@@ -40,6 +40,7 @@ export default function WriteReviewPage() {
   const [review, setReview] = useState('')
   const [anonymous, setAnonymous] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [heldForModeration, setHeldForModeration] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [categoryRatings, setCategoryRatings] = useState({})
@@ -70,7 +71,7 @@ export default function WriteReviewPage() {
     setLoading(true)
     setError('')
     try {
-      await createReview({
+      const res = await createReview({
         companyId: id,
         overallRating: rating,
         content: review,
@@ -78,6 +79,9 @@ export default function WriteReviewPage() {
         categoryRatings: Object.keys(categoryRatings).length > 0 ? categoryRatings : undefined,
         departureReason: departureReason || undefined,
       })
+      if (res?.data?.held_for_moderation) {
+        setHeldForModeration(true)
+      }
       setSubmitted(true)
     } catch (err) {
       const msg = err?.message ?? ''
@@ -102,16 +106,22 @@ export default function WriteReviewPage() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5 }}
         >
-          <div className="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-6">
-            <CheckCircle2 size={32} className="text-emerald-500" />
+          <div className={`w-16 h-16 rounded-2xl ${heldForModeration ? 'bg-amber-50' : 'bg-emerald-50'} flex items-center justify-center mx-auto mb-6`}>
+            {heldForModeration
+              ? <AlertCircle size={32} className="text-amber-500" />
+              : <CheckCircle2 size={32} className="text-emerald-500" />
+            }
           </div>
           <h1 className="text-2xl font-serif font-bold text-navy-900 mb-3">
-            Review Published!
+            {heldForModeration ? 'Review Under Review' : 'Review Published!'}
           </h1>
           <p className="text-sm text-navy-500 mb-8 leading-relaxed">
-            Your verified review has been published successfully.
-            {anonymous ? ' Your identity remains fully anonymous.' : ''}
-            {' '}A confirmation email has been sent to your inbox.
+            {heldForModeration
+              ? 'Your review has been submitted and is currently being reviewed by our moderation team. It will be published once approved by a system administrator.'
+              : <>Your verified review has been published successfully.
+                  {anonymous ? ' Your identity remains fully anonymous.' : ''}
+                  {' '}A confirmation email has been sent to your inbox.</>
+            }
           </p>
           <div className="flex justify-center gap-3">
             <Link

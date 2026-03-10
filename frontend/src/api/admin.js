@@ -180,3 +180,19 @@ export async function confirmPendingSuspension(userId) {
 export async function dismissPendingSuspension(userId) {
   return authRequest(`/admin/users/${userId}/dismiss-suspension`, { method: 'PATCH' })
 }
+
+/**
+ * PATCH /admin/reviews/:id/approve
+ * Admin approves a flagged review for publication.
+ */
+export async function approveFlaggedReview(reviewId) {
+  return authRequest(`/admin/reviews/${reviewId}/approve`, { method: 'PATCH' })
+}
+
+/**
+ * PATCH /admin/reviews/:id/reject
+ * Admin rejects a flagged review — soft-deletes it.
+ */
+export async function rejectFlaggedReview(reviewId) {
+  return authRequest(`/admin/reviews/${reviewId}/reject`, { method: 'PATCH' })
+}

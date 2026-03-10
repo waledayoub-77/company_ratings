@@ -980,7 +980,7 @@ function JobsTab({ companyId }) {
   const [positions, setPositions] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
-  const [createForm, setCreateForm] = useState({ title: '', description: '', requirements: '', location: '' })
+  const [createForm, setCreateForm] = useState({ title: '', description: '', requirements: '', country: '', city: '' })
   const [creating, setCreating] = useState(false)
   const [expandedId, setExpandedId] = useState(null)
   const [applications, setApplications] = useState({})
@@ -1007,8 +1007,9 @@ function JobsTab({ companyId }) {
     if (!createForm.title.trim()) return
     setCreating(true)
     try {
-      await createJobPosition({ ...createForm, companyId })
-      setCreateForm({ title: '', description: '', requirements: '', location: '' })
+      const location = createForm.city && createForm.country ? `${createForm.city}, ${createForm.country}` : (createForm.city || createForm.country || '')
+      await createJobPosition({ ...createForm, location, companyId })
+      setCreateForm({ title: '', description: '', requirements: '', country: '', city: '' })
       setShowCreate(false)
       await loadPositions()
     } catch (e) { setJobError(e?.message || 'Failed to create job position') }
@@ -1115,9 +1116,25 @@ function JobsTab({ companyId }) {
               <textarea required placeholder="Requirements *" value={createForm.requirements}
                 onChange={e => setCreateForm(f => ({ ...f, requirements: e.target.value }))}
                 className="w-full h-20 rounded-xl border border-navy-200 bg-white px-3 py-2 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all resize-none" />
-              <input type="text" required placeholder="Location *" value={createForm.location}
-                onChange={e => setCreateForm(f => ({ ...f, location: e.target.value }))}
-                className="w-full h-10 rounded-xl border border-navy-200 bg-white px-3 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all" />
+              <div className="grid sm:grid-cols-2 gap-2">
+                <select required value={createForm.country} onChange={e => setCreateForm(f => ({ ...f, country: e.target.value, city: '' }))}
+                  className="w-full h-10 rounded-xl border border-navy-200 bg-white px-3 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all">
+                  <option value="">Select country *</option>
+                  {ALL_COUNTRIES_SETTINGS.map(c => (
+                    <option key={c.isoCode} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
+                <select required value={createForm.city} onChange={e => setCreateForm(f => ({ ...f, city: e.target.value }))}
+                  className="w-full h-10 rounded-xl border border-navy-200 bg-white px-3 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all">
+                  <option value="">Select city *</option>
+                  {(() => {
+                    const sel = ALL_COUNTRIES_SETTINGS.find(c => c.name === createForm.country)
+                    const iso = sel?.isoCode
+                    const cities = iso ? [...new Set(City.getCitiesOfCountry(iso).map(x => x.name))].sort() : []
+                    return cities.map(city => <option key={city} value={city}>{city}</option>)
+                  })()}
+                </select>
+              </div>
               <div className="flex gap-2">
                 <button type="submit" disabled={creating}
                   className="h-9 px-5 bg-navy-900 text-white text-xs font-semibold rounded-xl hover:bg-navy-800 transition-colors flex items-center gap-1.5 disabled:opacity-50">

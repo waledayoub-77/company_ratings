@@ -285,6 +285,26 @@ const acceptHireInvite = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// POST /api/jobs/applications/:appId/reject-hire — employee rejects employment offer
+const rejectHireInvite = async (req, res, next) => {
+  try {
+    const result = await jobService.rejectHireInvite(req.params.appId, req.user.userId);
+    // Notify admin (non-blocking)
+    try {
+      if (result.adminUserId) {
+        await createNotification({
+          userId: result.adminUserId,
+          type: 'hire_rejected',
+          title: 'Employment Offer Rejected',
+          message: `A candidate has rejected the employment offer for ${result.positionTitle}.`,
+          link: '/company-admin?tab=jobs',
+        });
+      }
+    } catch (_) {}
+    res.json({ success: true, data: result.data });
+  } catch (err) { next(err); }
+};
+
 // GET /api/jobs/cv/:filename — serve uploaded CV file (authenticated)
 const serveCv = (req, res, next) => {
   try {
@@ -314,5 +334,6 @@ module.exports = {
   acceptInvite,
   sendHireInvite,
   acceptHireInvite,
+  rejectHireInvite,
   serveCv,
 };

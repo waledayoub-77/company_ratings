@@ -83,6 +83,11 @@ export async function acceptHireInvite(appId) {
   return authRequest(`/jobs/applications/${appId}/accept-hire`, { method: 'POST' })
 }
 
+/** POST /jobs/applications/:appId/reject-hire — employee rejects employment offer */
+export async function rejectHireInvite(appId) {
+  return authRequest(`/jobs/applications/${appId}/reject-hire`, { method: 'POST' })
+}
+
 /** Fetch a CV file as a Blob for in-page viewing */
 export async function fetchCvBlob(filename) {
   const res = await authFetch(`/jobs/cv/${encodeURIComponent(filename)}`)

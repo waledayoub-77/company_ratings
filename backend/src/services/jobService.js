@@ -536,6 +536,68 @@ const acceptInvite = async (applicationId, userId) => {
   return { data, companyName: company?.name, positionTitle: application.job_positions.title, adminUserId: company?.user_id };
 };
 
+/**
+ * Employee rejects a hire invitation
+ */
+const rejectHireInvite = async (applicationId, userId) => {
+  const { data: employee } = await supabase
+    .from('employees')
+    .select('id')
+    .eq('user_id', userId)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (!employee) throw new AppError('Employee profile not found', 404);
+
+  const { data: application, error: appErr } = await supabase
+    .from('job_applications')
+    .select('*, job_positions!inner(title, company_id)')
+    .eq('id', applicationId)
+    .eq('applicant_id', employee.id)
+    .single();
+
+  if (appErr || !application) throw new AppError('Application not found', 404);
+  if (!application.hire_invite_sent_at) throw new AppError('No hire invitation has been sent for this application', 400);
+  if (application.hire_invite_accepted_at) throw new AppError('Hire invitation already accepted', 400);
+
+  const { data, error } = await supabase
+    .from('job_applications')
+    .update({
+      hire_invite_rejected_at: new Date().toISOString(),
+      status: 'rejected',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', applicationId)
+    .select()
+    .single();
+
+  // If the column doesn't exist in the database the update will fail.
+  // Fall back to updating only the `status` so the employee sees 'rejected'.
+  if (error) {
+    console.warn('Failed to set hire_invite_rejected_at:', error);
+    const { data: fallbackData, error: fallbackErr } = await supabase
+      .from('job_applications')
+      .update({ status: 'rejected', updated_at: new Date().toISOString() })
+      .eq('id', applicationId)
+      .select()
+      .single();
+    if (fallbackErr) {
+      console.error('Fallback update also failed in rejectHireInvite:', fallbackErr);
+      throw new AppError('Failed to reject hire invitation', 500);
+    }
+    // Use fallback result
+    return { data: fallbackData, companyName: (await supabase.from('companies').select('name, user_id').eq('id', application.company_id).single()).data?.name, positionTitle: application.job_positions.title, adminUserId: (await supabase.from('companies').select('user_id').eq('id', application.company_id).single()).data?.user_id };
+  }
+
+  const { data: company } = await supabase
+    .from('companies')
+    .select('name, user_id')
+    .eq('id', application.company_id)
+    .single();
+
+  return { data, companyName: company?.name, positionTitle: application.job_positions.title, adminUserId: company?.user_id };
+};
+
 module.exports = {
   createJobPosition,
   getJobPositions,
@@ -552,4 +614,5 @@ module.exports = {
   acceptInvite,
   sendHireInvite,
   acceptHireInvite,
+  rejectHireInvite,
 };

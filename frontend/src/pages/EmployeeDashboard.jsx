@@ -38,7 +38,7 @@ import { getCompanyEotmEvents, getEotmNominees, castEotmVote, getCompanyEotmWinn
 import { getCompanyEotyEvents, getEotyNominees, castEotyVote, getCompanyEotyWinners } from '../api/eoty.js'
 import { useNotification } from '../context/NotificationContext.jsx'
 import CertificateModal from '../components/CertificateModal'
-import { getMyApplications, getAllJobPositions, applyToJob, acceptHireInvite } from '../api/jobs.js'
+import { getMyApplications, getAllJobPositions, applyToJob, acceptHireInvite, rejectHireInvite } from '../api/jobs.js'
 
 const statusConfig = {
   approved: { icon: CheckCircle2, color: 'text-emerald-500', badge: 'success', label: 'Verified' },
@@ -1731,6 +1731,18 @@ function JobBoardTab({ employments, refetchEmployments }) {
     finally { setAcceptingHire(a => ({ ...a, [appId]: false })) }
   }
 
+  const handleRejectHireInvite = async (appId) => {
+    setAcceptingHire(a => ({ ...a, [appId]: true }))
+    setJobError('')
+    try {
+      await rejectHireInvite(appId)
+      const updatedApps = await getMyApplications()
+      setMyApps(updatedApps?.data ?? [])
+      refetchEmployments?.()
+    } catch (e) { setJobError(e?.message || 'Failed to reject employment offer.') }
+    finally { setAcceptingHire(a => ({ ...a, [appId]: false })) }
+  }
+
   if (loading) return <div className="py-20 text-center text-navy-400 text-sm"><Loader2 size={20} className="animate-spin mx-auto" /></div>
 
   const APP_STATUS_COLORS = {
@@ -1747,7 +1759,8 @@ function JobBoardTab({ employments, refetchEmployments }) {
         const q = searchQuery.toLowerCase()
         return (j.title?.toLowerCase().includes(q)) ||
                (j.companies?.name?.toLowerCase().includes(q)) ||
-               (j.companies?.location?.toLowerCase().includes(q))
+               (j.companies?.location?.toLowerCase().includes(q)) ||
+               (j.location?.toLowerCase().includes(q))
       })
     : openJobs
 
@@ -1861,7 +1874,11 @@ function JobBoardTab({ employments, refetchEmployments }) {
                   <div className="flex items-start justify-between">
                     <div>
                       <h4 className="text-sm font-semibold text-navy-900">{job.title}</h4>
-                      <p className="text-xs text-navy-400 mt-0.5">{job.companies?.name ?? 'Company'} · Posted {new Date(job.created_at).toLocaleDateString()}</p>
+                      <p className="text-xs text-navy-400 mt-0.5">
+                        {job.companies?.name && <span>{job.companies.name} · </span>}
+                        {(job.location || job.companies?.location) && <span>{job.location || job.companies?.location} · </span>}
+                        Posted {new Date(job.created_at).toLocaleDateString()}
+                      </p>
                     </div>
                     {alreadyApplied ? (
                       <span className="px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-lg border border-emerald-200">Applied</span>
@@ -1928,6 +1945,30 @@ function JobBoardTab({ employments, refetchEmployments }) {
                 {pagedApps.map(app => {
                   const hireInviteSent = !!app.hire_invite_sent_at
                   const hireInviteAccepted = !!app.hire_invite_accepted_at
+
+                  // Determine employment status for this application by matching company_id
+                  const appCompanyId = app.company_id ?? app.job_positions?.company_id
+                  const myEmployment = employments.find(e => (e.company_id ?? e.companyId) === appCompanyId)
+
+                  // Prefer explicit application 'rejected' status (from decline) over employment-derived labels
+                  let displayStatus = app.status
+                  if (app.status === 'rejected') {
+                    displayStatus = 'rejected'
+                  } else if (myEmployment) {
+                    const verified = (myEmployment.verification_status ?? myEmployment.status)
+                    if (myEmployment.is_current === true && verified === 'approved') displayStatus = 'employed'
+                    else if ((myEmployment.is_current === false || myEmployment.is_current === 0) && verified === 'approved') displayStatus = 'ended'
+                    else displayStatus = verified || app.status
+                  }
+
+                  const statusClass = displayStatus === 'employed'
+                    ? 'px-2 py-1 bg-emerald-50 text-emerald-700 text-[11px] font-semibold rounded-lg border border-emerald-200'
+                    : displayStatus === 'ended'
+                      ? 'px-2.5 py-1 rounded-full border text-xs font-semibold bg-gray-50 text-navy-600 border-navy-100'
+                      : `px-2.5 py-1 rounded-full border text-xs font-semibold ${APP_STATUS_COLORS[app.status] ?? APP_STATUS_COLORS.pending}`
+
+                  const statusLabel = displayStatus === 'employed' ? 'Employed ✓' : displayStatus === 'ended' ? 'Ended' : displayStatus
+
                   return (
                     <div key={app.id} className="bg-ice-50 rounded-xl px-4 py-3">
                       <div className="flex items-center justify-between">
@@ -1941,21 +1982,26 @@ function JobBoardTab({ employments, refetchEmployments }) {
                         </div>
                         <div className="flex items-center gap-2 flex-wrap justify-end">
                           {hireInviteSent && !hireInviteAccepted && app.status === 'interview' && (
-                            <button
-                              onClick={() => handleAcceptHireInvite(app.id)}
-                              disabled={!!acceptingHire[app.id]}
-                              className="h-7 px-3 bg-emerald-700 text-white text-xs font-semibold rounded-lg hover:bg-emerald-800 disabled:opacity-50 flex items-center gap-1"
-                            >
-                              {acceptingHire[app.id] ? <Loader2 size={11} className="animate-spin" /> : null}
-                              Accept Employment
-                            </button>
+                            <>
+                              <button
+                                onClick={() => handleAcceptHireInvite(app.id)}
+                                disabled={!!acceptingHire[app.id]}
+                                className="h-7 px-3 bg-emerald-700 text-white text-xs font-semibold rounded-lg hover:bg-emerald-800 disabled:opacity-50 flex items-center gap-1"
+                              >
+                                {acceptingHire[app.id] ? <Loader2 size={11} className="animate-spin" /> : null}
+                                Accept Employment
+                              </button>
+                              <button
+                                onClick={() => handleRejectHireInvite(app.id)}
+                                disabled={!!acceptingHire[app.id]}
+                                className="h-7 px-3 bg-red-50 text-red-700 text-xs font-semibold rounded-lg hover:bg-red-100 disabled:opacity-50 flex items-center gap-1 border border-red-100"
+                              >
+                                Decline
+                              </button>
+                            </>
                           )}
-                          {app.status === 'approved' && hireInviteAccepted && (
-                            <span className="px-2 py-1 bg-emerald-50 text-emerald-700 text-[11px] font-semibold rounded-lg border border-emerald-200">Employed ✓</span>
-                          )}
-                          <span className={`px-2.5 py-1 rounded-full border text-xs font-semibold ${APP_STATUS_COLORS[app.status] ?? APP_STATUS_COLORS.pending}`}>
-                            {app.status}
-                          </span>
+
+                          <span className={statusClass}>{statusLabel}</span>
                         </div>
                       </div>
                     </div>

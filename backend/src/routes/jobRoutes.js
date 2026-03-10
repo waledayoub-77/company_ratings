@@ -29,6 +29,7 @@ router.post('/applications/:appId/invite', requireAuth, requireCompanyAdmin, job
 router.post('/applications/:appId/accept-invite', requireAuth, jobController.acceptInvite);
 router.post('/applications/:appId/hire-invite', requireAuth, requireCompanyAdmin, jobController.sendHireInvite);
 router.post('/applications/:appId/accept-hire', requireAuth, jobController.acceptHireInvite);
+router.post('/applications/:appId/reject-hire', requireAuth, jobController.rejectHireInvite);
 
 // Serve CV files (authenticated)
 router.get('/cv/:filename', requireAuth, jobController.serveCv);

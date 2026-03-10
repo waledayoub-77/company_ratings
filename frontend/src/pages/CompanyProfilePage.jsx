@@ -29,7 +29,7 @@ import StarRating from '../components/ui/StarRating.jsx'
 import Badge from '../components/ui/Badge.jsx'
 import Reveal from '../components/ui/Reveal.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
-import { getCompanyById, getCompanyReviews, getCompanyAnalytics, getCompanyEmployees } from '../api/companies'
+import { getCompanyById, getCompanyReviews, getCompanyAnalytics, getCompanyEmployees, getCompanyStats } from '../api/companies'
 import { submitReport } from '../api/admin'
 import { toggleReviewVote, createReviewReply } from '../api/reviews'
 import { getCompanyEotyWinners } from '../api/eoty'
@@ -99,6 +99,7 @@ export default function CompanyProfilePage() {
   // Employees state
   const [employees, setEmployees] = useState([])
   const [employeesLoading, setEmployeesLoading] = useState(false)
+  const [totalEmployees, setTotalEmployees] = useState(null)
 
   // EOTY winners state
   const [eotyWinners, setEotyWinners] = useState([])
@@ -133,13 +134,15 @@ export default function CompanyProfilePage() {
       setCompanyLoading(true)
       setCompanyError(null)
       try {
-        const [companyRes, analyticsRes] = await Promise.all([
+        const [companyRes, analyticsRes, statsRes] = await Promise.all([
           getCompanyById(id),
           getCompanyAnalytics(id).catch(() => null),
+          getCompanyStats(id).catch(() => null),
         ])
         if (!cancelled) {
           setCompany(companyRes.data)
           if (analyticsRes) setAnalytics(analyticsRes.data)
+          if (statsRes?.data) setTotalEmployees(statsRes.data.total_employees ?? null)
         }
       } catch (err) {
         if (!cancelled) setCompanyError(err.message || 'Company not found')
@@ -404,7 +407,7 @@ export default function CompanyProfilePage() {
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-navy-500">Employees</span>
-                    <span className="font-semibold text-navy-900">{employees.length}</span>
+                    <span className="font-semibold text-navy-900">{totalEmployees ?? employees.length}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-navy-500">Total reviews</span>

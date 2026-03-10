@@ -5,13 +5,11 @@ const { AppError } = require('../middlewares/errorHandler');
 /**
  * Create a new job posting
  */
-const createJobPosition = async (companyId, userId, { title, department, description, requirements, employmentType, location }) => {
+const createJobPosition = async (companyId, userId, { title, department, description, requirements, employmentType }) => {
   // All fields required
   if (!title || !title.trim()) throw new AppError('Title is required', 400);
   if (!description || !description.trim()) throw new AppError('Description is required', 400);
   if (!requirements || !requirements.trim()) throw new AppError('Requirements are required', 400);
-  if (!location || !location.trim()) throw new AppError('Location is required', 400);
-  const locationClean = location.trim();
 
   // Verify user owns the company
   const { data: company } = await supabase
@@ -33,7 +31,6 @@ const createJobPosition = async (companyId, userId, { title, department, descrip
       department: department || null,
       description: description.trim(),
       requirements: requirements.trim(),
-      location: locationClean,
       employment_type: employmentType || 'full-time',
       is_active: true,
       created_by: userId,
@@ -407,17 +404,14 @@ const sendHireInvite = async (applicationId, userId) => {
 const acceptHireInvite = async (applicationId, userId) => {
   const { data: employee } = await supabase
     .from('employees')
-    .select('id, users:user_id(identity_verified)')
+    .select('id, is_verified')
     .eq('user_id', userId)
     .is('deleted_at', null)
     .maybeSingle();
 
   if (!employee) throw new AppError('Employee profile not found', 404);
 
-  const identityVerified = employee?.users?.identity_verified;
-  if (!identityVerified) {
-    throw new AppError('You must be verified by a system admin before you can accept employment offers. Please submit your ID document on your Profile page and wait for approval.', 403);
-  }
+  if (!employee.is_verified) throw new AppError('Your account must be verified by a system admin before you can accept employment offers.', 403);
 
   // Enforce single current employment constraint
   const { data: activeEmployment } = await supabase
@@ -536,68 +530,6 @@ const acceptInvite = async (applicationId, userId) => {
   return { data, companyName: company?.name, positionTitle: application.job_positions.title, adminUserId: company?.user_id };
 };
 
-/**
- * Employee rejects a hire invitation
- */
-const rejectHireInvite = async (applicationId, userId) => {
-  const { data: employee } = await supabase
-    .from('employees')
-    .select('id')
-    .eq('user_id', userId)
-    .is('deleted_at', null)
-    .maybeSingle();
-
-  if (!employee) throw new AppError('Employee profile not found', 404);
-
-  const { data: application, error: appErr } = await supabase
-    .from('job_applications')
-    .select('*, job_positions!inner(title, company_id)')
-    .eq('id', applicationId)
-    .eq('applicant_id', employee.id)
-    .single();
-
-  if (appErr || !application) throw new AppError('Application not found', 404);
-  if (!application.hire_invite_sent_at) throw new AppError('No hire invitation has been sent for this application', 400);
-  if (application.hire_invite_accepted_at) throw new AppError('Hire invitation already accepted', 400);
-
-  const { data, error } = await supabase
-    .from('job_applications')
-    .update({
-      hire_invite_rejected_at: new Date().toISOString(),
-      status: 'rejected',
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', applicationId)
-    .select()
-    .single();
-
-  // If the column doesn't exist in the database the update will fail.
-  // Fall back to updating only the `status` so the employee sees 'rejected'.
-  if (error) {
-    console.warn('Failed to set hire_invite_rejected_at:', error);
-    const { data: fallbackData, error: fallbackErr } = await supabase
-      .from('job_applications')
-      .update({ status: 'rejected', updated_at: new Date().toISOString() })
-      .eq('id', applicationId)
-      .select()
-      .single();
-    if (fallbackErr) {
-      console.error('Fallback update also failed in rejectHireInvite:', fallbackErr);
-      throw new AppError('Failed to reject hire invitation', 500);
-    }
-    // Use fallback result
-    return { data: fallbackData, companyName: (await supabase.from('companies').select('name, user_id').eq('id', application.company_id).single()).data?.name, positionTitle: application.job_positions.title, adminUserId: (await supabase.from('companies').select('user_id').eq('id', application.company_id).single()).data?.user_id };
-  }
-
-  const { data: company } = await supabase
-    .from('companies')
-    .select('name, user_id')
-    .eq('id', application.company_id)
-    .single();
-
-  return { data, companyName: company?.name, positionTitle: application.job_positions.title, adminUserId: company?.user_id };
-};
-
 module.exports = {
   createJobPosition,
   getJobPositions,
@@ -614,5 +546,4 @@ module.exports = {
   acceptInvite,
   sendHireInvite,
   acceptHireInvite,
-  rejectHireInvite,
 };

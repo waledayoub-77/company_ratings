@@ -107,13 +107,6 @@ export default function CompanyAdminDashboard() {
       .catch(() => {})
   }, [companyId])
 
-  // Clear review badge when admin views the Reviews tab
-  useEffect(() => {
-    if (activeTab === 'reviews') {
-      setReviewCount(0)
-    }
-  }, [activeTab])
-
   const tabs = [
     { id: 'overview',  label: 'Analytics', icon: BarChart3 },
     { id: 'requests',  label: 'Employees', icon: Users, badge: pendingCount || null },
@@ -977,7 +970,7 @@ function JobsTab({ companyId }) {
   const [positions, setPositions] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
-  const [createForm, setCreateForm] = useState({ title: '', description: '', requirements: '', location: '' })
+  const [createForm, setCreateForm] = useState({ title: '', description: '', requirements: '' })
   const [creating, setCreating] = useState(false)
   const [expandedId, setExpandedId] = useState(null)
   const [applications, setApplications] = useState({})
@@ -1005,7 +998,7 @@ function JobsTab({ companyId }) {
     setCreating(true)
     try {
       await createJobPosition({ ...createForm, companyId })
-      setCreateForm({ title: '', description: '', requirements: '', location: '' })
+      setCreateForm({ title: '', description: '', requirements: '' })
       setShowCreate(false)
       await loadPositions()
     } catch (e) { setJobError(e?.message || 'Failed to create job position') }
@@ -1112,9 +1105,6 @@ function JobsTab({ companyId }) {
               <textarea required placeholder="Requirements *" value={createForm.requirements}
                 onChange={e => setCreateForm(f => ({ ...f, requirements: e.target.value }))}
                 className="w-full h-20 rounded-xl border border-navy-200 bg-white px-3 py-2 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all resize-none" />
-              <input type="text" required placeholder="Location *" value={createForm.location}
-                onChange={e => setCreateForm(f => ({ ...f, location: e.target.value }))}
-                className="w-full h-10 rounded-xl border border-navy-200 bg-white px-3 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all" />
               <div className="flex gap-2">
                 <button type="submit" disabled={creating}
                   className="h-9 px-5 bg-navy-900 text-white text-xs font-semibold rounded-xl hover:bg-navy-800 transition-colors flex items-center gap-1.5 disabled:opacity-50">
@@ -1142,7 +1132,6 @@ function JobsTab({ companyId }) {
               <div>
                 <h3 className="text-sm font-semibold text-navy-900">{pos.title}</h3>
                 <p className="text-xs text-navy-400 capitalize mt-0.5">{pos.status} · Created {new Date(pos.created_at).toLocaleDateString()}</p>
-                {pos.location && <p className="text-xs text-navy-400 mt-0.5">Location: {pos.location}</p>}
               </div>
               <div className="flex gap-2">
                 <button onClick={() => toggleApps(pos.id)}

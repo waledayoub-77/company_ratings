@@ -877,6 +877,11 @@ export default function CompanyProfilePage() {
                           {job.description && (
                             <p className="text-xs text-navy-500 mt-1 line-clamp-2">{job.description}</p>
                           )}
+                          {job.location && (
+                            <p className="text-xs text-navy-400 mt-1 flex items-center gap-1">
+                              <MapPin size={12} className="text-navy-300" /> {job.location}
+                            </p>
+                          )}
                           {job.requirements && (
                             <p className="text-xs text-navy-400 mt-1">Requirements: {job.requirements}</p>
                           )}

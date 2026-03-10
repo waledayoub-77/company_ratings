@@ -1935,6 +1935,7 @@ function JobBoardTab({ employments, refetchEmployments }) {
                           <p className="text-sm font-medium text-navy-900">{app.job_positions?.title ?? app.position_title ?? 'Position'}</p>
                           <p className="text-xs text-navy-400 mt-0.5">
                             {app.job_positions?.companies?.name && <span>{app.job_positions.companies.name} · </span>}
+                            {app.job_positions?.location && <span>{app.job_positions.location} · </span>}
                             Applied {new Date(app.created_at).toLocaleDateString()}
                           </p>
                         </div>

@@ -181,7 +181,7 @@ export default function LandingPage() {
 
                 <p className="mt-8 text-lg text-navy-600 leading-relaxed max-w-lg">
                   The only review platform where every voice is a verified employee. 
-                  No anonymous noise — just authentic, protected feedback that helps 
+                  Anonymous, protected, honest feedbacks available that helps 
                   companies and careers grow.
                 </p>
 
@@ -268,7 +268,7 @@ export default function LandingPage() {
                 {/* Stats mini card — hidden on mobile to avoid overflow */}
                 <div className="hidden sm:block absolute -right-10 -bottom-1 bg-navy-900 rounded-xl p-4 text-white shadow-xl w-36">
                   <TrendingUp size={16} className="text-navy-400 mb-2" />
-                  <p className="text-2xl font-bold">4.7</p>
+                  <p className="text-2xl font-bold">4.6</p>
                   <p className="text-[11px] text-navy-400 mt-0.5">Avg. Company Rating</p>
                 </div>
               </div>

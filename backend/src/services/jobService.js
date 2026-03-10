@@ -5,11 +5,13 @@ const { AppError } = require('../middlewares/errorHandler');
 /**
  * Create a new job posting
  */
-const createJobPosition = async (companyId, userId, { title, department, description, requirements, employmentType }) => {
+const createJobPosition = async (companyId, userId, { title, department, description, requirements, employmentType, location }) => {
   // All fields required
   if (!title || !title.trim()) throw new AppError('Title is required', 400);
   if (!description || !description.trim()) throw new AppError('Description is required', 400);
   if (!requirements || !requirements.trim()) throw new AppError('Requirements are required', 400);
+  if (!location || !location.trim()) throw new AppError('Location is required', 400);
+  const locationClean = location.trim();
 
   // Verify user owns the company
   const { data: company } = await supabase
@@ -31,6 +33,7 @@ const createJobPosition = async (companyId, userId, { title, department, descrip
       department: department || null,
       description: description.trim(),
       requirements: requirements.trim(),
+      location: locationClean,
       employment_type: employmentType || 'full-time',
       is_active: true,
       created_by: userId,
@@ -404,14 +407,17 @@ const sendHireInvite = async (applicationId, userId) => {
 const acceptHireInvite = async (applicationId, userId) => {
   const { data: employee } = await supabase
     .from('employees')
-    .select('id, is_verified')
+    .select('id, users:user_id(identity_verified)')
     .eq('user_id', userId)
     .is('deleted_at', null)
     .maybeSingle();
 
   if (!employee) throw new AppError('Employee profile not found', 404);
 
-  if (!employee.is_verified) throw new AppError('Your account must be verified by a system admin before you can accept employment offers.', 403);
+  const identityVerified = employee?.users?.identity_verified;
+  if (!identityVerified) {
+    throw new AppError('You must be verified by a system admin before you can accept employment offers. Please submit your ID document on your Profile page and wait for approval.', 403);
+  }
 
   // Enforce single current employment constraint
   const { data: activeEmployment } = await supabase

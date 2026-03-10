@@ -9,12 +9,12 @@ const supabase = require('../config/database');
 // POST /api/jobs — create job posting (company admin)
 const createJobPosition = async (req, res, next) => {
   try {
-    const { companyId, title, department, description, requirements, employmentType } = req.body;
-    if (!companyId || !title || !description) {
-      return res.status(400).json({ success: false, message: 'companyId, title, and description are required' });
+    const { companyId, title, department, description, requirements, employmentType, location } = req.body;
+    if (!companyId || !title || !description || !location) {
+      return res.status(400).json({ success: false, message: 'companyId, title, description, and location are required' });
     }
     const data = await jobService.createJobPosition(companyId, req.user.userId, {
-      title, department, description, requirements, employmentType
+      title, department, description, requirements, employmentType, location
     });
     res.status(201).json({ success: true, data });
   } catch (err) { next(err); }

@@ -48,6 +48,9 @@ import { createEotmEvent, closeEotmEvent, getCompanyEotmEvents, getEotmNominees,
 import { createEotyEvent, closeEotyEvent, getCompanyEotyEvents, getEotyNominees, getCompanyEotyWinners } from '../api/eoty'
 import { useNotification } from '../context/NotificationContext'
 import { getJobPositions, createJobPosition, closeJobPosition, deleteJobPosition, getApplications, updateApplicationStatus, sendHireInvite, fetchCvBlob } from '../api/jobs'
+import { Country, City } from 'country-state-city'
+
+const ALL_COUNTRIES_SETTINGS = Country.getAllCountries().map(c => ({ name: c.name, isoCode: c.isoCode }))
 
 const VALID_CA_TABS = ['overview', 'requests', 'reviews', 'eotm', 'eoty', 'jobs', 'settings']
 
@@ -1316,19 +1319,29 @@ function JobsTab({ companyId }) {
 
 /* ─── Settings Tab ─── */
 function SettingsTab({ companyId, onNameChange }) {
-  const [form, setForm] = useState({ name: '', location: '', description: '' })
+  const [form, setForm] = useState({ name: '', country: '', city: '', description: '' })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+
+  const selectedCountryCode = ALL_COUNTRIES_SETTINGS.find(c => c.name === form.country)?.isoCode
+  const availableCities = selectedCountryCode
+    ? [...new Set(City.getCitiesOfCountry(selectedCountryCode).map(c => c.name))].sort()
+    : []
 
   useEffect(() => {
     if (!companyId) return
     getCompanyById(companyId)
       .then(res => {
         const c = res?.data?.company ?? res?.data ?? {}
+        // Try to parse existing "City, Country" location string
+        const parts = (c.location ?? '').split(', ')
+        const parsedCountry = parts.length >= 2 ? parts[parts.length - 1] : (parts[0] || '')
+        const parsedCity    = parts.length >= 2 ? parts.slice(0, -1).join(', ') : ''
         setForm({
           name:        c.name        ?? '',
-          location:    c.location    ?? '',
+          country:     parsedCountry,
+          city:        parsedCity,
           description: c.description ?? '',
         })
       })
@@ -1340,7 +1353,8 @@ function SettingsTab({ companyId, onNameChange }) {
     setSaving(true)
     setSaved(false)
     try {
-      await updateCompany(companyId, form)
+      const location = form.city ? `${form.city}, ${form.country}` : form.country
+      await updateCompany(companyId, { name: form.name, description: form.description, location })
       onNameChange?.(form.name)
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
@@ -1363,11 +1377,35 @@ function SettingsTab({ companyId, onNameChange }) {
               value={form.name}
               onChange={e => setForm({ ...form, name: e.target.value })}
             />
-            <Input
-              label="Location"
-              value={form.location}
-              onChange={e => setForm({ ...form, location: e.target.value })}
-            />
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-navy-700">Country</label>
+              <div className="relative">
+                <select
+                  value={form.country}
+                  onChange={e => setForm({ ...form, country: e.target.value, city: '' })}
+                  className="w-full h-11 rounded-xl border border-navy-200 bg-white pl-3 pr-8 text-sm text-navy-700 appearance-none focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all cursor-pointer"
+                >
+                  <option value="">Select country…</option>
+                  {ALL_COUNTRIES_SETTINGS.map(c => <option key={c.isoCode} value={c.name}>{c.name}</option>)}
+                </select>
+                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-400 pointer-events-none" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className={`block text-sm font-medium ${!form.country ? 'text-navy-300' : 'text-navy-700'}`}>City</label>
+              <div className="relative">
+                <select
+                  value={form.city}
+                  onChange={e => setForm({ ...form, city: e.target.value })}
+                  disabled={!form.country}
+                  className={`w-full h-11 rounded-xl border bg-white pl-3 pr-8 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all ${!form.country ? 'border-navy-100 text-navy-300 cursor-not-allowed opacity-60' : 'border-navy-200 text-navy-700 cursor-pointer'}`}
+                >
+                  <option value="">{form.country ? 'Select city…' : 'Select country first'}</option>
+                  {availableCities.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-400 pointer-events-none" />
+              </div>
+            </div>
             <div>
               <label className="block text-sm font-medium text-navy-700 mb-1.5">Description</label>
               <textarea

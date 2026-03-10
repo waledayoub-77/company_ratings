@@ -19,7 +19,6 @@ import {
   AlertCircle,
   Trash2,
   Edit2,
-  Flag,
   ShieldCheck,
   Trophy,
   Briefcase,
@@ -32,7 +31,7 @@ import Reveal from '../components/ui/Reveal.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { getMyReviews, updateReview, deleteReview } from '../api/reviews.js'
 import { getMyEmployments, requestEmployment, endEmployment, cancelEmployment, requestEndEmployment } from '../api/employments.js'
-import { getFeedbackReceived, reportFeedback } from '../api/feedback.js'
+import { getFeedbackReceived } from '../api/feedback.js'
 import { getCompanies } from '../api/companies.js'
 import { getCompanyEotmEvents, getEotmNominees, castEotmVote, getCompanyEotmWinners } from '../api/eotm.js'
 import { getCompanyEotyEvents, getEotyNominees, castEotyVote, getCompanyEotyWinners } from '../api/eoty.js'
@@ -1084,35 +1083,10 @@ function ReviewsTab({ reviews, employments = [], refetch }) {
 
 /* ─── Feedback Tab ─── */
 function FeedbackTab({ feedback, employments }) {
-  const [reportingId, setReportingId] = useState(null)
-  const [reportReason, setReportReason] = useState('')
-  const [reportDescription, setReportDescription] = useState('')
-  const [reportSubmitting, setReportSubmitting] = useState(false)
-  const [reportSuccess, setReportSuccess] = useState(null)
-  const [reportError, setReportError] = useState('')
-
-  const openReport = (id) => {
-    setReportingId(id)
-    setReportReason('')
-    setReportDescription('')
-    setReportSuccess(null)
-    setReportError('')
-  }
-
-  const handleReport = async (fbId) => {
-    if (!reportReason) { setReportError('Please select a reason.'); return }
-    if (reportDescription.trim().length < 10) { setReportError('Please provide at least 10 characters.'); return }
-    setReportSubmitting(true)
-    setReportError('')
-    try {
-      await reportFeedback(fbId, { reason: reportReason, description: reportDescription.trim() })
-      setReportSuccess(fbId)
-      setReportingId(null)
-    } catch (err) {
-      setReportError(err?.message ?? 'Failed to submit report.')
-    } finally {
-      setReportSubmitting(false)
-    }
+  const avg = (key) => {
+    const vals = feedback.map(fb => fb[key]).filter(Boolean)
+    if (!vals.length) return '—'
+    return (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1)
   }
 
   if (feedback.length === 0) {
@@ -1122,12 +1096,6 @@ function FeedbackTab({ feedback, employments }) {
         <p className="text-sm text-navy-400">No feedback received yet.</p>
       </div>
     )
-  }
-
-  const avg = (key) => {
-    const vals = feedback.map(fb => fb[key]).filter(Boolean)
-    if (!vals.length) return '—'
-    return (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1)
   }
 
   const categoryAverages = [
@@ -1174,8 +1142,6 @@ function FeedbackTab({ feedback, employments }) {
           const initials = giver.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
           const quarter  = fb.quarter_year ?? fb.quarterYear ?? ''
           const overall  = Math.round(((fb.professionalism || 0) + (fb.communication || 0) + (fb.teamwork || 0) + (fb.reliability || 0)) / 4 * 10) / 10
-          const isReporting = reportingId === fb.id
-          const wasReported = reportSuccess === fb.id
 
           return (
             <Reveal key={fb.id ?? i} delay={i * 0.08}>
@@ -1195,22 +1161,6 @@ function FeedbackTab({ feedback, employments }) {
                       <Star size={14} className="fill-amber-400 text-amber-400" />
                       <span className="text-sm font-bold text-navy-900">{overall}</span>
                     </div>
-                    {wasReported ? (
-                      <span className="text-xs text-emerald-600 font-medium flex items-center gap-1">
-                        <CheckCircle2 size={12} /> Reported
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => isReporting ? setReportingId(null) : openReport(fb.id)}
-                        className={`flex items-center gap-1 text-xs font-medium transition-colors ${
-                          isReporting ? 'text-red-600' : 'text-navy-400 hover:text-red-500'
-                        }`}
-                        title="Report this feedback"
-                      >
-                        <Flag size={12} />
-                        {isReporting ? 'Cancel' : 'Report'}
-                      </button>
-                    )}
                   </div>
                 </div>
 
@@ -1231,56 +1181,6 @@ function FeedbackTab({ feedback, employments }) {
                 {fb.written_feedback && (
                   <p className="mt-3 text-xs text-navy-500 leading-relaxed italic">"{fb.written_feedback}"</p>
                 )}
-
-                {/* Inline report form */}
-                <AnimatePresence>
-                  {isReporting && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="mt-4 pt-4 border-t border-navy-100 space-y-3">
-                        <p className="text-xs font-semibold text-navy-700">Report this feedback</p>
-                        {reportError && (
-                          <div className="flex items-center gap-1.5 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                            <AlertCircle size={12} />{reportError}
-                          </div>
-                        )}
-                        <div className="grid sm:grid-cols-2 gap-3">
-                          <select
-                            value={reportReason}
-                            onChange={e => setReportReason(e.target.value)}
-                            className="h-9 rounded-xl border border-navy-200 bg-white px-3 text-xs text-navy-700 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
-                          >
-                            <option value="">Select reason…</option>
-                            <option value="harassment">Harassment</option>
-                            <option value="false_info">False information</option>
-                            <option value="spam">Spam</option>
-                            <option value="other">Other</option>
-                          </select>
-                          <input
-                            type="text"
-                            placeholder="Describe the issue (10+ chars)"
-                            value={reportDescription}
-                            onChange={e => setReportDescription(e.target.value)}
-                            className="h-9 rounded-xl border border-navy-200 bg-white px-3 text-xs placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
-                          />
-                        </div>
-                        <button
-                          onClick={() => handleReport(fb.id)}
-                          disabled={reportSubmitting}
-                          className="h-8 px-4 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-all disabled:opacity-50 inline-flex items-center gap-1.5"
-                        >
-                          {reportSubmitting ? <Loader2 size={11} className="animate-spin" /> : <Flag size={11} />}
-                          Submit Report
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
             </Reveal>
           )

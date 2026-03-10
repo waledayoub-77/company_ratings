@@ -19,9 +19,15 @@ const createEvent = async (companyId, userId, { year }) => {
   }
 
   // Only allow for current year
-  const currentYear = new Date().getFullYear();
+  const now = new Date();
+  const currentYear = now.getFullYear();
   if (parseInt(year) !== currentYear) {
     throw new AppError('EOTY events can only be created for the current year', 400);
+  }
+
+  // Only allow EOTY event creation in December
+  if (now.getMonth() !== 11) {
+    throw new AppError('Employee of the Year events can only be created in December', 400);
   }
 
   // Check for existing event

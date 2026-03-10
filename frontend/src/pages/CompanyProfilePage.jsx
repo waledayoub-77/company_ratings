@@ -33,7 +33,7 @@ import { getCompanyById, getCompanyReviews, getCompanyAnalytics, getCompanyEmplo
 import { submitReport } from '../api/admin'
 import { toggleReviewVote, createReviewReply } from '../api/reviews'
 import { getCompanyEotyWinners } from '../api/eoty'
-import { getJobPositions, applyToJob } from '../api/jobs'
+import { getJobPositions, applyToJob, getMyApplications } from '../api/jobs'
 
 const CATEGORY_META = {
   work_life_balance: { label: 'Work-Life Balance', icon: Heart, color: 'bg-pink-500' },
@@ -114,6 +114,17 @@ export default function CompanyProfilePage() {
   const [applyError, setApplyError] = useState('')
   const [applySuccess, setApplySuccess] = useState(false)
   const [appliedIds, setAppliedIds] = useState(new Set())
+
+  // Load user's existing applications so "Applied" badge persists across refreshes
+  useEffect(() => {
+    if (!user) return
+    getMyApplications()
+      .then(res => {
+        const apps = res?.data ?? []
+        setAppliedIds(new Set(apps.map(a => a.position_id)))
+      })
+      .catch(() => {})
+  }, [user])
 
   // Fetch company + analytics
   useEffect(() => {
@@ -870,6 +881,7 @@ export default function CompanyProfilePage() {
                             <p className="text-xs text-navy-400 mt-1">Requirements: {job.requirements}</p>
                           )}
                         </div>
+                        {user?.role !== 'company_admin' && (
                         <div className="flex items-center gap-2 flex-shrink-0">
                           {appliedIds.has(job.id) ? (
                             <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-lg border border-emerald-200">Applied ✓</span>
@@ -882,6 +894,7 @@ export default function CompanyProfilePage() {
                             </button>
                           )}
                         </div>
+                        )}
                       </div>
                       <p className="text-[11px] text-navy-300 mt-2">
                         Posted {new Date(job.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}

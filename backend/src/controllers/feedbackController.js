@@ -361,9 +361,10 @@ exports.reportFeedback = async (req, res) => {
 
     // Verify feedback exists
     const { data: fb, error: fbErr } = await supabase
-      .from('peer_feedback')
+      .from('employee_feedback')
       .select('id, rated_employee_id')
       .eq('id', id)
+      .is('deleted_at', null)
       .single();
 
     if (fbErr || !fb) {

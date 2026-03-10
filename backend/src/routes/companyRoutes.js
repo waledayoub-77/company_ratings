@@ -21,6 +21,12 @@ router.get(
   companyController.getFilterOptions
 );
 
+// GET /companies/platform-stats - Get platform-wide stats for landing page
+router.get(
+  '/platform-stats',
+  companyController.getPlatformStats
+);
+
 // GET /companies/:id - Get single company
 router.get(
   '/:id',

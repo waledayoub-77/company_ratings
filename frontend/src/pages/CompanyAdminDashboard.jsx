@@ -1099,10 +1099,10 @@ function JobsTab({ companyId }) {
               <input type="text" required placeholder="Job title *" value={createForm.title}
                 onChange={e => setCreateForm(f => ({ ...f, title: e.target.value }))}
                 className="w-full h-10 rounded-xl border border-navy-200 bg-white px-3 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all" />
-              <textarea placeholder="Description (optional)" value={createForm.description}
+              <textarea required placeholder="Description *" value={createForm.description}
                 onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))}
                 className="w-full h-24 rounded-xl border border-navy-200 bg-white px-3 py-2 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all resize-none" />
-              <textarea placeholder="Requirements (optional)" value={createForm.requirements}
+              <textarea required placeholder="Requirements *" value={createForm.requirements}
                 onChange={e => setCreateForm(f => ({ ...f, requirements: e.target.value }))}
                 className="w-full h-20 rounded-xl border border-navy-200 bg-white px-3 py-2 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all resize-none" />
               <div className="flex gap-2">

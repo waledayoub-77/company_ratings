@@ -1070,32 +1070,8 @@ function ReviewsTab({ reviews, employments = [], refetch }) {
                           Edit
                         </button>
                       )}
-                      <button
-                        onClick={() => setConfirmDeleteId(confirmDeleteId === review.id ? null : review.id)}
-                        disabled={deleting === review.id}
-                        className="flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-700 transition-colors disabled:opacity-50"
-                      >
-                        {deleting === review.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-                        Delete
-                      </button>
                     </div>
                   </div>
-                  {/* Inline delete confirmation */}
-                  {confirmDeleteId === review.id && (
-                    <div className="mt-3 bg-red-50 border border-red-200 rounded-xl p-3 flex items-center justify-between">
-                      <p className="text-xs text-red-700">Are you sure you want to delete this review?</p>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleDelete(review.id)}
-                          disabled={deleting === review.id}
-                          className="h-7 px-3 bg-red-600 text-white text-[11px] font-medium rounded-md hover:bg-red-700 disabled:opacity-50"
-                        >
-                          {deleting === review.id ? 'Deleting…' : 'Yes, Delete'}
-                        </button>
-                        <button onClick={() => setConfirmDeleteId(null)} className="h-7 px-3 text-[11px] text-navy-500 hover:text-navy-700">Cancel</button>
-                      </div>
-                    </div>
-                  )}
                 </>
               )}
             </div>
@@ -1447,9 +1423,9 @@ function EotmVoteTab({ employments, user }) {
                               <div>
                                 <p className="text-sm font-medium text-navy-900">{nom.full_name ?? 'Unknown'}</p>
                                 {nom.vote_count !== null && nom.vote_count !== undefined ? (
-                                  <p className="text-xs text-navy-400">{nom.vote_count} votes</p>
+                                  <p className="text-xs text-navy-400">{nom.vote_count} vote{nom.vote_count !== 1 ? 's' : ''}</p>
                                 ) : (
-                                  <p className="text-xs text-navy-400">Vote counts hidden</p>
+                                  <p className="text-xs text-navy-400">Results will be revealed when voting ends</p>
                                 )}
                               </div>
                             </div>
@@ -1628,9 +1604,9 @@ function EotyVoteTab({ employments, user }) {
                           <div>
                             <p className="text-sm font-medium text-navy-900">{nom.full_name ?? nom.employee_name ?? 'Unknown'}</p>
                             {nom.vote_count !== null && nom.vote_count !== undefined ? (
-                              <p className="text-xs text-navy-400">{nom.vote_count} votes</p>
+                              <p className="text-xs text-navy-400">{nom.vote_count} vote{nom.vote_count !== 1 ? 's' : ''}</p>
                             ) : (
-                              <p className="text-xs text-navy-400">Vote counts hidden</p>
+                              <p className="text-xs text-navy-400">Results will be revealed when voting ends</p>
                             )}
                           </div>
                         </div>
@@ -1703,6 +1679,12 @@ function JobBoardTab({ employments, refetchEmployments }) {
   const [coverLetter, setCoverLetter] = useState({})
   const [cvFiles, setCvFiles] = useState({})
   const [acceptingHire, setAcceptingHire] = useState({})
+  const [jobError, setJobError] = useState('')
+  const [subTab, setSubTab] = useState('open')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [jobPage, setJobPage] = useState(1)
+  const [appPage, setAppPage] = useState(1)
+  const JOBS_PER_PAGE = 10
 
   const loadData = () => {
     Promise.all([getAllJobPositions(), getMyApplications()])
@@ -1716,10 +1698,14 @@ function JobBoardTab({ employments, refetchEmployments }) {
 
   useEffect(() => { loadData() }, [])
 
+  // Reset pages when search changes
+  useEffect(() => { setJobPage(1); setAppPage(1) }, [searchQuery])
+
   const appliedPositionIds = new Set(myApps.map(a => a.position_id))
 
   const handleApply = async (positionId) => {
     setApplying(a => ({ ...a, [positionId]: true }))
+    setJobError('')
     try {
       await applyToJob(positionId, {
         cvFile: cvFiles[positionId] || undefined,
@@ -1729,18 +1715,19 @@ function JobBoardTab({ employments, refetchEmployments }) {
       setMyApps(updatedApps?.data ?? [])
       setCoverLetter(c => ({ ...c, [positionId]: '' }))
       setCvFiles(f => ({ ...f, [positionId]: null }))
-    } catch (e) { alert(e?.message || 'Application failed. Please try again.') }
+    } catch (e) { setJobError(e?.message || 'Application failed. Please try again.') }
     finally { setApplying(a => ({ ...a, [positionId]: false })) }
   }
 
   const handleAcceptHireInvite = async (appId) => {
     setAcceptingHire(a => ({ ...a, [appId]: true }))
+    setJobError('')
     try {
       await acceptHireInvite(appId)
       const updatedApps = await getMyApplications()
       setMyApps(updatedApps?.data ?? [])
       refetchEmployments?.()
-    } catch (e) { alert(e?.message || 'Failed to accept employment offer.') }
+    } catch (e) { setJobError(e?.message || 'Failed to accept employment offer.') }
     finally { setAcceptingHire(a => ({ ...a, [appId]: false })) }
   }
 
@@ -1753,11 +1740,64 @@ function JobBoardTab({ employments, refetchEmployments }) {
     rejected: 'bg-red-50 text-red-700 border-red-200',
   }
 
+  // Filter open jobs by search query
+  const openJobs = jobs.filter(j => j.status === 'open')
+  const filteredJobs = searchQuery
+    ? openJobs.filter(j => {
+        const q = searchQuery.toLowerCase()
+        return (j.title?.toLowerCase().includes(q)) ||
+               (j.companies?.name?.toLowerCase().includes(q)) ||
+               (j.companies?.location?.toLowerCase().includes(q))
+      })
+    : openJobs
+
+  // Filter applications by search query
+  const filteredApps = searchQuery
+    ? myApps.filter(a => {
+        const q = searchQuery.toLowerCase()
+        return (a.job_positions?.title?.toLowerCase().includes(q)) ||
+               (a.position_title?.toLowerCase().includes(q)) ||
+               (a.job_positions?.companies?.name?.toLowerCase().includes(q))
+      })
+    : myApps
+
+  // Pagination for jobs
+  const totalJobPages = Math.max(1, Math.ceil(filteredJobs.length / JOBS_PER_PAGE))
+  const pagedJobs = filteredJobs.slice((jobPage - 1) * JOBS_PER_PAGE, jobPage * JOBS_PER_PAGE)
+
+  // Pagination for applications
+  const totalAppPages = Math.max(1, Math.ceil(filteredApps.length / JOBS_PER_PAGE))
+  const pagedApps = filteredApps.slice((appPage - 1) * JOBS_PER_PAGE, appPage * JOBS_PER_PAGE)
+
+  const PaginationControls = ({ currentPage, totalPages, setPage: setP }) => {
+    if (totalPages <= 1) return null
+    return (
+      <div className="flex items-center justify-center gap-2 mt-4">
+        <button disabled={currentPage <= 1} onClick={() => setP(currentPage - 1)}
+          className="h-8 px-3 rounded-lg text-xs font-medium border border-navy-200 text-navy-600 hover:bg-navy-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+          Previous
+        </button>
+        <span className="text-xs text-navy-400">Page {currentPage} of {totalPages}</span>
+        <button disabled={currentPage >= totalPages} onClick={() => setP(currentPage + 1)}
+          className="h-8 px-3 rounded-lg text-xs font-medium border border-navy-200 text-navy-600 hover:bg-navy-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+          Next
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <h2 className="text-lg font-semibold text-navy-900 flex items-center gap-2">
         <Briefcase size={18} className="text-navy-500" /> Job Board
       </h2>
+
+      {jobError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 flex items-center justify-between">
+          <span>{jobError}</span>
+          <button onClick={() => setJobError('')} className="text-red-400 hover:text-red-600 text-xs font-semibold">✕</button>
+        </div>
+      )}
 
       {/* Verification warning */}
       {user?.isVerified === false && (
@@ -1769,114 +1809,163 @@ function JobBoardTab({ employments, refetchEmployments }) {
         </div>
       )}
 
-      {/* My applications */}
-      {myApps.length > 0 && (
-        <Reveal delay={0.05}>
-          <div className="bg-white rounded-2xl border border-navy-100/50 p-5">
-            <h3 className="text-sm font-semibold text-navy-900 mb-3">My Applications ({myApps.length})</h3>
-            <div className="space-y-2">
-              {myApps.map(app => {
-                const hireInviteSent = !!app.hire_invite_sent_at
-                const hireInviteAccepted = !!app.hire_invite_accepted_at
-                return (
-                  <div key={app.id} className="bg-ice-50 rounded-xl px-4 py-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-navy-900">{app.job_positions?.title ?? app.position_title ?? 'Position'}</p>
-                        <p className="text-xs text-navy-400 mt-0.5">
-                          {app.job_positions?.companies?.name && <span>{app.job_positions.companies.name} · </span>}
-                          Applied {new Date(app.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap justify-end">
-                        {/* Hire offer — shown when admin sent hire invite (from interview status) */}
-                        {hireInviteSent && !hireInviteAccepted && app.status === 'interview' && (
-                          <button
-                            onClick={() => handleAcceptHireInvite(app.id)}
-                            disabled={!!acceptingHire[app.id]}
-                            className="h-7 px-3 bg-emerald-700 text-white text-xs font-semibold rounded-lg hover:bg-emerald-800 disabled:opacity-50 flex items-center gap-1"
-                          >
-                            {acceptingHire[app.id] ? <Loader2 size={11} className="animate-spin" /> : null}
-                            Accept Employment
-                          </button>
-                        )}
-                        {app.status === 'approved' && hireInviteAccepted && (
-                          <span className="px-2 py-1 bg-emerald-50 text-emerald-700 text-[11px] font-semibold rounded-lg border border-emerald-200">Employed ✓</span>
-                        )}
-                        <span className={`px-2.5 py-1 rounded-full border text-xs font-semibold ${APP_STATUS_COLORS[app.status] ?? APP_STATUS_COLORS.pending}`}>
-                          {app.status}
+      {/* Search bar */}
+      <div className="relative max-w-md">
+        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-navy-400" />
+        <input
+          type="text"
+          placeholder="Search by job name, company, or location..."
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          className="w-full h-10 rounded-xl border border-navy-200 bg-white pl-9 pr-4 text-sm text-navy-900 placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"
+        />
+      </div>
+
+      {/* Sub-tabs */}
+      <div className="flex gap-1 bg-navy-50 rounded-xl p-1 w-fit">
+        <button
+          onClick={() => { setSubTab('open'); setJobPage(1) }}
+          className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+            subTab === 'open' ? 'bg-white text-navy-900 shadow-sm' : 'text-navy-500 hover:text-navy-700'
+          }`}
+        >
+          Open Positions ({filteredJobs.length})
+        </button>
+        <button
+          onClick={() => { setSubTab('applications'); setAppPage(1) }}
+          className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+            subTab === 'applications' ? 'bg-white text-navy-900 shadow-sm' : 'text-navy-500 hover:text-navy-700'
+          }`}
+        >
+          My Applications ({filteredApps.length})
+        </button>
+      </div>
+
+      {/* Open Positions sub-tab */}
+      {subTab === 'open' && (
+        <>
+          {filteredJobs.length === 0 && (
+            <div className="bg-white rounded-2xl border border-navy-100/50 p-12 text-center">
+              <Briefcase size={32} className="text-navy-200 mx-auto mb-3" />
+              <p className="text-sm text-navy-400">
+                {searchQuery ? 'No positions match your search.' : 'No open positions right now. Check back later!'}
+              </p>
+            </div>
+          )}
+
+          {pagedJobs.map((job, i) => {
+            const alreadyApplied = appliedPositionIds.has(job.id)
+            return (
+              <Reveal key={job.id} delay={i * 0.05}>
+                <div className="bg-white rounded-2xl border border-navy-100/50 p-5 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="text-sm font-semibold text-navy-900">{job.title}</h4>
+                      <p className="text-xs text-navy-400 mt-0.5">{job.companies?.name ?? 'Company'} · Posted {new Date(job.created_at).toLocaleDateString()}</p>
+                    </div>
+                    {alreadyApplied ? (
+                      <span className="px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-lg border border-emerald-200">Applied</span>
+                    ) : (
+                      <button onClick={() => handleApply(job.id)} disabled={!!applying[job.id] || !cvFiles[job.id]}
+                        className="h-8 px-4 bg-navy-900 text-white text-xs font-semibold rounded-lg hover:bg-navy-800 disabled:opacity-50 flex items-center gap-1.5"
+                        title={!cvFiles[job.id] ? 'Please upload a CV to apply' : undefined}>
+                        {applying[job.id] ? <Loader2 size={12} className="animate-spin" /> : 'Apply'}
+                      </button>
+                    )}
+                  </div>
+                  {job.description && <p className="text-xs text-navy-500">{job.description}</p>}
+                  {job.requirements && (
+                    <div className="text-xs text-navy-400">
+                      <strong className="text-navy-600">Requirements:</strong> {job.requirements}
+                    </div>
+                  )}
+                  {!alreadyApplied && (
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 p-2.5 border border-dashed border-navy-200 rounded-xl cursor-pointer hover:border-navy-400 hover:bg-navy-50 transition-all">
+                        <Download size={14} className="text-navy-400 flex-shrink-0" />
+                        <span className="text-xs text-navy-500 truncate">
+                          {cvFiles[job.id] ? cvFiles[job.id].name : 'Upload CV (PDF or Word, optional)'}
                         </span>
+                        <input
+                          type="file"
+                          accept=".pdf,.doc,.docx"
+                          className="hidden"
+                          onChange={e => setCvFiles(f => ({ ...f, [job.id]: e.target.files?.[0] || null }))}
+                        />
+                      </label>
+                      <textarea
+                        placeholder="Cover letter (optional)..."
+                        value={coverLetter[job.id] ?? ''}
+                        onChange={e => setCoverLetter(c => ({ ...c, [job.id]: e.target.value }))}
+                        className="w-full h-20 rounded-xl border border-navy-200 bg-white px-3 py-2 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all resize-none"
+                      />
+                    </div>
+                  )}
+                </div>
+              </Reveal>
+            )
+          })}
+
+          <PaginationControls currentPage={jobPage} totalPages={totalJobPages} setPage={setJobPage} />
+        </>
+      )}
+
+      {/* My Applications sub-tab */}
+      {subTab === 'applications' && (
+        <>
+          {filteredApps.length === 0 && (
+            <div className="bg-white rounded-2xl border border-navy-100/50 p-12 text-center">
+              <Briefcase size={32} className="text-navy-200 mx-auto mb-3" />
+              <p className="text-sm text-navy-400">
+                {searchQuery ? 'No applications match your search.' : "You haven't applied to any positions yet."}
+              </p>
+            </div>
+          )}
+
+          {filteredApps.length > 0 && (
+            <div className="bg-white rounded-2xl border border-navy-100/50 p-5">
+              <div className="space-y-2">
+                {pagedApps.map(app => {
+                  const hireInviteSent = !!app.hire_invite_sent_at
+                  const hireInviteAccepted = !!app.hire_invite_accepted_at
+                  return (
+                    <div key={app.id} className="bg-ice-50 rounded-xl px-4 py-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-navy-900">{app.job_positions?.title ?? app.position_title ?? 'Position'}</p>
+                          <p className="text-xs text-navy-400 mt-0.5">
+                            {app.job_positions?.companies?.name && <span>{app.job_positions.companies.name} · </span>}
+                            Applied {new Date(app.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap justify-end">
+                          {hireInviteSent && !hireInviteAccepted && app.status === 'interview' && (
+                            <button
+                              onClick={() => handleAcceptHireInvite(app.id)}
+                              disabled={!!acceptingHire[app.id]}
+                              className="h-7 px-3 bg-emerald-700 text-white text-xs font-semibold rounded-lg hover:bg-emerald-800 disabled:opacity-50 flex items-center gap-1"
+                            >
+                              {acceptingHire[app.id] ? <Loader2 size={11} className="animate-spin" /> : null}
+                              Accept Employment
+                            </button>
+                          )}
+                          {app.status === 'approved' && hireInviteAccepted && (
+                            <span className="px-2 py-1 bg-emerald-50 text-emerald-700 text-[11px] font-semibold rounded-lg border border-emerald-200">Employed ✓</span>
+                          )}
+                          <span className={`px-2.5 py-1 rounded-full border text-xs font-semibold ${APP_STATUS_COLORS[app.status] ?? APP_STATUS_COLORS.pending}`}>
+                            {app.status}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </Reveal>
-      )}
-
-      {/* Available positions */}
-      <h3 className="text-sm font-semibold text-navy-900">Open Positions ({jobs.filter(j => j.status === 'open').length})</h3>
-      {jobs.filter(j => j.status === 'open').length === 0 && (
-        <div className="bg-white rounded-2xl border border-navy-100/50 p-12 text-center">
-          <Briefcase size={32} className="text-navy-200 mx-auto mb-3" />
-          <p className="text-sm text-navy-400">No open positions right now. Check back later!</p>
-        </div>
-      )}
-
-      {jobs.filter(j => j.status === 'open').map((job, i) => {
-        const alreadyApplied = appliedPositionIds.has(job.id)
-        return (
-          <Reveal key={job.id} delay={i * 0.05}>
-            <div className="bg-white rounded-2xl border border-navy-100/50 p-5 space-y-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h4 className="text-sm font-semibold text-navy-900">{job.title}</h4>
-                  <p className="text-xs text-navy-400 mt-0.5">{job.companies?.name ?? 'Company'} · Posted {new Date(job.created_at).toLocaleDateString()}</p>
-                </div>
-                {alreadyApplied ? (
-                  <span className="px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-lg border border-emerald-200">Applied</span>
-                ) : (
-                  <button onClick={() => handleApply(job.id)} disabled={!!applying[job.id] || !cvFiles[job.id]}
-                    className="h-8 px-4 bg-navy-900 text-white text-xs font-semibold rounded-lg hover:bg-navy-800 disabled:opacity-50 flex items-center gap-1.5"
-                    title={!cvFiles[job.id] ? 'Please upload a CV to apply' : undefined}>
-                    {applying[job.id] ? <Loader2 size={12} className="animate-spin" /> : 'Apply'}
-                  </button>
-                )}
+                  )
+                })}
               </div>
-              {job.description && <p className="text-xs text-navy-500">{job.description}</p>}
-              {job.requirements && (
-                <div className="text-xs text-navy-400">
-                  <strong className="text-navy-600">Requirements:</strong> {job.requirements}
-                </div>
-              )}
-              {!alreadyApplied && (
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 p-2.5 border border-dashed border-navy-200 rounded-xl cursor-pointer hover:border-navy-400 hover:bg-navy-50 transition-all">
-                    <Download size={14} className="text-navy-400 flex-shrink-0" />
-                    <span className="text-xs text-navy-500 truncate">
-                      {cvFiles[job.id] ? cvFiles[job.id].name : 'Upload CV (PDF or Word, optional)'}
-                    </span>
-                    <input
-                      type="file"
-                      accept=".pdf,.doc,.docx"
-                      className="hidden"
-                      onChange={e => setCvFiles(f => ({ ...f, [job.id]: e.target.files?.[0] || null }))}
-                    />
-                  </label>
-                  <textarea
-                    placeholder="Cover letter (optional)..."
-                    value={coverLetter[job.id] ?? ''}
-                    onChange={e => setCoverLetter(c => ({ ...c, [job.id]: e.target.value }))}
-                    className="w-full h-20 rounded-xl border border-navy-200 bg-white px-3 py-2 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all resize-none"
-                  />
-                </div>
-              )}
+              <PaginationControls currentPage={appPage} totalPages={totalAppPages} setPage={setAppPage} />
             </div>
-          </Reveal>
-        )
-      })}
+          )}
+        </>
+      )}
     </div>
   )
 }

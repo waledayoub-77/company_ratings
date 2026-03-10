@@ -13,19 +13,10 @@ import {
   TrendingUp,
   CheckCircle2,
   ChevronRight,
-  Quote,
 } from 'lucide-react'
 import Reveal from '../components/ui/Reveal.jsx'
 import Footer from '../components/layout/Footer.jsx'
-import { getCompanies } from '../api/companies'
-
-/* ─── Mock data ─── */
-const stats = [
-  { value: '10K+', label: 'Verified Reviews' },
-  { value: '2,500+', label: 'Companies Listed' },
-  { value: '50K+', label: 'Employees Registered' },
-  { value: '4.8', label: 'Avg. Platform Rating' },
-]
+import { getCompanies, getPlatformStats } from '../api/companies'
 
 const features = [
   {
@@ -50,30 +41,6 @@ const features = [
   },
 ]
 
-const testimonials = [
-  {
-    name: 'Sarah K.',
-    role: 'Software Engineer',
-    company: 'TechCorp',
-    text: 'Finally a platform where I can share honest feedback without worrying about retaliation. The verification system gives it real credibility.',
-    rating: 5,
-  },
-  {
-    name: 'Marcus T.',
-    role: 'HR Director',
-    company: 'NovaCo',
-    text: 'The internal feedback module transformed how our teams communicate. We caught issues early and improved our retention by 23%.',
-    rating: 5,
-  },
-  {
-    name: 'Priya R.',
-    role: 'Product Manager',
-    company: 'Dataline',
-    text: 'I used RateHub to research companies before my last job switch. The verified reviews gave me confidence in my decision.',
-    rating: 4,
-  },
-]
-
 const ROLE_HOME = { employee: '/dashboard', company_admin: '/company-admin', system_admin: '/admin' }
 
 const GRADIENTS = [
@@ -94,10 +61,30 @@ export default function LandingPage() {
   const dashboardHref = user ? (ROLE_HOME[user.role] || '/') : null
 
   const [topCompanies, setTopCompanies] = useState([])
+  const [stats, setStats] = useState([
+    { value: '–', label: 'Verified Reviews' },
+    { value: '–', label: 'Companies Listed' },
+    { value: '–', label: 'Employees Registered' },
+    { value: '–', label: 'Avg. Platform Rating' },
+  ])
 
   useEffect(() => {
     getCompanies({ sortBy: 'overall_rating', sortOrder: 'desc', limit: 4 })
       .then(res => setTopCompanies(res.data || []))
+      .catch(() => {})
+
+    getPlatformStats()
+      .then(res => {
+        const d = res?.data
+        if (d) {
+          setStats([
+            { value: d.totalReviews?.toLocaleString() || '0', label: 'Verified Reviews' },
+            { value: d.totalCompanies?.toLocaleString() || '0', label: 'Companies Listed' },
+            { value: d.totalEmployees?.toLocaleString() || '0', label: 'Employees Registered' },
+            { value: d.avgPlatformRating || '0.0', label: 'Avg. Platform Rating' },
+          ])
+        }
+      })
       .catch(() => {})
   }, [])
 
@@ -120,7 +107,6 @@ export default function LandingPage() {
             <a href="#features" className="text-sm text-navy-600 hover:text-navy-900 transition-colors">Features</a>
             <a href="#how-it-works" className="text-sm text-navy-600 hover:text-navy-900 transition-colors">How It Works</a>
             <a href="#companies" className="text-sm text-navy-600 hover:text-navy-900 transition-colors">Companies</a>
-            <a href="#testimonials" className="text-sm text-navy-600 hover:text-navy-900 transition-colors">Reviews</a>
           </div>
           <div className="flex items-center gap-3">
             {user ? (
@@ -565,63 +551,6 @@ export default function LandingPage() {
                 <div className="absolute -top-4 -right-4 w-24 h-24 rounded-2xl bg-gradient-to-br from-navy-500/20 to-ice-500/20 -z-10" />
               </div>
             </Reveal>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════
-          TESTIMONIALS — Editorial quotes
-      ═══════════════════════════════════════════ */}
-      <section id="testimonials" className="py-24 lg:py-32 bg-white">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <Reveal>
-            <div className="mb-16">
-              <span className="text-xs font-semibold uppercase tracking-[0.15em] text-navy-500">
-                Testimonials
-              </span>
-              <h2 className="mt-3 text-3xl md:text-4xl font-serif font-bold text-navy-900">
-                What our users say
-              </h2>
-            </div>
-          </Reveal>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {testimonials.map((t, i) => (
-              <Reveal key={t.name} delay={i * 0.1}>
-                <div className={`p-8 rounded-2xl border transition-all duration-300 hover:shadow-lg hover:shadow-navy-900/4 ${
-                  i === 1
-                    ? 'bg-navy-900 border-navy-800 md:-translate-y-4'
-                    : 'bg-white border-navy-100/50 hover:border-navy-200'
-                }`}>
-                  <Quote
-                    size={28}
-                    className={i === 1 ? 'text-navy-600 mb-4' : 'text-navy-200 mb-4'}
-                  />
-                  <p className={`text-sm leading-relaxed mb-6 ${
-                    i === 1 ? 'text-navy-200' : 'text-navy-600'
-                  }`}>
-                    {t.text}
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-semibold ${
-                      i === 1
-                        ? 'bg-navy-700 text-white'
-                        : 'bg-navy-50 text-navy-600'
-                    }`}>
-                      {t.name.split(' ').map(n => n[0]).join('')}
-                    </div>
-                    <div>
-                      <p className={`text-sm font-semibold ${i === 1 ? 'text-white' : 'text-navy-900'}`}>
-                        {t.name}
-                      </p>
-                      <p className={`text-xs ${i === 1 ? 'text-navy-400' : 'text-navy-400'}`}>
-                        {t.role} at {t.company}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </Reveal>
-            ))}
           </div>
         </div>
       </section>

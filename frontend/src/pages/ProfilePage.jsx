@@ -38,10 +38,8 @@ import { getFeedbackGiven, getFeedbackReceived } from '../api/feedback'
 import { submitIdentityVerification, getVerificationStatus } from '../api/verification'
 
 export default function ProfilePage() {
-  const { user, updateUser, logout } = useAuth()
-  const navigate     = useNavigate()
+  const { user, updateUser } = useAuth()
   const employeeId   = user?.employeeId
-  const originalEmailRef = useRef('')
 
   const [editing, setEditing] = useState(false)
   const [activeSection, setActiveSection] = useState('profile')
@@ -61,10 +59,6 @@ export default function ProfilePage() {
   const [saveSuccess, setSaveSuccess] = useState('')
   const [loading, setLoading] = useState(true)
 
-  // Capture original email the moment editing starts so we can detect a change
-  useEffect(() => {
-    if (editing) originalEmailRef.current = form.email
-  }, [editing]) // eslint-disable-line react-hooks/exhaustive-deps
   const [resolvedEmployeeId, setResolvedEmployeeId] = useState(employeeId ?? null)
 
   /* Resolve employeeId — login response doesn't include it, only /auth/me does */
@@ -153,11 +147,7 @@ export default function ProfilePage() {
     setSaveError('')
     setSaveSuccess('')
     try {
-      const newEmail     = form.email.trim()
-      const emailChanged = newEmail !== originalEmailRef.current
-
       if (resolvedEmployeeId) {
-        // Employee-specific fields → employees table
         await updateEmployeeProfile(resolvedEmployeeId, {
           fullName:          form.fullName.trim(),
           currentPosition:   form.currentPosition.trim(),
@@ -165,42 +155,21 @@ export default function ProfilePage() {
           skills:            form.skills,
           profileVisibility: form.profileVisibility,
         })
-        // Email lives in users table — route through /auth/me for all roles
-        if (emailChanged) {
-          await apiUpdateMe({ email: newEmail })
-        }
       } else {
-        // Admin / company_admin: all fields through PATCH /auth/me
         await apiUpdateMe({
           fullName:        form.fullName.trim(),
           bio:             form.bio,
           currentPosition: form.currentPosition?.trim(),
-          email:           newEmail,
         })
       }
 
-      // Patch auth context so Navbar refreshes immediately
       updateUser({
         fullName: form.fullName.trim(),
-        email:    newEmail,
       })
 
-      setSaveSuccess(emailChanged
-        ? 'Email updated — signing you out…'
-        : 'Profile saved successfully.'
-      )
+      setSaveSuccess('Profile saved successfully.')
       setEditing(false)
-
-      if (emailChanged) {
-        // Email changed → all sessions revoked on backend → sign out
-        setSaveError('')
-        setTimeout(async () => {
-          await logout()
-          navigate('/login')
-        }, 1800)
-      } else {
-        setTimeout(() => setSaveSuccess(''), 3000)
-      }
+      setTimeout(() => setSaveSuccess(''), 3000)
     } catch (err) {
       setSaveError(err?.message || 'Failed to save changes.')
     } finally {
@@ -444,19 +413,12 @@ function ProfileSection({ form, setForm, editing, setEditing, onSave, onCancel, 
                 onChange={(e) => setForm(f => ({ ...f, fullName: e.target.value }))}
               />
               <div>
-                <Input
-                  label="Email"
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
-                />
-                <p className="text-[11px] text-amber-600 mt-1 flex items-center gap-1">
-                   Changing your email will sign you out immediately.
-                </p>
+                <label className="block text-sm font-medium text-navy-700 mb-1.5">Email</label>
+                <p className="text-sm text-navy-600">{form.email || '—'}</p>
               </div>
             </div>
             <Input
-              label="Current Position / Job Title"
+              label="Job Title"
               value={form.currentPosition}
               onChange={(e) => setForm(f => ({ ...f, currentPosition: e.target.value }))}
               placeholder="e.g. Senior Software Engineer"
@@ -504,28 +466,6 @@ function ProfileSection({ form, setForm, editing, setEditing, onSave, onCancel, 
               </div>
             </div>
 
-            {/* Profile Visibility */}
-            <div>
-              <label className="block text-sm font-medium text-navy-700 mb-1.5">Profile Visibility</label>
-              <div className="flex gap-3">
-                {['public', 'private'].map(v => (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => setForm(f => ({ ...f, profileVisibility: v }))}
-                    className={`flex items-center gap-2 h-10 px-4 rounded-xl text-sm font-medium border transition-all ${
-                      form.profileVisibility === v
-                        ? 'bg-navy-900 text-white border-navy-900'
-                        : 'border-navy-200 text-navy-600 hover:bg-navy-50'
-                    }`}
-                  >
-                    {v === 'public' ? <Eye size={14} /> : <EyeOff size={14} />}
-                    {v.charAt(0).toUpperCase() + v.slice(1)}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {saveError && (
               <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{saveError}</p>
             )}
@@ -544,10 +484,10 @@ function ProfileSection({ form, setForm, editing, setEditing, onSave, onCancel, 
               <InfoRow icon={Mail}      label="Email"          value={form.email           || '—'} />
               {isAdmin
                 ? <InfoRow icon={Shield}    label="Role"           value="System Administrator" />
-                : <InfoRow icon={Briefcase} label="Position"       value={form.currentPosition || '—'} />
+                : <InfoRow icon={Briefcase} label="Job Title"      value={form.currentPosition || '—'} />
               }
               <InfoRow icon={Calendar}  label="Member Since"   value={form.joined ? new Date(form.joined).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'} />
-              {!isAdmin && <InfoRow icon={Eye} label="Visibility" value={form.profileVisibility === 'private' ? 'Private' : 'Public'} />}
+
             </div>
             {form.bio && (
               <div className="pt-4 border-t border-navy-50">

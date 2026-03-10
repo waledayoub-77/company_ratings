@@ -18,23 +18,7 @@ import StarRating from '../components/ui/StarRating.jsx'
 import { getCompanies, getFilterOptions } from '../api/companies'
 
 /* ─── Constants ─── */
-const industries = [
-  'All Industries', 'Technology', 'Healthcare', 'Finance', 'Education',
-  'Retail', 'Manufacturing', 'Consulting', 'Media & Entertainment',
-  'Real Estate', 'Transportation', 'Food & Beverage', 'Energy',
-  'Telecommunications', 'Automotive', 'Aerospace', 'Pharmaceuticals',
-  'Legal', 'Marketing & Advertising', 'Construction', 'Hospitality',
-]
-const locations = [
-  'All Locations', 'San Francisco', 'New York', 'Los Angeles', 'Chicago',
-  'Seattle', 'Austin', 'Boston', 'Denver', 'Washington DC', 'Atlanta',
-  'Dallas', 'Miami', 'Portland', 'San Diego', 'Phoenix', 'Philadelphia',
-  'Minneapolis', 'Detroit', 'Houston', 'Nashville', 'Charlotte',
-  'San Jose', 'Remote',
-  'Toronto', 'Vancouver', 'Montreal', 'London', 'Berlin', 'Paris',
-  'Dubai', 'Beirut', 'Lebanon', 'Riyadh', 'Cairo', 'Mumbai',
-  'Singapore', 'Tokyo', 'Sydney', 'Melbourne', 'Amsterdam', 'Zurich',
-]
+
 const sortOptions = [
   { label: 'Highest Rated',  sortBy: 'overall_rating', sortOrder: 'desc' },
   { label: 'Most Reviewed',  sortBy: 'total_reviews',  sortOrder: 'desc' },
@@ -68,7 +52,6 @@ export default function CompaniesPage() {
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [industry, setIndustry] = useState('All Industries')
-  const [locationFilter, setLocationFilter] = useState('All Locations')
   const [countryFilter, setCountryFilter] = useState('All Countries')
   const [cityFilter, setCityFilter] = useState('All Cities')
   const [sort, setSort] = useState('Highest Rated')
@@ -99,7 +82,7 @@ export default function CompaniesPage() {
   useEffect(() => { setCityFilter('All Cities') }, [countryFilter])
 
   // Reset to page 1 when any filter changes
-  useEffect(() => { setPage(1) }, [debouncedSearch, industry, locationFilter, countryFilter, cityFilter, sort, ratingFilter])
+  useEffect(() => { setPage(1) }, [debouncedSearch, industry, countryFilter, cityFilter, sort, ratingFilter])
 
   // Fetch companies from API
   useEffect(() => {
@@ -112,7 +95,6 @@ export default function CompaniesPage() {
         const params = { page, limit: LIMIT, sortBy: s.sortBy, sortOrder: s.sortOrder }
         if (debouncedSearch) params.search = debouncedSearch
         if (industry !== 'All Industries') params.industry = industry
-        if (locationFilter && locationFilter !== 'All Locations') params.location = locationFilter
         if (countryFilter && countryFilter !== 'All Countries') params.country = countryFilter
         if (cityFilter && cityFilter !== 'All Cities') params.city = cityFilter
         if (ratingFilter > 0) params.minRating = ratingFilter
@@ -129,11 +111,10 @@ export default function CompaniesPage() {
       }
     })()
     return () => { cancelled = true }
-  }, [page, debouncedSearch, industry, locationFilter, countryFilter, cityFilter, sort, ratingFilter])
+  }, [page, debouncedSearch, industry, countryFilter, cityFilter, sort, ratingFilter])
 
   const activeFilters = [
     industry !== 'All Industries' && industry,
-    locationFilter !== 'All Locations' && `📍 ${locationFilter}`,
     countryFilter !== 'All Countries' && `🌍 ${countryFilter}`,
     cityFilter !== 'All Cities' && `🏙️ ${cityFilter}`,
     ratingFilter > 0 && `${ratingFilter}+ stars`,
@@ -182,9 +163,8 @@ export default function CompaniesPage() {
         {/* Filters panel */}
         <AnimatedPanel show={showFilters}>
           <div className="mb-8 p-6 rounded-2xl bg-white border border-navy-100/50 shadow-sm">
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <SelectFilter label="Industry" value={industry} options={['All Industries', ...(filterOptions.industries?.length ? filterOptions.industries : industries.slice(1))]} onChange={setIndustry} />
-              <SelectFilter label="Location" value={locationFilter} options={locations} onChange={setLocationFilter} />
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <SelectFilter label="Industry" value={industry} options={['All Industries', ...(filterOptions.industries || [])]} onChange={setIndustry} />
               <SelectFilter label="Country" value={countryFilter} options={['All Countries', ...(filterOptions.countries || [])]} onChange={setCountryFilter} />
               <SelectFilter label="City" value={cityFilter} options={['All Cities', ...(countryFilter !== 'All Countries' ? (filterOptions.citiesByCountry?.[countryFilter] || []) : Object.values(filterOptions.citiesByCountry || {}).flat())]} onChange={setCityFilter} />
             </div>
@@ -221,7 +201,6 @@ export default function CompaniesPage() {
                 {f}
                 <X size={12} className="cursor-pointer hover:text-navy-900" onClick={() => {
                   if (f === industry) setIndustry('All Industries')
-                  if (typeof f === 'string' && f.startsWith('📍')) setLocationFilter('All Locations')
                   if (typeof f === 'string' && f.startsWith('🌍')) setCountryFilter('All Countries')
                   if (typeof f === 'string' && f.startsWith('🏙️')) setCityFilter('All Cities')
                   if (typeof f === 'string' && f.includes('stars')) setRatingFilter(0)
@@ -229,7 +208,7 @@ export default function CompaniesPage() {
               </span>
             ))}
             <button
-              onClick={() => { setIndustry('All Industries'); setLocationFilter('All Locations'); setCountryFilter('All Countries'); setCityFilter('All Cities'); setRatingFilter(0) }}
+              onClick={() => { setIndustry('All Industries'); setCountryFilter('All Countries'); setCityFilter('All Cities'); setRatingFilter(0) }}
               className="text-xs text-navy-500 hover:text-navy-700 transition-colors"
             >
               Clear all

@@ -221,6 +221,44 @@ const getFilterOptions = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /companies/platform-stats
+ * Returns real platform-wide statistics for the landing page
+ */
+const getPlatformStats = async (req, res, next) => {
+  try {
+    const supabase = require('../config/database');
+
+    const [reviewsRes, companiesRes, employeesRes, ratingRes] = await Promise.all([
+      supabase.from('company_reviews').select('*', { count: 'exact', head: true }).is('deleted_at', null),
+      supabase.from('companies').select('*', { count: 'exact', head: true }).is('deleted_at', null),
+      supabase.from('employees').select('*', { count: 'exact', head: true }).is('deleted_at', null),
+      supabase.from('companies').select('overall_rating').is('deleted_at', null).gt('overall_rating', 0),
+    ]);
+
+    const totalReviews = reviewsRes.count || 0;
+    const totalCompanies = companiesRes.count || 0;
+    const totalEmployees = employeesRes.count || 0;
+
+    const ratings = ratingRes.data || [];
+    const avgRating = ratings.length > 0
+      ? (ratings.reduce((sum, r) => sum + Number(r.overall_rating), 0) / ratings.length).toFixed(1)
+      : '0.0';
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalReviews,
+        totalCompanies,
+        totalEmployees,
+        avgPlatformRating: avgRating,
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getCompanies,
   getCompanyById,
@@ -230,5 +268,6 @@ module.exports = {
   getCompanyStats,
   getCompanyAnalytics,
   getCompanyEmployees,
-  getFilterOptions
+  getFilterOptions,
+  getPlatformStats
 };

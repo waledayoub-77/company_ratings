@@ -6,6 +6,11 @@ const { AppError } = require('../middlewares/errorHandler');
  * Create a new job posting
  */
 const createJobPosition = async (companyId, userId, { title, department, description, requirements, employmentType }) => {
+  // All fields required
+  if (!title || !title.trim()) throw new AppError('Title is required', 400);
+  if (!description || !description.trim()) throw new AppError('Description is required', 400);
+  if (!requirements || !requirements.trim()) throw new AppError('Requirements are required', 400);
+
   // Verify user owns the company
   const { data: company } = await supabase
     .from('companies')
@@ -22,10 +27,10 @@ const createJobPosition = async (companyId, userId, { title, department, descrip
     .from('job_positions')
     .insert({
       company_id: companyId,
-      title,
+      title: title.trim(),
       department: department || null,
-      description,
-      requirements: requirements || null,
+      description: description.trim(),
+      requirements: requirements.trim(),
       employment_type: employmentType || 'full-time',
       is_active: true,
       created_by: userId,
@@ -399,20 +404,14 @@ const sendHireInvite = async (applicationId, userId) => {
 const acceptHireInvite = async (applicationId, userId) => {
   const { data: employee } = await supabase
     .from('employees')
-    .select('id')
+    .select('id, is_verified')
     .eq('user_id', userId)
     .is('deleted_at', null)
     .maybeSingle();
 
   if (!employee) throw new AppError('Employee profile not found', 404);
 
-  const { data: hireUser } = await supabase
-    .from('users')
-    .select('identity_verified')
-    .eq('id', userId)
-    .single();
-
-  if (!hireUser?.identity_verified) throw new AppError('Your account must be verified by a system admin before you can accept employment offers.', 403);
+  if (!employee.is_verified) throw new AppError('Your account must be verified by a system admin before you can accept employment offers.', 403);
 
   // Enforce single current employment constraint
   const { data: activeEmployment } = await supabase
@@ -439,9 +438,9 @@ const acceptHireInvite = async (applicationId, userId) => {
     .single();
 
   if (appErr || !application) throw new AppError('Application not found', 404);
-  if (application.status !== 'interview') throw new AppError('Application is not in interview status', 400);
-  if (!application.hire_invite_sent_at) throw new AppError('No hire invitation has been sent for this application', 400);
   if (application.hire_invite_accepted_at) throw new AppError('Hire invitation already accepted', 400);
+  if (!application.hire_invite_sent_at) throw new AppError('No hire invitation has been sent for this application', 400);
+  if (application.status !== 'interview') throw new AppError('Application is not in interview status', 400);
 
   // Update application: accepted + set status to 'approved'
   const { data, error } = await supabase

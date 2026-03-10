@@ -109,6 +109,52 @@ const createReview = async (reviewData, userId) => {
     throw new AppError('No verified employment record found for this company', 400);
   }
 
+  // ── SENTIMENT PRE-CHECK — block very negative reviews before saving ───────
+  const sentiment = analyzeText(content || '');
+  if (shouldFlagForSuspension(sentiment.label)) {
+    // Very negative review: do NOT publish. Notify system admins.
+    try {
+      // Save a hidden/flagged copy so admin can review it
+      const { data: flaggedReview } = await supabase
+        .from('company_reviews')
+        .insert({
+          employee_id: employeeId,
+          company_id: companyId,
+          employment_id: employment.id,
+          overall_rating: overallRating,
+          content,
+          is_anonymous: isAnonymous || false,
+          can_edit_until: new Date().toISOString(),
+          departure_reason: departureReason || null,
+          sentiment: sentiment.label,
+          sentiment_score: sentiment.comparative,
+          auto_flagged: true,
+          deleted_at: new Date().toISOString(), // soft-delete so it won't appear publicly
+        })
+        .select()
+        .single();
+
+      if (flaggedReview) {
+        await autoReportReview(flaggedReview.id, sentiment);
+      }
+
+      // Flag the user for admin review
+      await supabase
+        .from('users')
+        .update({ pending_suspension: true })
+        .eq('id', userId);
+      console.warn(`⚠️  User ${userId} blocked from publishing very negative review (${sentiment.comparative.toFixed(3)})`);
+    } catch (blockErr) {
+      console.error('Error handling blocked review:', blockErr.message);
+    }
+
+    throw new AppError(
+      'Your review could not be published because it contains highly negative language. It has been forwarded to the system administrator for review.',
+      400
+    );
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   // Create review
   const canEditUntil = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
   const { data, error } = await supabase
@@ -140,15 +186,11 @@ const createReview = async (reviewData, userId) => {
   // Recalculate company rating
   await recalculateCompanyRating(companyId);
 
-  // ── SENTIMENT ANALYSIS (non-blocking — runs after review is saved) ───────
-  // Analyze the review content and tag it. If too negative:
-  //   negative      → auto-report for admin review
-  //   very_negative → auto-report + flag author for pending suspension
+  // ── SENTIMENT TAGGING (post-save, non-blocking) ──────────────────────────
+  // Tag the saved review with sentiment data. Auto-report negative ones.
   try {
-    const sentiment = analyzeText(content || '');
     const isAutoFlagged = shouldAutoReport(sentiment.label);
 
-    // Persist sentiment on the review row
     await supabase
       .from('company_reviews')
       .update({
@@ -159,21 +201,10 @@ const createReview = async (reviewData, userId) => {
       .eq('id', data.id);
 
     if (isAutoFlagged) {
-      // Create a system-generated report
       await autoReportReview(data.id, sentiment);
     }
-
-    if (shouldFlagForSuspension(sentiment.label)) {
-      // Flag the user for admin review (NOT an immediate suspension)
-      await supabase
-        .from('users')
-        .update({ pending_suspension: true })
-        .eq('id', userId);
-      console.warn(`⚠️  User ${userId} flagged for pending suspension — very negative review (${sentiment.comparative.toFixed(3)})`);
-    }
   } catch (sentimentErr) {
-    // Sentiment is non-critical — never break review creation over it
-    console.error('Sentiment analysis failed (non-fatal):', sentimentErr.message);
+    console.error('Sentiment tagging failed (non-fatal):', sentimentErr.message);
   }
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -311,10 +342,9 @@ const deleteReview = async (reviewId, userId, userRole) => {
     throw new AppError('Review not found', 404);
   }
 
-  // Check permissions (owner or system_admin only)
-  const isOwner = employee && review.employee_id === employee.id;
-  if (!isOwner && userRole !== 'system_admin') {
-    throw new AppError('You do not have permission to delete this review', 403);
+  // Only system_admin can delete reviews
+  if (userRole !== 'system_admin') {
+    throw new AppError('Only system administrators can delete reviews', 403);
   }
 
   const { error } = await supabase

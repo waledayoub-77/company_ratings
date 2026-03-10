@@ -153,7 +153,7 @@ export default function InternalFeedbackPage() {
                     <p className="text-sm text-navy-300 leading-relaxed">
                       Select a coworker from your company, rate them on 4 categories (1–5 stars each), 
                       and optionally leave a written comment. You can submit one feedback per person per quarter.
-                      Feedback is <strong className="text-white">not anonymous</strong> — your name will be shown.
+                      Feedback <strong className="text-white">can be anonymous</strong> — toggle the option below when writing your feedback.
                     </p>
                   </div>
                 </div>
@@ -165,7 +165,7 @@ export default function InternalFeedbackPage() {
                   <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-navy-400" />
                   <input
                     type="text"
-                    placeholder="Search by name, position or company..."
+                    placeholder="Search by name..."
                     value={search}
                     onChange={(e) => { setSearch(e.target.value); setPage(1) }}
                     className="w-full h-12 rounded-xl border border-navy-200 bg-white pl-11 pr-4 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all"

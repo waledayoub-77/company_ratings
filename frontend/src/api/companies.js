@@ -94,3 +94,11 @@ export async function getCompanyEmployees(id) {
 export async function getFilterOptions() {
   return request('/companies/filter-options')
 }
+
+/**
+ * GET /companies/platform-stats
+ * Returns { totalReviews, totalCompanies, totalEmployees, avgPlatformRating }
+ */
+export async function getPlatformStats() {
+  return request('/companies/platform-stats')
+}

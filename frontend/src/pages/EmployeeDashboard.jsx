@@ -1847,8 +1847,19 @@ function JobBoardTab({ employments, refetchEmployments }) {
                   const hireInviteAccepted = !!app.hire_invite_accepted_at
 
                   // Determine employment status for this application by matching company_id
+                  // and (preferably) the position title — prevents marking all roles at the same
+                  // company as "Employed" when the user only holds one specific position.
                   const appCompanyId = app.company_id ?? app.job_positions?.company_id
-                  const myEmployment = employments.find(e => (e.company_id ?? e.companyId) === appCompanyId)
+                  const appTitleRaw = (app.job_positions?.title || app.position_title || '')
+                  const normalize = s => (s || '').toString().toLowerCase().replace(/[^\w\s]/g, '').trim()
+                  const appTitle = normalize(appTitleRaw)
+
+                  const myEmployment = employments.find(e => {
+                    if ((e.company_id ?? e.companyId) !== appCompanyId) return false
+                    const empPos = normalize(e.position)
+                    if (!appTitle || !empPos) return false // require both sides to compare
+                    return empPos.includes(appTitle) || appTitle.includes(empPos)
+                  })
 
                   // Prefer explicit application 'rejected' status (from decline) over employment-derived labels
                   let displayStatus = app.status

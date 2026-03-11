@@ -65,6 +65,7 @@ export default function CompanyAdminDashboard() {
   const [activeEotyCount, setActiveEotyCount] = useState(0)
   const [jobCount, setJobCount] = useState(0)
   const [companyName, setCompanyName] = useState('')
+  const [companyVerified, setCompanyVerified] = useState(null) // null = loading, true/false
   const { user } = useAuth()
   const companyId = user?.companyId
 
@@ -72,10 +73,11 @@ export default function CompanyAdminDashboard() {
     if (!companyId) return
     getCompanyById(companyId)
       .then(res => {
-        const name = res?.data?.company?.name ?? res?.data?.name
-        if (name) setCompanyName(name)
+        const c = res?.data?.company ?? res?.data
+        if (c?.name) setCompanyName(c.name)
+        setCompanyVerified(!!c?.is_verified)
       })
-      .catch(() => {})
+      .catch(() => { setCompanyVerified(false) })
     getPendingEmployments()
       .then(res => {
         const list = res?.data?.employments ?? res?.data ?? []
@@ -132,6 +134,25 @@ export default function CompanyAdminDashboard() {
       <div className="text-center">
         <p className="text-lg font-semibold text-navy-700 mb-2">No company linked to your account.</p>
         <p className="text-sm text-navy-400">Please contact an administrator to link your account to a company.</p>
+      </div>
+    </div>
+  )
+
+  if (companyVerified === null) return (
+    <div className="min-h-screen bg-ice-50 flex items-center justify-center">
+      <Loader2 size={28} className="animate-spin text-navy-300" />
+    </div>
+  )
+
+  if (!companyVerified) return (
+    <div className="min-h-screen bg-ice-50">
+      <PageHeader tag="Company Admin" title={companyName || 'Company Dashboard'} subtitle="Company pending verification." backHref />
+      <div className="max-w-3xl mx-auto px-6 lg:px-8 pb-20 mt-10">
+        <div className="bg-white rounded-2xl border border-amber-200 p-10 text-center space-y-3">
+          <AlertCircle size={40} className="text-amber-500 mx-auto" />
+          <h2 className="text-lg font-semibold text-navy-900">Company Not Yet Verified</h2>
+          <p className="text-sm text-navy-500">Your company must be verified by a system administrator before you can manage employees, jobs, reviews, or events. Please wait for verification or contact support.</p>
+        </div>
       </div>
     </div>
   )
@@ -313,6 +334,8 @@ function RequestsTab({ companyId, onCountChange }) {
   const [approvingEnd, setApprovingEnd] = useState({})
   const [rejectingEnd, setRejectingEnd] = useState({})
   const [error, setError] = useState('')
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 10
 
   const load = async () => {
     setLoading(true)
@@ -454,7 +477,7 @@ function RequestsTab({ companyId, onCountChange }) {
       {regular.length > 0 && (
         <div className="space-y-3">
           {withEndRequest.length > 0 && <h3 className="text-xs font-semibold uppercase tracking-widest text-navy-400">Active Employees ({regular.length})</h3>}
-          {regular.map((emp, i) => {
+          {regular.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((emp, i) => {
             const name = emp.employees?.full_name ?? 'Unknown'
             const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
             const isEnding = !!ending[emp.id]
@@ -514,18 +537,29 @@ function RequestsTab({ companyId, onCountChange }) {
               </Reveal>
             )
           })}
+          {/* Pagination */}
+          {regular.length > PAGE_SIZE && (
+            <div className="flex items-center justify-center gap-1 pt-3">
+              {Array.from({ length: Math.ceil(regular.length / PAGE_SIZE) }, (_, i) => (
+                <button key={i + 1} onClick={() => setPage(i + 1)}
+                  className={`h-8 w-8 rounded-lg text-xs font-semibold transition-colors ${page === i + 1 ? 'bg-navy-900 text-white' : 'bg-white border border-navy-200 text-navy-600 hover:bg-navy-50'}`}>
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
   )
 }
 
-
-
 /* ─── Reviews List Tab ─── */
 function ReviewsListTab({ companyId }) {
   const [reviews, setReviews] = useState([])
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 10
 
   useEffect(() => {
     if (!companyId) return
@@ -547,7 +581,7 @@ function ReviewsListTab({ companyId }) {
           <p className="text-sm text-navy-500">No reviews yet.</p>
         </div>
       )}
-      {reviews.map((review, i) => {
+      {reviews.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((review, i) => {
         const authorName = (review.is_anonymous ?? review.isAnonymous)
           ? 'Anonymous Verified Employee'
           : (review.reviewer_name ?? review.employee?.user?.fullName ?? review.employee?.fullName ?? 'Employee')
@@ -570,6 +604,17 @@ function ReviewsListTab({ companyId }) {
           </Reveal>
         )
       })}
+      {/* Pagination */}
+      {reviews.length > PAGE_SIZE && (
+        <div className="flex items-center justify-center gap-1 pt-2">
+          {Array.from({ length: Math.ceil(reviews.length / PAGE_SIZE) }, (_, i) => (
+            <button key={i + 1} onClick={() => setPage(i + 1)}
+              className={`h-8 w-8 rounded-lg text-xs font-semibold transition-colors ${page === i + 1 ? 'bg-navy-900 text-white' : 'bg-white border border-navy-200 text-navy-600 hover:bg-navy-50'}`}>
+              {i + 1}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -980,7 +1025,7 @@ function JobsTab({ companyId }) {
   const [positions, setPositions] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
-  const [createForm, setCreateForm] = useState({ title: '', description: '', requirements: '', country: '', city: '' })
+  const [createForm, setCreateForm] = useState({ title: '', description: '', requirements: '', country: '', city: '', salary: '' })
   const [creating, setCreating] = useState(false)
   const [expandedId, setExpandedId] = useState(null)
   const [applications, setApplications] = useState({})
@@ -1009,7 +1054,7 @@ function JobsTab({ companyId }) {
     try {
       const location = createForm.city && createForm.country ? `${createForm.city}, ${createForm.country}` : (createForm.city || createForm.country || '')
       await createJobPosition({ ...createForm, location, companyId })
-      setCreateForm({ title: '', description: '', requirements: '', country: '', city: '' })
+      setCreateForm({ title: '', description: '', requirements: '', country: '', city: '', salary: '' })
       setShowCreate(false)
       await loadPositions()
     } catch (e) { setJobError(e?.message || 'Failed to create job position') }
@@ -1135,6 +1180,9 @@ function JobsTab({ companyId }) {
                   })()}
                 </select>
               </div>
+              <input type="text" placeholder="Salary (e.g. $3,000/mo or $50k–$70k)" value={createForm.salary}
+                onChange={e => setCreateForm(f => ({ ...f, salary: e.target.value }))}
+                className="w-full h-10 rounded-xl border border-navy-200 bg-white px-3 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 transition-all" />
               <div className="flex gap-2">
                 <button type="submit" disabled={creating}
                   className="h-9 px-5 bg-navy-900 text-white text-xs font-semibold rounded-xl hover:bg-navy-800 transition-colors flex items-center gap-1.5 disabled:opacity-50">
@@ -1163,6 +1211,7 @@ function JobsTab({ companyId }) {
                 <h3 className="text-sm font-semibold text-navy-900">{pos.title}</h3>
                 <p className="text-xs text-navy-400 capitalize mt-0.5">{pos.status} · Created {new Date(pos.created_at).toLocaleDateString()}</p>
                 {pos.location && <p className="text-xs text-navy-400 mt-0.5">Location: {pos.location}</p>}
+                {pos.salary && <p className="text-xs text-navy-400 mt-0.5">Salary: {pos.salary}</p>}
               </div>
               <div className="flex gap-2">
                 <button onClick={() => toggleApps(pos.id)}

@@ -113,7 +113,7 @@ export default function WriteReviewPage() {
             }
           </div>
           <h1 className="text-2xl font-serif font-bold text-navy-900 mb-3">
-            {heldForModeration ? 'Review Under Review' : 'Review Published!'}
+            {heldForModeration ? 'Your Comment Under Review' : 'Review Published!'}
           </h1>
           <p className="text-sm text-navy-500 mb-8 leading-relaxed">
             {heldForModeration

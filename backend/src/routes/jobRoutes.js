@@ -10,6 +10,10 @@ router.get('/', jobController.getJobPositions);
 // Make /all public so guests can browse open positions across companies
 router.get('/all', jobController.getAllJobPositions);
 router.get('/my-applications', requireAuth, jobController.getMyApplications);
+
+// Serve CV files (authenticated) — must be before /:id to avoid matching 'cv' as an id
+router.get('/cv/:filename', requireAuth, jobController.serveCv);
+
 router.get('/:id', jobController.getJobPositionById);
 
 // Authenticated routes
@@ -31,8 +35,5 @@ router.post('/applications/:appId/accept-invite', requireAuth, jobController.acc
 router.post('/applications/:appId/hire-invite', requireAuth, requireCompanyAdmin, jobController.sendHireInvite);
 router.post('/applications/:appId/accept-hire', requireAuth, jobController.acceptHireInvite);
 router.post('/applications/:appId/reject-hire', requireAuth, jobController.rejectHireInvite);
-
-// Serve CV files (authenticated)
-router.get('/cv/:filename', requireAuth, jobController.serveCv);
 
 module.exports = router;

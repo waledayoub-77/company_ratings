@@ -5,7 +5,7 @@ const { AppError } = require('../middlewares/errorHandler');
 /**
  * Create a new job posting
  */
-const createJobPosition = async (companyId, userId, { title, department, description, requirements, employmentType, location }) => {
+const createJobPosition = async (companyId, userId, { title, department, description, requirements, employmentType, location, salary }) => {
   // All fields required
   if (!title || !title.trim()) throw new AppError('Title is required', 400);
   if (!description || !description.trim()) throw new AppError('Description is required', 400);
@@ -35,6 +35,7 @@ const createJobPosition = async (companyId, userId, { title, department, descrip
       requirements: requirements.trim(),
       location: locationClean,
       employment_type: employmentType || 'full-time',
+      salary: salary || null,
       is_active: true,
       created_by: userId,
     })

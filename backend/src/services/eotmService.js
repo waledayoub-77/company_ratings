@@ -258,13 +258,15 @@ const getEventNominees = async (eventId, userRole) => {
 
   if (!event) throw new AppError('Event not found', 404);
 
-  // Get all verified employees at this company via employments → employees
+  // Get all verified employees at this company via employments → employees → users
   const { data: employments } = await supabase
     .from('employments')
-    .select('employee_id, employees!inner(id, full_name, user_id)')
+    .select('employee_id, employees!inner(id, full_name, user_id, users!inner(is_active, is_deleted))')
     .eq('company_id', event.company_id)
     .eq('verification_status', 'approved')
-    .eq('is_current', true);
+    .eq('is_current', true)
+    .eq('employees.users.is_active', true)
+    .eq('employees.users.is_deleted', false);
 
   // Get vote counts (candidate_id is employee id)
   const { data: votes } = await supabase

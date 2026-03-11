@@ -188,16 +188,18 @@ const updateCompany = async (companyId, updates, userId, userRole) => {
     }
   }
 
+  // Only include fields that were actually provided so we don't null-out existing values
+  const updateFields = {};
+  if (name !== undefined) updateFields.name = name;
+  if (description !== undefined) updateFields.description = description;
+  if (industry !== undefined) updateFields.industry = industry;
+  if (location !== undefined) updateFields.location = location;
+  if (website !== undefined) updateFields.website = website;
+  if (logo_url !== undefined) updateFields.logo_url = logo_url;
+
   const { data, error } = await supabase
     .from('companies')
-    .update({
-      name,
-      description,
-      industry,
-      location,
-      website,
-      logo_url
-    })
+    .update(updateFields)
     .eq('id', companyId)
     .select()
     .single();

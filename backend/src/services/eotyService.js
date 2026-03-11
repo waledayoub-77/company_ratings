@@ -227,10 +227,12 @@ const getEventNominees = async (eventId, userRole) => {
 
   const { data: employments } = await supabase
     .from('employments')
-    .select('employee_id, employees!inner(id, full_name, user_id)')
+    .select('employee_id, employees!inner(id, full_name, user_id, users!inner(is_active, is_deleted))')
     .eq('company_id', event.company_id)
     .eq('verification_status', 'approved')
-    .eq('is_current', true);
+    .eq('is_current', true)
+    .eq('employees.users.is_active', true)
+    .eq('employees.users.is_deleted', false);
 
   const { data: votes } = await supabase
     .from('eoty_votes')

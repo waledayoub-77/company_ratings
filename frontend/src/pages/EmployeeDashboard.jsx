@@ -253,6 +253,23 @@ function OverviewTab({ user, employments, reviews, feedback }) {
             <ChevronRight size={18} className="text-navy-300 group-hover:translate-x-1 transition-transform" />
           </Link>
         </Reveal>
+        {approvedEmployments.length > 0 && (
+          <Reveal delay={0.2}>
+            <Link
+              to={`/companies/${approvedEmployments[0].company_id ?? approvedEmployments[0].companyId}`}
+              className="group flex items-center gap-4 bg-white rounded-2xl border border-navy-100/50 p-6 hover:border-navy-200 hover:shadow-md transition-all"
+            >
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center">
+                <Building2 size={22} className="text-emerald-500" strokeWidth={1.6} />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-navy-900">My Company</h3>
+                <p className="text-sm text-navy-400 mt-0.5">View {companyNameMap[approvedEmployments[0].company_id ?? approvedEmployments[0].companyId] ?? 'your company'} details & reviews</p>
+              </div>
+              <ChevronRight size={18} className="text-navy-300 group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </Reveal>
+        )}
       </div>
 
       {/* Recent activity */}

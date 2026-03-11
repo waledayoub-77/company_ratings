@@ -27,6 +27,8 @@ export default function JobsBoard() {
   const [industry, setIndustry] = useState('')
   const [applying, setApplying] = useState({})
   const [appliedIds, setAppliedIds] = useState(new Set())
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 5
 
   useEffect(() => {
     let cancelled = false
@@ -90,6 +92,9 @@ export default function JobsBoard() {
       return companyName.includes(q) || title.includes(q)
     })
   }, [jobs, search, country, city, industry])
+
+  // Reset page when filters change
+  useEffect(() => { setPage(1) }, [search, country, city, industry])
 
   const handleApply = async (positionId) => {
     if (!user) { navigate('/login?redirect=/jobs'); return }
@@ -195,13 +200,14 @@ export default function JobsBoard() {
           <div className="bg-white rounded-2xl border border-navy-100/50 p-10 text-center text-navy-400">No open positions found.</div>
         ) : (
           <div className="space-y-3">
-            {filtered.map((j, i) => (
+            {filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((j, i) => (
               <Reveal key={j.id} delay={i * 0.04}>
                 <div className="bg-white rounded-2xl border border-navy-100/50 p-5 flex items-start justify-between">
                   <div>
                     <h3 className="text-sm font-semibold text-navy-900">{j.title}</h3>
                     <p className="text-xs text-navy-500 mt-1">{j.companies?.name ?? j.company?.name ?? j.company_name ?? j.companyName ?? ''} · <span className="text-navy-400">{j.companies?.industry ?? j.company?.industry ?? j.industry}</span></p>
                     <p className="text-xs text-navy-400 mt-2">{j.location && <><MapPin size={12} className="inline mr-1" />{j.location}</>}</p>
+                    {j.salary && <p className="text-xs text-emerald-600 font-medium mt-1">Salary: {j.salary}</p>}
                     {j.description && (
                       <p className="text-sm text-navy-500 mt-3 line-clamp-3">{j.description}</p>
                     )}
@@ -220,6 +226,17 @@ export default function JobsBoard() {
                 </div>
               </Reveal>
             ))}
+            {/* Pagination */}
+            {filtered.length > PAGE_SIZE && (
+              <div className="flex items-center justify-center gap-1 pt-4">
+                {Array.from({ length: Math.ceil(filtered.length / PAGE_SIZE) }, (_, i) => (
+                  <button key={i + 1} onClick={() => { setPage(i + 1); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                    className={`h-8 w-8 rounded-lg text-xs font-semibold transition-colors ${page === i + 1 ? 'bg-navy-900 text-white' : 'bg-white border border-navy-200 text-navy-600 hover:bg-navy-50'}`}>
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -106,6 +106,8 @@ export default function CompanyProfilePage() {
 
   // Open positions state
   const [openPositions, setOpenPositions] = useState([])
+  const [posPage, setPosPage] = useState(1)
+  const POS_PAGE_SIZE = 5
 
   // Apply modal state
   const [applyModal, setApplyModal] = useState({ open: false, job: null })
@@ -872,7 +874,7 @@ export default function CompanyProfilePage() {
                 </div>
               </div>
               <div className="space-y-3">
-                {openPositions.map((job, i) => (
+                {openPositions.slice((posPage - 1) * POS_PAGE_SIZE, posPage * POS_PAGE_SIZE).map((job, i) => (
                   <Reveal key={job.id} delay={i * 0.04}>
                     <div className="p-4 rounded-xl border border-navy-100/50 hover:border-navy-200 transition-all">
                       <div className="flex items-start justify-between gap-3">
@@ -885,6 +887,9 @@ export default function CompanyProfilePage() {
                             <p className="text-xs text-navy-400 mt-1 flex items-center gap-1">
                               <MapPin size={12} className="text-navy-300" /> {job.location}
                             </p>
+                          )}
+                          {job.salary && (
+                            <p className="text-xs text-emerald-600 font-medium mt-1">Salary: {job.salary}</p>
                           )}
                           {job.requirements && (
                             <p className="text-xs text-navy-400 mt-1">Requirements: {job.requirements}</p>
@@ -911,6 +916,17 @@ export default function CompanyProfilePage() {
                     </div>
                   </Reveal>
                 ))}
+                {/* Pagination */}
+                {openPositions.length > POS_PAGE_SIZE && (
+                  <div className="flex items-center justify-center gap-1 pt-3">
+                    {Array.from({ length: Math.ceil(openPositions.length / POS_PAGE_SIZE) }, (_, i) => (
+                      <button key={i + 1} onClick={() => setPosPage(i + 1)}
+                        className={`h-8 w-8 rounded-lg text-xs font-semibold transition-colors ${posPage === i + 1 ? 'bg-navy-900 text-white' : 'bg-white border border-navy-200 text-navy-600 hover:bg-navy-50'}`}>
+                        {i + 1}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </Reveal>

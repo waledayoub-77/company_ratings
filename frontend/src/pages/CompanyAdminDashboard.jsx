@@ -1035,6 +1035,8 @@ function JobsTab({ companyId }) {
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [jobError, setJobError] = useState('')
   const [cvViewer, setCvViewer] = useState({ open: false, blobUrl: null, isPdf: false, name: '', loading: false, error: null })
+  const [jobPage, setJobPage] = useState(1)
+  const JOB_PAGE_SIZE = 5
 
   const loadPositions = async () => {
     setLoading(true)
@@ -1203,7 +1205,7 @@ function JobsTab({ companyId }) {
         </div>
       )}
 
-      {positions.map((pos, i) => (
+      {positions.slice((jobPage - 1) * JOB_PAGE_SIZE, jobPage * JOB_PAGE_SIZE).map((pos, i) => (
         <Reveal key={pos.id} delay={i * 0.05}>
           <div className="bg-white rounded-2xl border border-navy-100/50 p-5">
             <div className="flex items-start justify-between mb-2">
@@ -1327,6 +1329,18 @@ function JobsTab({ companyId }) {
           </div>
         </Reveal>
       ))}
+
+      {/* Pagination */}
+      {positions.length > JOB_PAGE_SIZE && (
+        <div className="flex items-center justify-center gap-1 pt-2">
+          {Array.from({ length: Math.ceil(positions.length / JOB_PAGE_SIZE) }, (_, i) => (
+            <button key={i + 1} onClick={() => setJobPage(i + 1)}
+              className={`h-8 w-8 rounded-lg text-xs font-semibold transition-colors ${jobPage === i + 1 ? 'bg-navy-900 text-white' : 'bg-white border border-navy-200 text-navy-600 hover:bg-navy-50'}`}>
+              {i + 1}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ─── CV Viewer Modal ─── */}
       <AnimatePresence>

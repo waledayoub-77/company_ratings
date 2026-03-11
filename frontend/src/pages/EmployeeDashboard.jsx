@@ -104,6 +104,18 @@ export default function EmployeeDashboard() {
         title={`Welcome back, ${firstName}`}
         subtitle="Manage your reviews, employment records, and peer feedback."
         backHref
+        action={(() => {
+          const approved = employments.filter(e => (e.verification_status ?? e.status) === 'approved' && e.is_current !== false)
+          if (!approved.length) return null
+          const cId = approved[0].company_id ?? approved[0].companyId
+          const cName = approved[0].companies?.name ?? approved[0].company_name ?? approved[0].companyName ?? 'My Company'
+          return (
+            <Link to={`/companies/${cId}`} className="inline-flex items-center gap-2 h-10 px-5 bg-navy-900 text-white text-sm font-semibold rounded-xl hover:bg-navy-800 transition-colors">
+              <Building2 size={16} />
+              {cName}
+            </Link>
+          )
+        })()}
       />
 
       <div className="max-w-7xl mx-auto px-6 lg:px-8 pb-20">
@@ -253,23 +265,7 @@ function OverviewTab({ user, employments, reviews, feedback }) {
             <ChevronRight size={18} className="text-navy-300 group-hover:translate-x-1 transition-transform" />
           </Link>
         </Reveal>
-        {approvedEmployments.length > 0 && (
-          <Reveal delay={0.2}>
-            <Link
-              to={`/companies/${approvedEmployments[0].company_id ?? approvedEmployments[0].companyId}`}
-              className="group flex items-center gap-4 bg-white rounded-2xl border border-navy-100/50 p-6 hover:border-navy-200 hover:shadow-md transition-all"
-            >
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center">
-                <Building2 size={22} className="text-emerald-500" strokeWidth={1.6} />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-navy-900">My Company</h3>
-                <p className="text-sm text-navy-400 mt-0.5">View {companyNameMap[approvedEmployments[0].company_id ?? approvedEmployments[0].companyId] ?? 'your company'} details & reviews</p>
-              </div>
-              <ChevronRight size={18} className="text-navy-300 group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </Reveal>
-        )}
+
       </div>
 
       {/* Recent activity */}
@@ -1601,7 +1597,7 @@ function JobBoardTab({ employments, refetchEmployments }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [jobPage, setJobPage] = useState(1)
   const [appPage, setAppPage] = useState(1)
-  const JOBS_PER_PAGE = 10
+  const JOBS_PER_PAGE = 5
 
   const loadData = () => {
     Promise.all([getAllJobPositions(), getMyApplications()])
@@ -1796,6 +1792,7 @@ function JobBoardTab({ employments, refetchEmployments }) {
                         {(job.location || job.companies?.location) && <span>{job.location || job.companies?.location} · </span>}
                         Posted {new Date(job.created_at).toLocaleDateString()}
                       </p>
+                      {job.salary && <p className="text-xs text-emerald-600 font-medium mt-0.5">Salary: {job.salary}</p>}
                     </div>
                     {alreadyApplied ? (
                       <span className="px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-lg border border-emerald-200">Applied</span>

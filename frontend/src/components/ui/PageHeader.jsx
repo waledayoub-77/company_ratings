@@ -2,7 +2,7 @@ import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 
-export default function PageHeader({ tag, title, subtitle, children, align = 'left', backHref }) {
+export default function PageHeader({ tag, title, subtitle, children, align = 'left', backHref, action }) {
   const navigate = useNavigate()
 
   const handleBack = () => {
@@ -34,9 +34,12 @@ export default function PageHeader({ tag, title, subtitle, children, align = 'le
               {tag}
             </span>
           )}
-          <h1 className="text-3xl md:text-4xl font-serif font-bold text-navy-900 tracking-tight text-balance">
-            {title}
-          </h1>
+          <div className="flex items-center justify-between gap-4">
+            <h1 className="text-3xl md:text-4xl font-serif font-bold text-navy-900 tracking-tight text-balance">
+              {title}
+            </h1>
+            {action && <div className="shrink-0">{action}</div>}
+          </div>
           {subtitle && (
             <p className="mt-3 text-navy-500 text-base md:text-lg max-w-2xl leading-relaxed">
               {subtitle}

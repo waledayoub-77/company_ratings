@@ -694,6 +694,7 @@ function UsersTab() {
   const [users, setUsers]     = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch]   = useState('')
+  const [roleFilter, setRoleFilter] = useState('')
   const [working, setWorking] = useState(null)
   const [page, setPage] = useState(1)
   const [pagination, setPagination] = useState(null)
@@ -705,15 +706,15 @@ function UsersTab() {
   const [bulkWorking, setBulkWorking] = useState(false)
   const [userError, setUserError] = useState('')
 
-  const load = useCallback((pg = 1, q = '') => {
+  const load = useCallback((pg = 1, q = '', role = '') => {
     setLoading(true)
-    getAdminUsers({ search: q || undefined, page: pg, limit: 5 })
+    getAdminUsers({ search: q || undefined, role: role || undefined, page: pg, limit: 5 })
       .then(res => { setUsers(res?.data ?? []); setPagination(res?.pagination ?? null) })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => { load(page, search) }, [load, page, search])
+  useEffect(() => { load(page, search, roleFilter) }, [load, page, search, roleFilter])
 
   const handleSuspend = async (id) => {
     if (!suspendReason.trim() || suspendReason.trim().length < 3) return
@@ -801,6 +802,23 @@ function UsersTab() {
             />
           </div>
         </div>
+      </div>
+
+      {/* Role filters */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {[['', 'All Roles'], ['employee', 'Employee'], ['company_admin', 'Company Admin'], ['system_admin', 'System Admin']].map(([val, lbl]) => (
+          <button
+            key={val}
+            onClick={() => { setRoleFilter(val); setPage(1) }}
+            className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
+              roleFilter === val
+                ? 'bg-navy-900 text-white border-navy-900'
+                : 'bg-white text-navy-500 border-navy-200 hover:border-navy-400'
+            }`}
+          >
+            {lbl}
+          </button>
+        ))}
       </div>
 
       {/* Bulk suspend reason panel */}

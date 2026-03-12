@@ -462,7 +462,10 @@ function CompaniesTab({ openDialog }) {
         openDialog({ title: 'No document', message: 'No verification document found for this company.', variant: 'info', cancelLabel: false, confirmLabel: 'OK' })
         return
       }
-      setViewRequest({ request: reqs[0], notes: '' })
+      // attach companyId so modal actions can update the companies list
+      setViewRequest({ request: reqs[0], notes: '', companyId: company.id })
+      // store latest request status on the company locally so UI can show it beside the View Link
+      setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, latest_verification_status: reqs[0].status } : c))
     } catch (e) {
       openDialog({ title: 'Error', message: e?.message || 'Failed to load document', variant: 'danger', cancelLabel: false, confirmLabel: 'OK' })
     }
@@ -525,20 +528,20 @@ function CompaniesTab({ openDialog }) {
                       ? <Loader2 size={14} className="animate-spin text-navy-400" />
                       : (
                         <div className="flex items-center gap-2">
-                          {!company.is_verified && (
+                          {/* Verify action moved into the View Link modal */}
+                          <div className="flex items-center gap-2">
                             <button
-                              onClick={() => handleVerify(company.id)}
-                              className="h-8 px-3 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-1.5"
+                              onClick={() => handleViewDoc(company)}
+                              className="h-8 px-3 bg-navy-50 text-navy-600 text-xs font-medium rounded-lg hover:bg-navy-100 transition-colors flex items-center gap-1.5 border border-navy-200"
                             >
-                              <BadgeCheck size={13} /> Verify
+                              <Eye size={13} /> View Link
                             </button>
-                          )}
-                          <button
-                            onClick={() => handleViewDoc(company)}
-                            className="h-8 px-3 bg-navy-50 text-navy-600 text-xs font-medium rounded-lg hover:bg-navy-100 transition-colors flex items-center gap-1.5 border border-navy-200"
-                          >
-                            <Eye size={13} /> View Doc
-                          </button>
+                            {company.latest_verification_status && (
+                              <span className={`text-xs px-2 py-1 rounded-full border ${company.latest_verification_status === 'approved' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : company.latest_verification_status === 'rejected' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
+                                {company.latest_verification_status}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       )
                     }
@@ -573,10 +576,16 @@ function CompaniesTab({ openDialog }) {
 
               {viewRequest.request.document_url ? (
                 <div className="mb-4 bg-navy-50 rounded-xl p-3">
-                  <a href={`http://localhost:5000${viewRequest.request.document_url}`} target="_blank" rel="noopener noreferrer" className="text-sm text-navy-600 underline">Open document in new tab</a>
+                  {(() => {
+                    const url = viewRequest.request.document_url || ''
+                    const href = url.startsWith('/') ? `http://localhost:5000${url}` : url
+                    return (
+                      <a href={href} target="_blank" rel="noopener noreferrer" className="text-sm text-navy-600 underline break-words">Open submitted link</a>
+                    )
+                  })()}
                 </div>
               ) : (
-                <div className="mb-4 text-sm text-navy-500">No document URL provided.</div>
+                <div className="mb-4 text-sm text-navy-500">No document link provided.</div>
               )}
 
               <input
@@ -592,6 +601,10 @@ function CompaniesTab({ openDialog }) {
                   onClick={async () => {
                     try {
                       await approveVerification(viewRequest.request.id, viewRequest.notes || '')
+                      // mark company verified locally
+                      if (viewRequest.companyId) {
+                        setCompanies(prev => prev.map(c => c.id === viewRequest.companyId ? { ...c, is_verified: true, latest_verification_status: 'approved' } : c))
+                      }
                       load(page)
                       setViewRequest(null)
                     } catch (e) {
@@ -610,6 +623,10 @@ function CompaniesTab({ openDialog }) {
                     }
                     try {
                       await rejectVerification(viewRequest.request.id, viewRequest.notes)
+                      // mark company rejected locally
+                      if (viewRequest.companyId) {
+                        setCompanies(prev => prev.map(c => c.id === viewRequest.companyId ? { ...c, is_verified: false, latest_verification_status: 'rejected' } : c))
+                      }
                       load(page)
                       setViewRequest(null)
                     } catch (e) {
@@ -1020,20 +1037,7 @@ function VerificationsTab() {
               </Badge>
             </div>
 
-            {/* Document link */}
-            {req.document_url && (
-              <div className="bg-navy-50 rounded-xl p-3 mb-3 flex items-center gap-2">
-                <Eye size={13} className="text-navy-400" />
-                <a
-                  href={req.document_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-navy-600 hover:text-navy-900 underline truncate"
-                >
-                  View submitted document
-                </a>
-              </div>
-            )}
+            {/* Document link intentionally hidden here; view via Companies tab */}
 
             {/* Admin notes input (for pending) */}
             {req.status === 'pending' && (

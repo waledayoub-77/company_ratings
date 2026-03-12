@@ -288,8 +288,8 @@ function OverviewTab({ analytics }) {
           <div className="flex items-center gap-3 bg-navy-50 border border-navy-100 rounded-2xl p-5">
             <Activity size={20} className="text-navy-600 shrink-0" />
             <div>
-              <p className="text-sm font-semibold text-navy-700">Pending Employments</p>
-              <p className="text-xs text-navy-400">{analytics ? `${analytics.pendingEmployments} awaiting` : '...'}</p>
+              <p className="text-sm font-semibold text-navy-700">Pending Companies</p>
+              <p className="text-xs text-navy-400">{analytics ? `${analytics.pendingVerifications ?? analytics.pendingVerificationsCount ?? analytics.pendingCompanies ?? 0} awaiting` : '...'}</p>
             </div>
           </div>
         </Reveal>

@@ -434,20 +434,56 @@ function CompaniesTab({ openDialog }) {
   const load = useCallback((pg = 1) => {
     setLoading(true)
     getAdminCompanies({ page: pg, limit: 5 })
-      .then(res => { setCompanies(res?.data ?? []); setPagination(res?.pagination ?? null) })
-      .catch(() => {})
+      .then(async (res) => {
+        const data = res?.data ?? []
+        setPagination(res?.pagination ?? null)
+        // Fetch latest verification request status for each company owner in parallel
+        try {
+          const statuses = await Promise.all(data.map(async (c) => {
+            try {
+              const r = await getVerificationRequests({ type: 'company', page: 1, limit: 1, userId: c.owner?.id })
+              const reqs = r?.requests ?? []
+              return reqs.length > 0 ? reqs[0].status : null
+            } catch (_) { return null }
+          }))
+          const enriched = data.map((c, idx) => ({ ...c, latest_verification_status: statuses[idx] || null }))
+          setCompanies(enriched)
+        } catch (e) {
+          // fallback to original data
+          setCompanies(data)
+        }
+      })
+      .catch(() => { setCompanies([]) })
       .finally(() => setLoading(false))
   }, [])
 
   useEffect(() => { load(page) }, [load, page])
 
-  const handleVerify = async (id) => {
+  const handleVerify = async (company) => {
+    const id = company?.id
     setWorking(id)
     try {
       await verifyCompany(id)
-      setCompanies(prev => prev.map(c => c.id === id ? { ...c, is_verified: true } : c))
+      setCompanies(prev => prev.map(c => {
+        if (c.id !== id) return c
+        const wasRejected = c.latest_verification_status === 'rejected'
+        return { ...c, is_verified: true, latest_verification_status: wasRejected ? 'reapproved' : 'approved' }
+      }))
     } catch (e) {
       openDialog({ title: 'Verification Failed', message: e?.message || 'Could not verify company.', variant: 'danger', cancelLabel: false, confirmLabel: 'OK' })
+    } finally {
+      setWorking(null)
+    }
+  }
+
+  // Re-approve a previously rejected company's verification
+  const handleReapprove = async (id) => {
+    setWorking(id)
+    try {
+      await verifyCompany(id)
+      setCompanies(prev => prev.map(c => c.id === id ? { ...c, is_verified: true, latest_verification_status: 'reapproved' } : c))
+    } catch (e) {
+      openDialog({ title: 'Re-approve Failed', message: e?.message || 'Could not re-approve company.', variant: 'danger', cancelLabel: false, confirmLabel: 'OK' })
     } finally {
       setWorking(null)
     }
@@ -528,20 +564,27 @@ function CompaniesTab({ openDialog }) {
                       ? <Loader2 size={14} className="animate-spin text-navy-400" />
                       : (
                         <div className="flex items-center gap-2">
-                          {/* Verify action moved into the View Link modal */}
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => handleViewDoc(company)}
-                              className="h-8 px-3 bg-navy-50 text-navy-600 text-xs font-medium rounded-lg hover:bg-navy-100 transition-colors flex items-center gap-1.5 border border-navy-200"
-                            >
-                              <Eye size={13} /> View Link
-                            </button>
-                            {company.latest_verification_status && (
-                              <span className={`text-xs px-2 py-1 rounded-full border ${company.latest_verification_status === 'approved' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : company.latest_verification_status === 'rejected' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
+                          <button
+                            onClick={() => handleViewDoc(company)}
+                            className="h-8 px-3 bg-navy-50 text-navy-600 text-xs font-medium rounded-lg hover:bg-navy-100 transition-colors flex items-center gap-1.5 border border-navy-200"
+                          >
+                            <Eye size={13} /> View Link
+                          </button>
+                          {company.latest_verification_status && (
+                            <div className="flex items-center gap-2">
+                              <span className={`text-xs px-2 py-1 rounded-full border ${company.latest_verification_status === 'approved' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : company.latest_verification_status === 'rejected' ? 'bg-red-50 border-red-200 text-red-700' : company.latest_verification_status === 'reapproved' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
                                 {company.latest_verification_status}
                               </span>
-                            )}
-                          </div>
+                              {company.latest_verification_status === 'rejected' && !company.is_verified && (
+                                <button
+                                  onClick={() => handleVerify(company)}
+                                  className="h-7 px-2 bg-emerald-600 text-white text-[11px] font-medium rounded-md hover:bg-emerald-700 transition-colors"
+                                >
+                                  Re-approve
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )
                     }

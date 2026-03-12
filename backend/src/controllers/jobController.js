@@ -101,7 +101,8 @@ const applyToJob = async (req, res, next) => {
         });
 
       if (uploadError) {
-        return res.status(500).json({ success: false, message: 'Failed to upload CV. Please try again.' });
+        console.error('[CV Upload] Supabase storage error:', uploadError);
+        return res.status(500).json({ success: false, message: `Failed to upload CV: ${uploadError.message}` });
       }
 
       cvUrl = storagePath; // stored as 'cvs/<filename>'

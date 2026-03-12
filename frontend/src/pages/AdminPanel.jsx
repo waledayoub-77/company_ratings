@@ -303,18 +303,23 @@ function OverviewTab({ analytics }) {
 function ReportsTab({ onReportResolved }) {
   const [reports, setReports]   = useState([])
   const [loading, setLoading]   = useState(true)
+  const [page, setPage]         = useState(1)
+  const [pagination, setPagination] = useState(null)
   const [working, setWorking]   = useState(null)
   const [actionError, setActionError] = useState(null)
 
-  const load = useCallback(() => {
+  const load = useCallback((pg = 1) => {
     setLoading(true)
-    getReports({ status: 'pending', limit: 50 })
-      .then(res => setReports(res?.data ?? []))
+    getReports({ status: 'pending', page: pg, limit: 5 })
+      .then(res => {
+        setReports(res?.data ?? [])
+        setPagination(res?.pagination ?? null)
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { load(page) }, [load, page])
 
   const handleAction = async (id, action) => {
     setWorking(id)
@@ -406,6 +411,13 @@ function ReportsTab({ onReportResolved }) {
           </div>
         </Reveal>
       ))}
+      {pagination && pagination.total > 0 && (
+        <div className="flex items-center justify-center gap-3 pt-4">
+          <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className="text-xs px-4 py-2 rounded-lg border border-navy-200 text-navy-600 disabled:opacity-40 hover:bg-navy-50 transition-colors">Previous</button>
+          <span className="text-xs text-navy-400">Page {pagination.page} of {Math.max(1, Math.ceil(pagination.total / pagination.limit))}</span>
+          <button disabled={pagination.page >= Math.max(1, Math.ceil(pagination.total / pagination.limit))} onClick={() => setPage(p => p + 1)} className="text-xs px-4 py-2 rounded-lg border border-navy-200 text-navy-600 disabled:opacity-40 hover:bg-navy-50 transition-colors">Next</button>
+        </div>
+      )}
     </div>
   )
 }
@@ -416,16 +428,18 @@ function CompaniesTab({ openDialog }) {
   const [loading, setLoading]     = useState(true)
   const [working, setWorking]     = useState(null)
   const [search, setSearch]       = useState('')
+  const [page, setPage] = useState(1)
+  const [pagination, setPagination] = useState(null)
 
-  const load = useCallback(() => {
+  const load = useCallback((pg = 1) => {
     setLoading(true)
-    getAdminCompanies({ limit: 50 })
-      .then(res => setCompanies(res?.data ?? []))
+    getAdminCompanies({ page: pg, limit: 5 })
+      .then(res => { setCompanies(res?.data ?? []); setPagination(res?.pagination ?? null) })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { load(page) }, [load, page])
 
   const handleVerify = async (id) => {
     setWorking(id)
@@ -537,6 +551,13 @@ function CompaniesTab({ openDialog }) {
           ))}
         </div>
       )}
+      {pagination && pagination.total > 0 && (
+        <div className="flex items-center justify-center gap-3 pt-4">
+          <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className="text-xs px-4 py-2 rounded-lg border border-navy-200 text-navy-600 disabled:opacity-40 hover:bg-navy-50 transition-colors">Previous</button>
+          <span className="text-xs text-navy-400">Page {pagination.page} of {Math.max(1, Math.ceil(pagination.total / pagination.limit))}</span>
+          <button disabled={pagination.page >= Math.max(1, Math.ceil(pagination.total / pagination.limit))} onClick={() => setPage(p => p + 1)} className="text-xs px-4 py-2 rounded-lg border border-navy-200 text-navy-600 disabled:opacity-40 hover:bg-navy-50 transition-colors">Next</button>
+        </div>
+      )}
     </div>
   )
 }
@@ -547,6 +568,8 @@ function UsersTab() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch]   = useState('')
   const [working, setWorking] = useState(null)
+  const [page, setPage] = useState(1)
+  const [pagination, setPagination] = useState(null)
   const [suspendTarget, setSuspendTarget] = useState(null) // user id being suspended
   const [suspendReason, setSuspendReason] = useState('')
   const [selectedIds, setSelectedIds] = useState(new Set())
@@ -555,20 +578,15 @@ function UsersTab() {
   const [bulkWorking, setBulkWorking] = useState(false)
   const [userError, setUserError] = useState('')
 
-  const load = useCallback((q = '') => {
+  const load = useCallback((pg = 1, q = '') => {
     setLoading(true)
-    getAdminUsers({ search: q || undefined, limit: 40 })
-      .then(res => setUsers(res?.data ?? []))
+    getAdminUsers({ search: q || undefined, page: pg, limit: 5 })
+      .then(res => { setUsers(res?.data ?? []); setPagination(res?.pagination ?? null) })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => { load() }, [load])
-
-  useEffect(() => {
-    const t = setTimeout(() => load(search), 350)
-    return () => clearTimeout(t)
-  }, [search, load])
+  useEffect(() => { load(page, search) }, [load, page, search])
 
   const handleSuspend = async (id) => {
     if (!suspendReason.trim() || suspendReason.trim().length < 3) return
@@ -822,6 +840,13 @@ function UsersTab() {
           )}
         </div>
       )}
+      {pagination && pagination.total > 0 && (
+        <div className="flex items-center justify-center gap-3 pt-3">
+          <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className="text-xs px-4 py-2 rounded-lg border border-navy-200 text-navy-600 disabled:opacity-40 hover:bg-navy-50 transition-colors">Previous</button>
+          <span className="text-xs text-navy-400">Page {pagination.page} of {Math.max(1, Math.ceil(pagination.total / pagination.limit || 1))}</span>
+          <button disabled={pagination.page >= Math.max(1, Math.ceil(pagination.total / pagination.limit || 1))} onClick={() => setPage(p => p + 1)} className="text-xs px-4 py-2 rounded-lg border border-navy-200 text-navy-600 disabled:opacity-40 hover:bg-navy-50 transition-colors">Next</button>
+        </div>
+      )}
     </div>
   )
 }
@@ -834,16 +859,18 @@ function VerificationsTab() {
   const [filter, setFilter]     = useState('pending')
   const [adminNotes, setAdminNotes] = useState({})
   const [verifError, setVerifError] = useState('')
+  const [page, setPage] = useState(1)
+  const [pagination, setPagination] = useState(null)
 
-  const load = useCallback(() => {
+  const load = useCallback((pg = 1) => {
     setLoading(true)
-    getVerificationRequests({ status: filter, limit: 50 })
-      .then(res => setRequests(res?.requests ?? []))
+    getVerificationRequests({ status: filter, page: pg, limit: 5 })
+      .then(res => { setRequests(res?.requests ?? []); setPagination(res?.pagination ?? null) })
       .catch(() => setRequests([]))
       .finally(() => setLoading(false))
   }, [filter])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { load(page) }, [load, page])
 
   const handleApprove = async (id) => {
     setWorking(id)
@@ -981,6 +1008,13 @@ function VerificationsTab() {
           </div>
         </Reveal>
       ))}
+      {pagination && pagination.total > 0 && (
+        <div className="flex items-center justify-center gap-3 pt-4">
+          <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className="text-xs px-4 py-2 rounded-lg border border-navy-200 text-navy-600 disabled:opacity-40 hover:bg-navy-50 transition-colors">Previous</button>
+          <span className="text-xs text-navy-400">Page {pagination.page} of {Math.max(1, Math.ceil(pagination.total / pagination.limit))}</span>
+          <button disabled={pagination.page >= Math.max(1, Math.ceil(pagination.total / pagination.limit))} onClick={() => setPage(p => p + 1)} className="text-xs px-4 py-2 rounded-lg border border-navy-200 text-navy-600 disabled:opacity-40 hover:bg-navy-50 transition-colors">Next</button>
+        </div>
+      )}
     </div>
   )
 }
@@ -989,13 +1023,15 @@ function VerificationsTab() {
 function AuditTab() {
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const [pagination, setPagination] = useState(null)
 
   useEffect(() => {
-    getAuditLogs({ limit: 30 })
-      .then(res => setEntries(res?.data ?? []))
+    getAuditLogs({ page, limit: 5 })
+      .then(res => { setEntries(res?.data ?? []); setPagination(res?.pagination ?? null) })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [])
+  }, [page])
 
   return (
     <div className="space-y-4">
@@ -1034,6 +1070,13 @@ function AuditTab() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+      {pagination && pagination.total > 0 && (
+        <div className="flex items-center justify-center gap-3 pt-4">
+          <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className="text-xs px-4 py-2 rounded-lg border border-navy-200 text-navy-600 disabled:opacity-40 hover:bg-navy-50 transition-colors">Previous</button>
+          <span className="text-xs text-navy-400">Page {pagination.page} of {Math.max(1, Math.ceil(pagination.total / pagination.limit))}</span>
+          <button disabled={pagination.page >= Math.max(1, Math.ceil(pagination.total / pagination.limit))} onClick={() => setPage(p => p + 1)} className="text-xs px-4 py-2 rounded-lg border border-navy-200 text-navy-600 disabled:opacity-40 hover:bg-navy-50 transition-colors">Next</button>
         </div>
       )}
     </div>

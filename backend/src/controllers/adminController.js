@@ -20,6 +20,7 @@ const {
   sendAccountSuspendedEmail,
   sendAccountUnsuspendedEmail,
   sendAccountDeletedEmail,
+  sendCompanyVerifiedEmail,
 } = require('../services/emailService');
 
 // ─── HELPER: log audit action ─────────────────────────────────────────────────
@@ -497,7 +498,7 @@ exports.verifyCompany = async (req, res) => {
     const adminId = req.user?.userId;
     const { id } = req.params;
 
-    const { data: company } = await supabase.from('companies').select('id, name, is_verified').eq('id', id).is('deleted_at', null).maybeSingle();
+    const { data: company } = await supabase.from('companies').select('id, name, is_verified, user_id').eq('id', id).is('deleted_at', null).maybeSingle();
     if (!company) return res.status(404).json({ success: false, error: { message: 'Company not found', code: 'NOT_FOUND' } });
     if (company.is_verified) return res.status(400).json({ success: false, error: { message: 'Company is already verified', code: 'ALREADY_VERIFIED' } });
 
@@ -509,6 +510,41 @@ exports.verifyCompany = async (req, res) => {
       .maybeSingle();
 
     if (error) throw error;
+
+    // Record verification request as approved/reapproved (non-blocking)
+    try {
+      const { data: latestReq } = await supabase
+        .from('verification_requests')
+        .select('*')
+        .eq('user_id', company.user_id)
+        .eq('verification_type', 'company')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (latestReq && latestReq.status === 'rejected') {
+        await supabase
+          .from('verification_requests')
+          .update({ status: 'reapproved', reviewed_by: adminId, reviewed_at: new Date().toISOString(), admin_notes: 'Re-approved by admin' })
+          .eq('id', latestReq.id);
+      } else {
+        await supabase
+          .from('verification_requests')
+          .insert({ user_id: company.user_id, verification_type: 'company', document_url: null, status: 'approved', reviewed_by: adminId, reviewed_at: new Date().toISOString(), admin_notes: 'Verified by admin' });
+      }
+    } catch (err) {
+      console.error('Failed to record verification request status:', err?.message || err);
+    }
+
+    // send notification email to company owner (non-blocking)
+    try {
+      const { data: userRow } = await supabase.from('users').select('email, full_name').eq('id', company.user_id).maybeSingle();
+      if (userRow?.email) {
+        await sendCompanyVerifiedEmail({ to: userRow.email, name: userRow.full_name, companyName: company.name });
+      }
+    } catch (emailErr) {
+      console.error('Failed to send company verified email:', emailErr?.message || emailErr);
+    }
 
     await logAudit({ adminId, action: 'company_verified', targetType: 'company', targetId: id, details: { companyName: company.name } });
 

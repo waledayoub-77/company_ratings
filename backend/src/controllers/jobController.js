@@ -1,6 +1,5 @@
 // Job Controller — Job Positions + Applications
 const path = require('path');
-const fs = require('fs');
 const jobService = require('../services/jobService');
 const { createNotification } = require('../services/notificationService');
 const { sendJobApplicationStatusEmail, sendInterviewInviteEmail, sendHireInviteEmail } = require('../services/emailService');
@@ -88,7 +87,24 @@ const applyToJob = async (req, res, next) => {
 
     let cvUrl = null;
     if (req.file) {
-      cvUrl = `/uploads/cvs/${req.file.filename}`;
+      // Upload CV buffer to Supabase Storage bucket 'documents' under cvs/
+      const path = require('path');
+      const ext = path.extname(req.file.originalname).toLowerCase();
+      const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+      const storagePath = `cvs/${filename}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(storagePath, req.file.buffer, {
+          contentType: req.file.mimetype,
+          upsert: false,
+        });
+
+      if (uploadError) {
+        return res.status(500).json({ success: false, message: 'Failed to upload CV. Please try again.' });
+      }
+
+      cvUrl = storagePath; // stored as 'cvs/<filename>'
     }
 
     const data = await jobService.applyToJob(req.params.id, req.user.userId, {
@@ -305,17 +321,24 @@ const rejectHireInvite = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/jobs/cv/:filename — serve uploaded CV file (authenticated)
-const serveCv = (req, res, next) => {
+// GET /api/jobs/cv/:filename — proxy CV from Supabase Storage (authenticated)
+const serveCv = async (req, res, next) => {
   try {
+    const path = require('path');
     const filename = path.basename(req.params.filename); // prevent path traversal
-    const filePath = path.resolve(__dirname, '../../uploads/cvs', filename);
-    if (!fs.existsSync(filePath)) {
+    const storagePath = `cvs/${filename}`;
+
+    // Generate a short-lived signed URL (5 minutes)
+    const { data, error } = await supabase.storage
+      .from('documents')
+      .createSignedUrl(storagePath, 300);
+
+    if (error || !data?.signedUrl) {
       return res.status(404).json({ success: false, message: 'File not found' });
     }
-    // Remove X-Frame-Options to allow in-page iframe embedding
+
     res.removeHeader('X-Frame-Options');
-    res.sendFile(filePath);
+    res.redirect(data.signedUrl);
   } catch (err) { next(err); }
 };
 

@@ -28,7 +28,8 @@ const getCompanies = async (filters = {}) => {
     let q = supabase
       .from('companies')
       .select('*', { count: 'exact' })
-      .is('deleted_at', null);
+      .is('deleted_at', null)
+      .eq('is_verified', true);  // Only show verified companies on public list
     if (industry) q = q.eq('industry', industry);
     if (location) {
       const safeLocation = sanitizeSearch(location);

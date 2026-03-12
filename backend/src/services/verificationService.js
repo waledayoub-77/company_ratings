@@ -1,6 +1,7 @@
 // Verification Service — handles ID + company doc verification
 const supabase = require('../config/database');
 const { AppError } = require('../middlewares/errorHandler');
+const { sendCompanyVerifiedEmail, sendCompanyRejectedEmail } = require('./emailService');
 
 /**
  * Upload identity verification document
@@ -49,7 +50,7 @@ const submitCompanyVerification = async (userId, companyId, { documentUrl, docum
   // Verify user owns this company
   const { data: company } = await supabase
     .from('companies')
-    .select('id, user_id')
+    .select('id, user_id, is_document_verified')
     .eq('id', companyId)
     .is('deleted_at', null)
     .single();
@@ -58,18 +59,20 @@ const submitCompanyVerification = async (userId, companyId, { documentUrl, docum
     throw new AppError('You do not own this company', 403);
   }
 
-  // Check existing
+  // Allow re-submission only if company is not currently verified
+  if (company.is_document_verified) {
+    throw new AppError('Company documents already verified', 400, 'ALREADY_VERIFIED');
+  }
+
+  // Check for existing pending request
   const { data: existing } = await supabase
     .from('verification_requests')
     .select('id, status')
     .eq('user_id', userId)
     .eq('verification_type', 'company')
-    .in('status', ['pending', 'approved'])
+    .eq('status', 'pending')
     .maybeSingle();
 
-  if (existing?.status === 'approved') {
-    throw new AppError('Company documents already verified', 400, 'ALREADY_VERIFIED');
-  }
   if (existing?.status === 'pending') {
     throw new AppError('A verification request is already pending', 400, 'PENDING_EXISTS');
   }
@@ -107,6 +110,7 @@ const getVerificationRequests = async (filters = {}) => {
 
   if (status) query = query.eq('status', status);
   if (type) query = query.eq('verification_type', type);
+  if (filters.userId) query = query.eq('user_id', filters.userId);
 
   const { data, error, count } = await query
     .order('created_at', { ascending: false })
@@ -174,7 +178,7 @@ const approveVerification = async (requestId, adminId, adminNotes) => {
     // Find the company owned by this user
     const { data: company } = await supabase
       .from('companies')
-      .select('id')
+      .select('id, name')
       .eq('user_id', request.user_id)
       .is('deleted_at', null)
       .maybeSingle();
@@ -182,8 +186,18 @@ const approveVerification = async (requestId, adminId, adminNotes) => {
     if (company) {
       await supabase
         .from('companies')
-        .update({ is_document_verified: true })
+        .update({ is_document_verified: true, is_verified: true })
         .eq('id', company.id);
+
+      // Send email to the submitting user (company admin)
+      try {
+        const { data: userRow } = await supabase.from('users').select('email, full_name').eq('id', request.user_id).maybeSingle();
+        if (userRow?.email) {
+          await sendCompanyVerifiedEmail({ to: userRow.email, name: userRow.full_name, companyName: company.name });
+        }
+      } catch (emailErr) {
+        console.error('Failed to send company verified email:', emailErr.message);
+      }
     }
   }
 
@@ -216,6 +230,37 @@ const rejectVerification = async (requestId, adminId, adminNotes) => {
       admin_notes: adminNotes || 'Rejected',
     })
     .eq('id', requestId);
+
+  // If company verification, notify the uploader
+  if (request.verification_type === 'company') {
+    try {
+      const { data: company } = await supabase
+        .from('companies')
+        .select('id, name')
+        .eq('user_id', request.user_id)
+        .is('deleted_at', null)
+        .maybeSingle();
+
+      // Clear company verification flags when a request is rejected
+      if (company) {
+        try {
+          await supabase
+            .from('companies')
+            .update({ is_document_verified: false, is_verified: false })
+            .eq('id', company.id);
+        } catch (e) {
+          console.error('Failed to clear company verification flags on rejection:', e.message || e);
+        }
+      }
+
+      const { data: userRow } = await supabase.from('users').select('email, full_name').eq('id', request.user_id).maybeSingle();
+      if (userRow?.email) {
+        await sendCompanyRejectedEmail({ to: userRow.email, name: userRow.full_name, companyName: company?.name || 'Your company', reason: adminNotes || '' });
+      }
+    } catch (emailErr) {
+      console.error('Failed to send company rejected email:', emailErr.message);
+    }
+  }
 
   return { message: 'Verification rejected' };
 };

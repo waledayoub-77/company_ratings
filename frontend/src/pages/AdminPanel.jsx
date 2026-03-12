@@ -40,7 +40,6 @@ import {
   deleteUser,
   getAuditLogs,
   bulkSuspendUsers,
-  rejectCompany,
   getSentimentFlaggedReviews,
   confirmPendingSuspension,
   dismissPendingSuspension,
@@ -427,6 +426,7 @@ function CompaniesTab({ openDialog }) {
   const [companies, setCompanies] = useState([])
   const [loading, setLoading]     = useState(true)
   const [working, setWorking]     = useState(null)
+  const [viewRequest, setViewRequest] = useState(null) // { request, loading }
   const [search, setSearch]       = useState('')
   const [page, setPage] = useState(1)
   const [pagination, setPagination] = useState(null)
@@ -453,24 +453,19 @@ function CompaniesTab({ openDialog }) {
     }
   }
 
-  const handleReject = (id) => {
-    openDialog({
-      title: 'Reject Company',
-      message: 'Are you sure you want to un-verify this company? This will remove its Verified status.',
-      variant: 'warning',
-      confirmLabel: 'Reject',
-      onConfirm: async () => {
-        setWorking(id)
-        try {
-          await rejectCompany(id)
-          setCompanies(prev => prev.map(c => c.id === id ? { ...c, is_verified: false } : c))
-        } catch (e) {
-          openDialog({ title: 'Rejection Failed', message: e?.message || 'Could not reject company.', variant: 'danger', cancelLabel: false, confirmLabel: 'OK' })
-        } finally {
-          setWorking(null)
-        }
-      },
-    })
+  const handleViewDoc = async (company) => {
+    try {
+      // Fetch latest company verification doc for this owner (any status)
+      const res = await getVerificationRequests({ type: 'company', page: 1, limit: 1, userId: company.owner?.id })
+      const reqs = res?.requests ?? []
+      if (reqs.length === 0) {
+        openDialog({ title: 'No document', message: 'No verification document found for this company.', variant: 'info', cancelLabel: false, confirmLabel: 'OK' })
+        return
+      }
+      setViewRequest({ request: reqs[0], notes: '' })
+    } catch (e) {
+      openDialog({ title: 'Error', message: e?.message || 'Failed to load document', variant: 'danger', cancelLabel: false, confirmLabel: 'OK' })
+    }
   }
 
   const filtered = companies.filter(c =>
@@ -528,20 +523,23 @@ function CompaniesTab({ openDialog }) {
                     <span className="text-xs text-navy-300">{new Date(company.created_at).toLocaleDateString()}</span>
                     {working === company.id
                       ? <Loader2 size={14} className="animate-spin text-navy-400" />
-                      : !company.is_verified ? (
-                        <button
-                          onClick={() => handleVerify(company.id)}
-                          className="h-8 px-3 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-1.5"
-                        >
-                          <BadgeCheck size={13} /> Verify
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleReject(company.id)}
-                          className="h-8 px-3 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors flex items-center gap-1.5"
-                        >
-                          <Ban size={13} /> Reject
-                        </button>
+                      : (
+                        <div className="flex items-center gap-2">
+                          {!company.is_verified && (
+                            <button
+                              onClick={() => handleVerify(company.id)}
+                              className="h-8 px-3 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-1.5"
+                            >
+                              <BadgeCheck size={13} /> Verify
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleViewDoc(company)}
+                            className="h-8 px-3 bg-navy-50 text-navy-600 text-xs font-medium rounded-lg hover:bg-navy-100 transition-colors flex items-center gap-1.5 border border-navy-200"
+                          >
+                            <Eye size={13} /> View Doc
+                          </button>
+                        </div>
                       )
                     }
                   </div>
@@ -558,6 +556,75 @@ function CompaniesTab({ openDialog }) {
           <button disabled={pagination.page >= Math.max(1, Math.ceil(pagination.total / pagination.limit))} onClick={() => setPage(p => p + 1)} className="text-xs px-4 py-2 rounded-lg border border-navy-200 text-navy-600 disabled:opacity-40 hover:bg-navy-50 transition-colors">Next</button>
         </div>
       )}
+
+      {/* Document-review modal */}
+      <AnimatePresence>
+        {viewRequest && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setViewRequest(null)} />
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} className="relative bg-white rounded-2xl shadow-2xl border border-navy-100 p-6 w-full max-w-2xl">
+              <div className="flex items-start gap-4 mb-4">
+                <div className="flex-1">
+                  <h3 className="font-semibold text-navy-900 mb-1">Verification Document</h3>
+                  <p className="text-sm text-navy-400">Submitted by {viewRequest.request.users?.email}</p>
+                </div>
+                <button onClick={() => setViewRequest(null)} className="text-navy-400 hover:text-navy-700 text-xl leading-none">✕</button>
+              </div>
+
+              {viewRequest.request.document_url ? (
+                <div className="mb-4 bg-navy-50 rounded-xl p-3">
+                  <a href={`http://localhost:5000${viewRequest.request.document_url}`} target="_blank" rel="noopener noreferrer" className="text-sm text-navy-600 underline">Open document in new tab</a>
+                </div>
+              ) : (
+                <div className="mb-4 text-sm text-navy-500">No document URL provided.</div>
+              )}
+
+              <input
+                type="text"
+                placeholder="Admin notes (required for rejection)"
+                value={viewRequest.notes || ''}
+                onChange={(e) => setViewRequest(v => ({ ...v, notes: e.target.value }))}
+                className="w-full h-9 rounded-xl border border-navy-200 bg-white px-3 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500"
+              />
+
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={async () => {
+                    try {
+                      await approveVerification(viewRequest.request.id, viewRequest.notes || '')
+                      load(page)
+                      setViewRequest(null)
+                    } catch (e) {
+                      openDialog({ title: 'Error', message: e?.message || 'Approve failed', variant: 'danger', cancelLabel: false, confirmLabel: 'OK' })
+                    }
+                  }}
+                  className="h-9 px-4 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700"
+                >
+                  Approve
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!viewRequest.notes?.trim()) {
+                      openDialog({ title: 'Missing notes', message: 'Please add rejection notes', variant: 'warning', cancelLabel: false, confirmLabel: 'OK' })
+                      return
+                    }
+                    try {
+                      await rejectVerification(viewRequest.request.id, viewRequest.notes)
+                      load(page)
+                      setViewRequest(null)
+                    } catch (e) {
+                      openDialog({ title: 'Error', message: e?.message || 'Reject failed', variant: 'danger', cancelLabel: false, confirmLabel: 'OK' })
+                    }
+                  }}
+                  className="h-9 px-4 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700"
+                >
+                  Reject
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

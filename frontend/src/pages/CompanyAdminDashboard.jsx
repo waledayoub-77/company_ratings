@@ -43,6 +43,7 @@ import Button from '../components/ui/Button.jsx'
 import Input from '../components/ui/Input.jsx'
 import { useAuth } from '../context/AuthContext'
 import { getCompanyStats, getCompanyAnalytics, getCompanyReviews, getCompanyById, updateCompany } from '../api/companies'
+import { submitCompanyVerificationFile, getVerificationStatus } from '../api/verification'
 import { getPendingEmployments, approveEmployment, rejectEmployment, getAllEmploymentsForAdmin, endEmploymentByAdmin, getCurrentEmployees, approveEndRequest, rejectEndRequest } from '../api/employments'
 import { createEotmEvent, closeEotmEvent, getCompanyEotmEvents, getEotmNominees, getCompanyEotmWinners } from '../api/eotm'
 import { createEotyEvent, closeEotyEvent, getCompanyEotyEvents, getEotyNominees, getCompanyEotyWinners } from '../api/eoty'
@@ -66,6 +67,8 @@ export default function CompanyAdminDashboard() {
   const [jobCount, setJobCount] = useState(0)
   const [companyName, setCompanyName] = useState('')
   const [companyVerified, setCompanyVerified] = useState(null) // null = loading, true/false
+  const [pendingCompanyRequest, setPendingCompanyRequest] = useState(null)
+  const [isSuspended, setIsSuspended] = useState(false)
   const { user } = useAuth()
   const companyId = user?.companyId
 
@@ -78,6 +81,15 @@ export default function CompanyAdminDashboard() {
         setCompanyVerified(!!c?.is_verified)
       })
       .catch(() => { setCompanyVerified(false) })
+    // Check if user has a pending company verification request
+    getVerificationStatus()
+      .then(res => {
+        const payload = res?.data ?? res
+        const requests = payload?.requests ?? []
+        const pending = requests.find(r => r.verification_type === 'company' && r.status === 'pending')
+        setPendingCompanyRequest(pending || null)
+      })
+      .catch(() => {})
     getPendingEmployments()
       .then(res => {
         const list = res?.data?.employments ?? res?.data ?? []
@@ -112,6 +124,11 @@ export default function CompanyAdminDashboard() {
       .catch(() => {})
   }, [companyId])
 
+  // Check if user account is suspended
+  useEffect(() => {
+    setIsSuspended(user?.is_active === false)
+  }, [user?.is_active])
+
   // Clear review badge when admin views the Reviews tab
   useEffect(() => {
     if (activeTab === 'reviews') {
@@ -144,14 +161,42 @@ export default function CompanyAdminDashboard() {
     </div>
   )
 
+  if (isSuspended) return (
+    <div className="min-h-screen bg-ice-50">
+      <PageHeader tag="Company Admin" title={companyName || 'Company Dashboard'} subtitle="Account suspended." backHref />
+      <div className="max-w-3xl mx-auto px-6 lg:px-8 pb-20 mt-10">
+        <div className="bg-white rounded-2xl border border-red-200 p-10 text-center space-y-6">
+          <AlertCircle size={40} className="text-red-500 mx-auto" />
+          <h2 className="text-lg font-semibold text-navy-900">Account Suspended</h2>
+          <p className="text-sm text-navy-500">Your account has been suspended by a system administrator. You cannot perform any actions at this time. Please contact support for more information.</p>
+        </div>
+      </div>
+    </div>
+  )
+
   if (!companyVerified) return (
     <div className="min-h-screen bg-ice-50">
       <PageHeader tag="Company Admin" title={companyName || 'Company Dashboard'} subtitle="Company pending verification." backHref />
       <div className="max-w-3xl mx-auto px-6 lg:px-8 pb-20 mt-10">
-        <div className="bg-white rounded-2xl border border-amber-200 p-10 text-center space-y-3">
+        <div className="bg-white rounded-2xl border border-amber-200 p-10 text-center space-y-6">
           <AlertCircle size={40} className="text-amber-500 mx-auto" />
           <h2 className="text-lg font-semibold text-navy-900">Company Not Yet Verified</h2>
-          <p className="text-sm text-navy-500">Your company must be verified by a system administrator before you can manage employees, jobs, reviews, or events. Please wait for verification or contact support.</p>
+          <p className="text-sm text-navy-500">Your company must be verified by a system administrator before you can manage employees, jobs, reviews, or events.</p>
+
+          <div className="max-w-md mx-auto text-left">
+            <p className="text-xs text-navy-500 mb-3">Upload a document that proves your company (business license, registration, etc.). Only PDF or Word documents are accepted.</p>
+            {pendingCompanyRequest ? (
+              <div className="bg-navy-50 p-4 rounded-lg border border-navy-100 text-sm">
+                <p className="font-medium text-navy-900">Document submitted — pending review</p>
+                <p className="text-xs text-navy-500 mt-1">A system administrator will review your document shortly.</p>
+                {pendingCompanyRequest.document_url && (
+                  <a href={`http://localhost:5000${pendingCompanyRequest.document_url}`} target="_blank" rel="noopener noreferrer" className="inline-block mt-3 text-xs text-navy-600 underline">View uploaded document</a>
+                )}
+              </div>
+            ) : (
+              <FileInputUpload companyId={companyId} onSubmitted={setPendingCompanyRequest} />
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -203,6 +248,191 @@ export default function CompanyAdminDashboard() {
         {activeTab === 'jobs'      && <JobsTab companyId={companyId} />}
         {activeTab === 'settings'  && <SettingsTab companyId={companyId} onNameChange={setCompanyName} />}
       </div>
+    </div>
+  )
+}
+
+function FileInputUpload({ companyId, onSubmitted }) {
+  const [file, setFile] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [message, setMessage] = useState({ text: '', type: '' })
+  const [isDragging, setIsDragging] = useState(false)
+  const fileInputRef = useRef(null)
+
+  const validateFile = (f) => {
+    const allowed = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+    if (!f) return 'No file selected'
+    if (!allowed.includes(f.type)) return 'Invalid file type. Only PDF, DOC, and DOCX files are allowed'
+    if (f.size > 5 * 1024 * 1024) return 'File size exceeds 5MB limit'
+    return null
+  }
+
+  const handleFile = (f) => {
+    setMessage({ text: '', type: '' })
+    const error = validateFile(f)
+    if (error) {
+      setMessage({ text: error, type: 'error' })
+      setFile(null)
+      return
+    }
+    setFile(f)
+  }
+
+  const handleChange = (e) => {
+    const f = e.target.files?.[0]
+    if (f) handleFile(f)
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+    const f = e.dataTransfer.files?.[0]
+    if (f) handleFile(f)
+  }
+
+  const handleSubmit = async () => {
+    if (!file) {
+      setMessage({ text: 'Please select a file first', type: 'error' })
+      return
+    }
+    setSubmitting(true)
+    setMessage({ text: '', type: '' })
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('companyId', companyId)
+    try {
+      const res = await submitCompanyVerificationFile(fd)
+      setMessage({ text: 'Document submitted successfully! A system admin will review it shortly.', type: 'success' })
+      setFile(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      // If parent passed a handler, notify with the created request (if available)
+      const created = res?.data ?? res
+      if (onSubmitted) onSubmitted(created)
+    } catch (e) {
+      setMessage({ text: e?.message || 'Upload failed. Please try again.', type: 'error' })
+    } finally { setSubmitting(false) }
+  }
+
+  return (
+    <div className="w-full max-w-2xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="text-center">
+        <h3 className="text-xl font-bold text-navy-900 mb-2">Upload Company Verification Document</h3>
+        <p className="text-sm text-navy-500">Please upload a business license, company registration, or similar proof of business</p>
+      </div>
+
+      {/* Drop Zone */}
+      <div
+        onDrop={handleDrop}
+        onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+        onDragLeave={() => setIsDragging(false)}
+        className={`relative border-2 border-dashed rounded-2xl p-10 transition-all cursor-pointer ${
+          isDragging
+            ? 'border-navy-600 bg-navy-50'
+            : 'border-navy-200 bg-navy-50/40 hover:border-navy-400 hover:bg-navy-50/60'
+        }`}
+        onClick={() => fileInputRef.current?.click()}
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.doc,.docx"
+          onChange={handleChange}
+          className="hidden"
+          disabled={submitting}
+        />
+
+        <div className="flex flex-col items-center gap-4">
+          <div className={`p-4 rounded-full transition-colors ${isDragging ? 'bg-navy-200' : 'bg-white'}`}>
+            <FileText size={32} className="text-navy-600" />
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-semibold text-navy-900 mb-1">
+              {file ? `Selected: ${file.name}` : 'Drag and drop your document'}
+            </p>
+            <p className="text-xs text-navy-500">
+              {file ? `${(file.size / 1024 / 1024).toFixed(2)}MB` : 'or click to browse'}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* File Info */}
+      {file && (
+        <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 size={20} className="text-emerald-600" />
+            <div>
+              <p className="text-sm font-medium text-emerald-900">{file.name}</p>
+              <p className="text-xs text-emerald-600">{(file.size / 1024 / 1024).toFixed(2)}MB</p>
+            </div>
+          </div>
+          <button
+            onClick={() => { setFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; setMessage({ text: '', type: '' }) }}
+            className="p-1 hover:bg-emerald-100 rounded transition-colors"
+          >
+            <X size={18} className="text-emerald-600" />
+          </button>
+        </div>
+      )}
+
+      {/* Messages */}
+      {message.text && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`p-4 rounded-lg flex items-start gap-3 ${
+            message.type === 'success'
+              ? 'bg-emerald-50 border border-emerald-200'
+              : 'bg-red-50 border border-red-200'
+          }`}
+        >
+          {message.type === 'success' ? (
+            <CheckCircle2 size={20} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+          ) : (
+            <AlertCircle size={20} className="text-red-600 flex-shrink-0 mt-0.5" />
+          )}
+          <p className={`text-sm ${message.type === 'success' ? 'text-emerald-800' : 'text-red-800'}`}>
+            {message.text}
+          </p>
+        </motion.div>
+      )}
+
+      {/* Accepted Formats */}
+      <div className="bg-navy-50 rounded-lg p-4 space-y-2">
+        <p className="text-xs font-semibold text-navy-700">Accepted Formats</p>
+        <div className="flex flex-wrap gap-2">
+          {['PDF', 'DOC', 'DOCX'].map(format => (
+            <span key={format} className="text-xs bg-white border border-navy-200 text-navy-600 px-3 py-1 rounded-full">
+              {format}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Submit Button */}
+      <button
+        onClick={handleSubmit}
+        disabled={submitting || !file}
+        className={`w-full h-12 rounded-lg font-semibold text-white transition-all flex items-center justify-center gap-2 ${
+          submitting || !file
+            ? 'bg-navy-300 cursor-not-allowed'
+            : 'bg-navy-900 hover:bg-navy-800 active:scale-95'
+        }`}
+      >
+        {submitting ? (
+          <>
+            <Loader2 size={18} className="animate-spin" />
+            Uploading…
+          </>
+        ) : (
+          <>
+            <CheckCircle2 size={18} />
+            Submit for Review
+          </>
+        )}
+      </button>
     </div>
   )
 }

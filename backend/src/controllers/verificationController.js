@@ -1,6 +1,8 @@
 // Verification Controller
 const verificationService = require('../services/verificationService');
 const { logAdminAction } = require('../utils/auditLogger');
+const path = require('path')
+
 
 // POST /api/verification/upload-id
 const submitIdentityVerification = async (req, res, next) => {
@@ -35,6 +37,28 @@ const submitCompanyVerification = async (req, res, next) => {
     next(err);
   }
 };
+
+// POST /api/verification/upload-company-doc-file (multipart)
+const submitCompanyVerificationFile = async (req, res, next) => {
+  try {
+    // multer places file on req.file
+    if (!req.file) return res.status(400).json({ success: false, error: 'No file uploaded' });
+    const companyId = req.body.companyId || req.body.company_id
+    if (!companyId) return res.status(400).json({ success: false, error: 'companyId is required' });
+
+    // Build a URL pointing to the served uploads path
+    const fileUrl = `/uploads/verifications/${req.file.filename}`
+
+    const result = await verificationService.submitCompanyVerification(req.user.userId, companyId, {
+      documentUrl: fileUrl,
+      documentType: req.body.documentType || 'business_license',
+    })
+
+    res.status(201).json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+}
 
 // GET /api/verification/status
 const getMyVerificationStatus = async (req, res, next) => {
@@ -105,6 +129,7 @@ const rejectVerification = async (req, res, next) => {
 module.exports = {
   submitIdentityVerification,
   submitCompanyVerification,
+  submitCompanyVerificationFile,
   getMyVerificationStatus,
   getVerificationRequests,
   approveVerification,

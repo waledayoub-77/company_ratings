@@ -534,7 +534,7 @@ exports.rejectCompany = async (req, res) => {
 
     const { data: updated, error } = await supabase
       .from('companies')
-      .update({ is_verified: false })
+      .update({ is_verified: false, is_document_verified: false })
       .eq('id', id)
       .select()
       .maybeSingle();

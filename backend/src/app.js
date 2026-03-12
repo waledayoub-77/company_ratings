@@ -7,6 +7,7 @@ const routes = require('./routes/index');
 const { errorHandler } = require('./middlewares/errorHandler');
 const { generalLimiter } = require('./middlewares/rateLimiter');
 const { sanitizeBody } = require('./middlewares/sanitize');
+const path = require('path')
 
 const app = express();
 
@@ -66,6 +67,9 @@ app.get('/health', (req, res) => {
 
 // ─── API ROUTES ───────────────────────────────────────────────────────────────
 app.use('/api', routes);
+
+// Serve uploaded files (e.g., verification documents)
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')))
 
 // ─── 404 HANDLER ──────────────────────────────────────────────────────────────
 app.use((req, res) => {

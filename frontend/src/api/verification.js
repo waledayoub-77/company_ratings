@@ -1,4 +1,4 @@
-import { authRequest } from './client'
+import { authRequest, authRequestMultipart } from './client'
 
 // ─── User-facing verification ─────────────────────────────────────────────────
 
@@ -15,6 +15,14 @@ export async function submitCompanyVerification(data) {
   return authRequest('/verification/upload-company-doc', {
     method: 'POST',
     body: JSON.stringify(data),
+  })
+}
+
+/** POST /verification/upload-company-doc-file (multipart) */
+export async function submitCompanyVerificationFile(formData) {
+  return authRequestMultipart('/verification/upload-company-doc-file', {
+    method: 'POST',
+    body: formData,
   })
 }
 

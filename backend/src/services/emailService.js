@@ -366,6 +366,46 @@ async function sendHireInviteEmail({ to, name, positionTitle, companyName }) {
   });
 }
 
+function companyVerifiedTemplate(name, companyName) {
+  return `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px;">
+      <h2 style="color:#16a34a;">Company Verified ✅</h2>
+      <p>Hi <strong>${name || 'Company Admin'}</strong>,</p>
+      <p>Your company <strong>${companyName}</strong> has been verified by our moderation team. You can now access the company admin features.</p>
+      <p style="color:#888;font-size:13px;">— The RateHub Team</p>
+    </div>
+  `
+}
+
+function companyRejectedTemplate(name, companyName, reason) {
+  return `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px;">
+      <h2 style="color:#dc2626;">Company Verification Rejected</h2>
+      <p>Hi <strong>${name || 'Company Admin'}</strong>,</p>
+      <p>Unfortunately, the verification documents for <strong>${companyName}</strong> were rejected.</p>
+      ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
+      <p>Please review your documents and submit a new verification request.</p>
+      <p style="color:#888;font-size:13px;">— The RateHub Team</p>
+    </div>
+  `
+}
+
+async function sendCompanyVerifiedEmail({ to, name, companyName }) {
+  return sendEmail({
+    to,
+    subject: `Your company ${companyName} has been verified — RateHub`,
+    html: companyVerifiedTemplate(name, companyName),
+  })
+}
+
+async function sendCompanyRejectedEmail({ to, name, companyName, reason }) {
+  return sendEmail({
+    to,
+    subject: `Company verification rejected — ${companyName} — RateHub`,
+    html: companyRejectedTemplate(name, companyName, reason),
+  })
+}
+
 module.exports = {
   sendWelcomeEmail,
   sendVerifyEmail,
@@ -383,4 +423,6 @@ module.exports = {
   sendJobApplicationStatusEmail,
   sendInterviewInviteEmail,
   sendHireInviteEmail,
+  sendCompanyVerifiedEmail,
+  sendCompanyRejectedEmail,
 };
